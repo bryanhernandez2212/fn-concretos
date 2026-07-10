@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- En Android 12+ el sistema muestra su propia pantalla de bienvenida
+         antes de que Flutter dibuje su primer frame. El ícono animado de esa
+         pantalla se recorta en un círculo y no admite un logo con este
+         formato (rectangular, con texto), así que lo dejamos transparente:
+         solo se ve el fondo de marca hasta que Flutter dibuja su splash real
+         con el logo completo y sin recortes. -->
+    <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowSplashScreenBackground">@color/splash_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+        <item name="android:windowBackground">@drawable/launch_background</item>
+    </style>
+    <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowBackground">?android:colorBackground</item>
+    </style>
+</resources>

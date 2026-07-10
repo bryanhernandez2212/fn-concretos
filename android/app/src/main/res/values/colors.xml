@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fondo oscuro de la marca, igual al usado en el splash de Flutter -->
+    <color name="splash_background">#15181B</color>
+    <!-- Fondo negro del ícono adaptativo de la app -->
+    <color name="ic_launcher_background">#000000</color>
+</resources>
