@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'placeholder_content.dart';
+import '../widgets/placeholder_content.dart';
 
-class PedidosScreen extends StatelessWidget {
-  const PedidosScreen({super.key});
+class OrdersScreen extends StatelessWidget {
+  const OrdersScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

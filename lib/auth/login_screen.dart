@@ -1,6 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'home_screen.dart';
+import '../home/home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -110,7 +110,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 32.0),
 
-                          // Usuario Field
+                          // Username Field
                           const Text(
                             'Usuario',
                             style: TextStyle(
@@ -154,7 +154,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 24.0),
 
-                          // Contraseña Field
+                          // Password Field
                           const Text(
                             'Contraseña',
                             style: TextStyle(

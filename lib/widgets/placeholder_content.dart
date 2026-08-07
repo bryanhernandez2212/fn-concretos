@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Contenido genérico para pestañas que aún no tienen funcionalidad propia.
+/// Generic content for tabs that don't have their own functionality yet.
 class PlaceholderContent extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -24,7 +24,7 @@ class PlaceholderContent extends StatelessWidget {
             Icon(
               icon,
               size: 80,
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+              color: const Color(0xFFFFCC00).withValues(alpha: 0.5),
             ),
             const SizedBox(height: 16),
             Text(

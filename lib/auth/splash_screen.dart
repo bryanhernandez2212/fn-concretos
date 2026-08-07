@@ -39,9 +39,9 @@ class _SplashScreenState extends State<SplashScreen> {
           // Dark overlay similar to login screen
           color: Colors.black.withOpacity(0.4),
           child: Center(
-            // Sin animación de entrada: la pantalla nativa de arranque ya
-            // muestra este mismo logo, por lo que debe verse idéntico desde
-            // el primer frame para que se perciba como una sola pantalla.
+            // No entrance animation: the native launch screen already shows
+            // this same logo, so it must look identical from the very first
+            // frame for it to read as a single continuous screen.
             child: Image.asset(
               'assets/images/logo.png',
               width: 250,
