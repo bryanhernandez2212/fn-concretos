@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(mkdir -p /private/tmp/claude-501/-Users-bryan-Desktop-my-flutter-app/ac418562-b966-4a7b-8b05-66013c43d6f6/scratchpad/icon2)",
-      "Bash(/tmp/pngenv/bin/python -)"
+      "Bash(/tmp/pngenv/bin/python -)",
+      "Bash(adb -s emulator-5554 shell input tap 540 1609)",
+      "Bash(adb -s emulator-5554 exec-out screencap -p)",
+      "Bash(adb -s emulator-5554 shell dumpsys activity activities)"
     ]
   }
 }

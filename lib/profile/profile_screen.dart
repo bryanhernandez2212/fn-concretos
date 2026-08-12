@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import '../main.dart';
+import '../auth/auth_service.dart';
 import '../auth/login_screen.dart';
 import '../widgets/bottom_nav_bar.dart';
+import 'change_password_screen.dart';
+import 'edit_profile_screen.dart';
+import 'mfa_screen.dart';
 
 const _accentYellow = Color(0xFFFFCC00);
 
@@ -22,140 +26,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _notificationsEnabled = true;
 
   Future<void> _editProfile() async {
-    final firstNameController = TextEditingController(text: _firstName);
-    final lastNameController = TextEditingController(text: _lastName);
-    final positionController = TextEditingController(text: _position);
-    final plantController = TextEditingController(text: _plant);
-    final cityController = TextEditingController(text: _city);
-    final emailController = TextEditingController(text: _email);
-
-    final result = await showDialog<Map<String, String>>(
-      context: context,
-      builder: (context) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        final dialogColor = isDark ? const Color(0xFF1C1C1C) : Colors.white;
-        final textColor = isDark ? Colors.white : Colors.black87;
-        final mutedColor = (isDark ? Colors.white : Colors.black).withValues(alpha: 0.55);
-        final outlineColor = (isDark ? Colors.white : Colors.black).withValues(alpha: 0.2);
-
-        return Dialog(
-          backgroundColor: dialogColor,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: _accentYellow.withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.person, color: _accentYellow, size: 30),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  'Editar perfil',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: textColor),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Actualiza tu información personal',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 13, color: mutedColor),
-                ),
-                const SizedBox(height: 24),
-                Flexible(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        _EditField(
-                          controller: firstNameController,
-                          label: 'Nombre',
-                          icon: Icons.badge_outlined,
-                        ),
-                        const SizedBox(height: 14),
-                        _EditField(
-                          controller: lastNameController,
-                          label: 'Apellido',
-                          icon: Icons.badge_outlined,
-                        ),
-                        const SizedBox(height: 14),
-                        _EditField(
-                          controller: positionController,
-                          label: 'Cargo',
-                          icon: Icons.work_outline,
-                        ),
-                        const SizedBox(height: 14),
-                        _EditField(
-                          controller: plantController,
-                          label: 'Planta',
-                          icon: Icons.factory_outlined,
-                        ),
-                        const SizedBox(height: 14),
-                        _EditField(
-                          controller: cityController,
-                          label: 'Ciudad',
-                          icon: Icons.location_city_outlined,
-                        ),
-                        const SizedBox(height: 14),
-                        _EditField(
-                          controller: emailController,
-                          label: 'Correo',
-                          icon: Icons.mail_outline,
-                          keyboardType: TextInputType.emailAddress,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          side: BorderSide(color: outlineColor),
-                        ),
-                        child: Text(
-                          'Cancelar',
-                          style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.of(context).pop({
-                          'firstName': firstNameController.text.trim(),
-                          'lastName': lastNameController.text.trim(),
-                          'position': positionController.text.trim(),
-                          'plant': plantController.text.trim(),
-                          'city': cityController.text.trim(),
-                          'email': emailController.text.trim(),
-                        }),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _accentYellow,
-                          foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        ),
-                        child: const Text('Guardar', style: TextStyle(fontWeight: FontWeight.w700)),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+    final result = await Navigator.of(context).push<Map<String, String>>(
+      MaterialPageRoute(
+        builder: (context) => EditProfileScreen(
+          firstName: _firstName,
+          lastName: _lastName,
+          position: _position,
+          plant: _plant,
+          city: _city,
+          email: _email,
+        ),
+      ),
     );
 
     if (result != null) {
@@ -298,6 +179,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         const SizedBox(height: 20),
 
+        // Seguridad
+        _SettingsGroup(
+          children: [
+            _SettingsTile(
+              icon: Icons.lock_outline,
+              iconColor: _accentYellow,
+              title: 'Cambiar contraseña',
+              trailing: Icon(Icons.chevron_right, color: onCardMuted),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const ChangePasswordScreen()),
+              ),
+            ),
+            _SettingsTile(
+              icon: Icons.shield_outlined,
+              iconColor: _accentYellow,
+              title: 'Verificación en dos pasos',
+              trailing: Icon(Icons.chevron_right, color: onCardMuted),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const MfaScreen()),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+
         // Soporte
         _SettingsGroup(
           children: [
@@ -338,7 +244,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             borderRadius: BorderRadius.circular(30),
             child: InkWell(
               borderRadius: BorderRadius.circular(30),
-              onTap: () {
+              onTap: () async {
+                await AuthService.logout();
+                if (!context.mounted) return;
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(builder: (context) => const LoginScreen()),
                   (Route<dynamic> route) => false,
@@ -389,53 +297,6 @@ class _SettingsGroup extends StatelessWidget {
         border: Border.all(color: borderColor),
       ),
       child: Column(children: children),
-    );
-  }
-}
-
-/// A filled, icon-prefixed text field used inside the edit-profile dialog.
-class _EditField extends StatelessWidget {
-  final TextEditingController controller;
-  final String label;
-  final IconData icon;
-  final TextInputType? keyboardType;
-
-  const _EditField({
-    required this.controller,
-    required this.label,
-    required this.icon,
-    this.keyboardType,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final fillColor = isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.045);
-    final textColor = isDark ? Colors.white : Colors.black87;
-
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      style: TextStyle(color: textColor),
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, size: 20, color: _accentYellow),
-        filled: true,
-        fillColor: fillColor,
-        contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _accentYellow, width: 1.5),
-        ),
-      ),
     );
   }
 }

@@ -1,4 +1,23 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Coarse/fine location: needed for the "my location" blue dot and
+         live route tracking on the full-screen navigation view
+         (lib/deliveries/route_navigation_screen.dart). Requesting this at
+         runtime (via the geolocator plugin) is what makes Android show its
+         own permission prompt — this app has no manual "compartir
+         ubicación" toggle asking first. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Required by google_navigation_flutter to keep turn-by-turn
+         guidance running as a foreground service while navigating. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- Needed by image_picker's camera capture on
+         lib/deliveries/delivery_photo_screen.dart. Gallery picking uses
+         Android's system Photo Picker on modern devices, which needs no
+         declared permission. Requested at runtime by image_picker itself
+         when the driver taps "Tomar foto" — no manual toggle. -->
+    <uses-permission android:name="android.permission.CAMERA" />
     <application
         android:label="FN Concretos"
         android:name="${applicationName}"
@@ -31,6 +50,19 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- REQUIRED for the map/navigation in
+             lib/deliveries/route_navigation_screen.dart to work on
+             Android: needs "Maps SDK for Android" AND "Navigation SDK for
+             Android" enabled on this key in Google Cloud Console. Without
+             Maps SDK the map loads blank/greyed out with a "For
+             development purposes only" watermark instead of crashing;
+             without Navigation SDK the in-app turn-by-turn view errors
+             instead. The Navigation SDK is billed separately from Maps
+             SDK — check current pricing before relying on this in
+             production. -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyDp4VbFAq1b6Qc6KZgLnV1tc8kqWz1UFEg" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

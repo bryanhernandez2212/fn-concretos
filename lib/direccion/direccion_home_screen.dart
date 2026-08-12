@@ -1,22 +1,23 @@
 import 'package:flutter/material.dart';
 import '../profile/profile_screen.dart';
-import '../deliveries/deliveries_screen.dart';
-import '../vehicle/vehicle_screen.dart';
 import '../widgets/bottom_nav_bar.dart';
+import 'autorizaciones_screen.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+/// App shell for the Dirección role: just Autorizaciones + Perfil for now —
+/// vistas.md only scopes Dirección's mobile screens to pedido credit
+/// authorization, everything else in that role stays on desktop.
+class DireccionHomeScreen extends StatefulWidget {
+  const DireccionHomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<DireccionHomeScreen> createState() => _DireccionHomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _DireccionHomeScreenState extends State<DireccionHomeScreen> {
   int _currentIndex = 0;
 
   final List<Widget> _pages = const [
-    DeliveriesScreen(),
-    VehicleScreen(),
+    AutorizacionesScreen(),
     ProfileScreen(),
   ];
 
@@ -49,21 +50,12 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: BottomNavBar(
         currentIndex: _currentIndex,
-        onTap: (int index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
+        onTap: (int index) => setState(() => _currentIndex = index),
         items: const [
           NavItem(
-            icon: Icons.local_shipping_outlined,
-            selectedIcon: Icons.local_shipping,
-            label: 'Entregas',
-          ),
-          NavItem(
-            icon: Icons.build_outlined,
-            selectedIcon: Icons.build,
-            label: 'Vehículo',
+            icon: Icons.fact_check_outlined,
+            selectedIcon: Icons.fact_check,
+            label: 'Autorizaciones',
           ),
           NavItem(
             icon: Icons.person_outline,
@@ -75,4 +67,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-

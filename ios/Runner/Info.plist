@@ -26,6 +26,27 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- Shown by the OS permission prompts triggered when the full-screen
+	     navigation view (lib/deliveries/route_navigation_screen.dart)
+	     requests location — no manual in-app toggle asks first.
+	     "Always" is required by google_navigation_flutter to keep
+	     turn-by-turn guidance updating while the app is backgrounded
+	     (e.g. the driver switches to a messaging app mid-trip). -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>FN Concretos usa tu ubicación para mostrarte en el mapa durante una entrega y calcular la ruta a la obra.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>FN Concretos necesita tu ubicación en segundo plano para seguir indicándote la ruta durante la navegación.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
+	<!-- Shown by the OS permission prompts image_picker triggers on
+	     lib/deliveries/delivery_photo_screen.dart when the driver taps
+	     "Tomar foto" / "Elegir de galería" — no manual toggle asks first. -->
+	<key>NSCameraUsageDescription</key>
+	<string>FN Concretos usa la cámara para capturar fotos de evidencia de entrega.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>FN Concretos accede a tus fotos para adjuntar evidencia de entrega.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
