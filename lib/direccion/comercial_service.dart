@@ -34,6 +34,11 @@ class ComercialService {
     return Cliente.fromJson(data as Map<String, dynamic>);
   }
 
+  static Future<Obra> obtenerObra(int id) async {
+    final data = await _get('/obras/$id');
+    return Obra.fromJson(data as Map<String, dynamic>);
+  }
+
   static Future<EstadoCuenta> estadoCuenta(int clienteId) async {
     final data = await _get('/clientes/$clienteId/estado-cuenta');
     return EstadoCuenta.fromJson(data as Map<String, dynamic>);

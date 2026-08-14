@@ -4,6 +4,7 @@ class Pedido {
   final int id;
   final String folio;
   final int clienteId;
+  final int obraId;
   final String clienteNombre;
   final String obraNombre;
   final String tipoServicio;
@@ -20,6 +21,7 @@ class Pedido {
     required this.id,
     required this.folio,
     required this.clienteId,
+    required this.obraId,
     required this.clienteNombre,
     required this.obraNombre,
     required this.tipoServicio,
@@ -38,6 +40,7 @@ class Pedido {
       id: json['id'] as int,
       folio: json['folio'] as String? ?? '',
       clienteId: json['clienteId'] as int,
+      obraId: json['obraId'] as int,
       clienteNombre: json['clienteNombre'] as String? ?? 'Cliente sin nombre',
       obraNombre: json['obraNombre'] as String? ?? 'Obra sin nombre',
       tipoServicio: json['tipoServicio'] as String? ?? '',
@@ -109,6 +112,38 @@ class EstadoCuenta {
       anticiposDisponibles: (json['anticiposDisponibles'] as num?)?.toDouble() ?? 0,
       moroso: json['moroso'] as bool? ?? false,
       mensaje: json['mensaje'] as String?,
+    );
+  }
+}
+
+/// Mirrors `ObraResponse` — just the fields
+/// `deliveries/entregas_service.dart` needs to point the map/navigation at
+/// the job site.
+class Obra {
+  final int id;
+  final String nombre;
+  final String direccion;
+  final String clientePrincipalNombre;
+  final double latitud;
+  final double longitud;
+
+  const Obra({
+    required this.id,
+    required this.nombre,
+    required this.direccion,
+    required this.clientePrincipalNombre,
+    required this.latitud,
+    required this.longitud,
+  });
+
+  factory Obra.fromJson(Map<String, dynamic> json) {
+    return Obra(
+      id: json['id'] as int,
+      nombre: json['nombre'] as String? ?? 'Obra sin nombre',
+      direccion: json['direccion'] as String? ?? '',
+      clientePrincipalNombre: json['clientePrincipalNombre'] as String? ?? '',
+      latitud: (json['latitud'] as num?)?.toDouble() ?? 0,
+      longitud: (json['longitud'] as num?)?.toDouble() ?? 0,
     );
   }
 }

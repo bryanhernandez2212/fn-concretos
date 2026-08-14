@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart' as geo;
 import 'package:google_navigation_flutter/google_navigation_flutter.dart';
+import '../auth/auth_service.dart';
+import '../operaciones/operaciones_service.dart';
 import 'remision.dart';
 
 const _accentYellow = Color(0xFFFFCC00);
@@ -38,6 +40,7 @@ class RouteNavigationScreen extends StatefulWidget {
 class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
   GoogleNavigationViewController? _viewController;
   StreamSubscription<OnArrivalEvent>? _arrivalSubscription;
+  Timer? _gpsTimer;
   bool _arrived = false;
   bool _guidanceRunning = false;
   String? _errorText;
@@ -51,6 +54,7 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
   @override
   void dispose() {
     _arrivalSubscription?.cancel();
+    _gpsTimer?.cancel();
     if (_guidanceRunning) {
       // Best-effort: the view/session may already be gone by the time this
       // runs (e.g. Android killed the activity), so a missing session here
@@ -84,7 +88,9 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
     }
 
     _arrivalSubscription = GoogleMapsNavigator.setOnArrivalListener((_) {
+      _gpsTimer?.cancel();
       if (mounted) setState(() => _arrived = true);
+      _registrarHito(HitoEntrega.enObra);
     });
 
     final remision = widget.remision;
@@ -101,6 +107,10 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
     );
 
     if (status != NavigationRouteStatus.statusOk) {
+      debugPrint(
+        'RouteNavigationScreen: setDestinations status=$status '
+        'destino=(${remision.destinoLat}, ${remision.destinoLng})',
+      );
       if (mounted) setState(() => _errorText = 'No se pudo calcular la ruta a la obra.');
       return;
     }
@@ -108,6 +118,43 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
     await GoogleMapsNavigator.startGuidance();
     await _viewController?.followMyLocation(CameraPerspective.tilted);
     if (mounted) setState(() => _guidanceRunning = true);
+
+    // Only report position / hitos if planta/producción already generated a
+    // real Remisión for this delivery (see remision.dart) — the app never
+    // creates one itself, so no remisionId means nothing to post GPS/hitos
+    // to.
+    final remisionId = remision.remisionId;
+    if (remisionId != null && AuthService.permisos.contains(permisoOperarRemisiones)) {
+      _enviarPosicionActual(remisionId);
+      _gpsTimer = Timer.periodic(const Duration(seconds: 15), (_) => _enviarPosicionActual(remisionId));
+      _registrarHito(HitoEntrega.salioPlanta);
+    }
+  }
+
+  /// Best-effort: a failed ping just means the next one 15s later tries
+  /// again — not worth interrupting navigation over.
+  Future<void> _enviarPosicionActual(int remisionId) async {
+    try {
+      final posicion = await geo.Geolocator.getCurrentPosition();
+      await OperacionesService.enviarPosicion(remisionId, latitud: posicion.latitude, longitud: posicion.longitude);
+    } catch (_) {}
+  }
+
+  /// Registers the real hito (and its server-stamped `hora*`) for the two
+  /// moments this screen owns: guidance actually starting (`salioPlanta` —
+  /// "hora de salida") and the SDK's own arrival geofence firing (`enObra`
+  /// — "hora de llegada"). Unlike GPS pings this isn't repeated, so a
+  /// failure is surfaced instead of silently retried.
+  Future<void> _registrarHito(HitoEntrega hito) async {
+    final remisionId = widget.remision.remisionId;
+    if (remisionId == null || !AuthService.permisos.contains(permisoOperarRemisiones)) return;
+    try {
+      await OperacionesService.avanzarHito(remisionId, hito.backendValue);
+    } on AuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } catch (_) {}
   }
 
   void _finish() => Navigator.of(context).pop();

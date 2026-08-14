@@ -2,24 +2,20 @@ import 'package:flutter/material.dart';
 
 const _accentYellow = Color(0xFFFFCC00);
 
-/// Full-screen profile editor, pushed from [ProfileScreen]. Pops with a
-/// `Map<String, String>` of the edited fields on save, or `null` on cancel.
+/// Editor for the fields that have no backend source yet (planta/ciudad —
+/// `GET /auth/me` doesn't return them). Usuario/cargo/correo moved to
+/// `ProfileScreen`'s real, read-only session data (`AuthService`), so
+/// they're no longer editable here — a local edit couldn't actually change
+/// them on the backend anyway. Pops with a `Map<String, String>` of the
+/// edited fields on save, or `null` on cancel.
 class EditProfileScreen extends StatefulWidget {
-  final String firstName;
-  final String lastName;
-  final String position;
   final String plant;
   final String city;
-  final String email;
 
   const EditProfileScreen({
     super.key,
-    required this.firstName,
-    required this.lastName,
-    required this.position,
     required this.plant,
     required this.city,
-    required this.email,
   });
 
   @override
@@ -27,32 +23,20 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
-  late final _firstNameController = TextEditingController(text: widget.firstName);
-  late final _lastNameController = TextEditingController(text: widget.lastName);
-  late final _positionController = TextEditingController(text: widget.position);
   late final _plantController = TextEditingController(text: widget.plant);
   late final _cityController = TextEditingController(text: widget.city);
-  late final _emailController = TextEditingController(text: widget.email);
 
   @override
   void dispose() {
-    _firstNameController.dispose();
-    _lastNameController.dispose();
-    _positionController.dispose();
     _plantController.dispose();
     _cityController.dispose();
-    _emailController.dispose();
     super.dispose();
   }
 
   void _save() {
     Navigator.of(context).pop({
-      'firstName': _firstNameController.text.trim(),
-      'lastName': _lastNameController.text.trim(),
-      'position': _positionController.text.trim(),
       'plant': _plantController.text.trim(),
       'city': _cityController.text.trim(),
-      'email': _emailController.text.trim(),
     });
   }
 
@@ -84,24 +68,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           _FieldGroup(
             children: [
               _EditField(
-                controller: _firstNameController,
-                label: 'Nombre',
-                icon: Icons.badge_outlined,
-              ),
-              const SizedBox(height: 14),
-              _EditField(
-                controller: _lastNameController,
-                label: 'Apellido',
-                icon: Icons.badge_outlined,
-              ),
-              const SizedBox(height: 14),
-              _EditField(
-                controller: _positionController,
-                label: 'Cargo',
-                icon: Icons.work_outline,
-              ),
-              const SizedBox(height: 14),
-              _EditField(
                 controller: _plantController,
                 label: 'Planta',
                 icon: Icons.factory_outlined,
@@ -111,13 +77,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 controller: _cityController,
                 label: 'Ciudad',
                 icon: Icons.location_city_outlined,
-              ),
-              const SizedBox(height: 14),
-              _EditField(
-                controller: _emailController,
-                label: 'Correo',
-                icon: Icons.mail_outline,
-                keyboardType: TextInputType.emailAddress,
               ),
             ],
           ),
@@ -188,13 +147,11 @@ class _EditField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
   final IconData icon;
-  final TextInputType? keyboardType;
 
   const _EditField({
     required this.controller,
     required this.label,
     required this.icon,
-    this.keyboardType,
   });
 
   @override
@@ -205,7 +162,6 @@ class _EditField extends StatelessWidget {
 
     return TextField(
       controller: controller,
-      keyboardType: keyboardType,
       style: TextStyle(color: textColor),
       decoration: InputDecoration(
         labelText: label,

@@ -17,36 +17,24 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  String _firstName = 'Juan';
-  String _lastName = 'Pérez';
-  String _position = 'Representante de Ventas';
+  // Planta/Ciudad have no backend source (auth-service's `/auth/me` doesn't
+  // return them) — they stay local-only stubs, unlike usuario/cargo/correo
+  // below which now come straight from the real session.
   String _plant = 'Planta Norte';
   String _city = 'Ciudad de México';
-  String _email = 'usuario@fnconcretos.com';
   bool _notificationsEnabled = true;
 
   Future<void> _editProfile() async {
     final result = await Navigator.of(context).push<Map<String, String>>(
       MaterialPageRoute(
-        builder: (context) => EditProfileScreen(
-          firstName: _firstName,
-          lastName: _lastName,
-          position: _position,
-          plant: _plant,
-          city: _city,
-          email: _email,
-        ),
+        builder: (context) => EditProfileScreen(plant: _plant, city: _city),
       ),
     );
 
     if (result != null) {
       setState(() {
-        if (result['firstName']?.isNotEmpty ?? false) _firstName = result['firstName']!;
-        if (result['lastName']?.isNotEmpty ?? false) _lastName = result['lastName']!;
-        if (result['position']?.isNotEmpty ?? false) _position = result['position']!;
         if (result['plant']?.isNotEmpty ?? false) _plant = result['plant']!;
         if (result['city']?.isNotEmpty ?? false) _city = result['city']!;
-        if (result['email']?.isNotEmpty ?? false) _email = result['email']!;
       });
     }
   }
@@ -92,11 +80,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '$_firstName $_lastName',
+                            AuthService.username ?? 'Usuario',
                             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: onCardText),
                           ),
                           const SizedBox(height: 2),
-                          Text(_position, style: TextStyle(fontSize: 13, color: onCardMuted)),
+                          Text(AuthService.rol ?? '', style: TextStyle(fontSize: 13, color: onCardMuted)),
                         ],
                       ),
                     ),
@@ -136,26 +124,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         const SizedBox(height: 20),
 
-        // Datos personales
+        // Datos personales — usuario/cargo/correo vienen de la sesión real
+        // (`AuthService`, poblado desde `GET /auth/me`); planta/ciudad no
+        // tienen fuente en el backend todavía, así que se quedan como
+        // valores locales editables (ver `EditProfileScreen`).
         _SettingsGroup(
           children: [
             _SettingsTile(
               icon: Icons.badge_outlined,
               iconColor: _accentYellow,
-              title: 'Nombre',
-              trailing: Text(_firstName, style: TextStyle(color: onCardMuted, fontSize: 14)),
-            ),
-            _SettingsTile(
-              icon: Icons.badge_outlined,
-              iconColor: _accentYellow,
-              title: 'Apellido',
-              trailing: Text(_lastName, style: TextStyle(color: onCardMuted, fontSize: 14)),
+              title: 'Usuario',
+              trailing: Text(AuthService.username ?? '—', style: TextStyle(color: onCardMuted, fontSize: 14)),
             ),
             _SettingsTile(
               icon: Icons.work_outline,
               iconColor: _accentYellow,
               title: 'Cargo',
-              trailing: Text(_position, style: TextStyle(color: onCardMuted, fontSize: 14)),
+              trailing: Text(AuthService.rol ?? '—', style: TextStyle(color: onCardMuted, fontSize: 14)),
+            ),
+            _SettingsTile(
+              icon: Icons.mail_outline,
+              iconColor: _accentYellow,
+              title: 'Correo',
+              trailing: Text(AuthService.correo ?? '—', style: TextStyle(color: onCardMuted, fontSize: 14)),
             ),
             _SettingsTile(
               icon: Icons.factory_outlined,
@@ -168,12 +159,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               iconColor: _accentYellow,
               title: 'Ciudad',
               trailing: Text(_city, style: TextStyle(color: onCardMuted, fontSize: 14)),
-            ),
-            _SettingsTile(
-              icon: Icons.mail_outline,
-              iconColor: _accentYellow,
-              title: 'Correo',
-              trailing: Text(_email, style: TextStyle(color: onCardMuted, fontSize: 14)),
             ),
           ],
         ),

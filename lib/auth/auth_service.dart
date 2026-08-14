@@ -40,7 +40,15 @@ class AuthService {
   static DateTime? _accessTokenExpiresAt;
   static String? username;
   static String? rol;
+  static String? correo;
   static List<String> permisos = const [];
+
+  /// The employee id backing this session. Used to cross-reference records
+  /// in other microservices that identify a person by employee id rather
+  /// than username — e.g. `operaciones`'s `AsignacionResponse.conductorId`
+  /// (see `deliveries/entregas_service.dart`), on the assumption that both
+  /// services share the same employee id space.
+  static int? idEmpleado;
 
   static bool get isLoggedIn => accessToken != null;
 
@@ -143,7 +151,9 @@ class AuthService {
     _accessTokenExpiresAt = null;
     username = null;
     rol = null;
+    correo = null;
     permisos = const [];
+    idEmpleado = null;
   }
 
   static void _setTokens(Map<String, dynamic> data) {
@@ -176,7 +186,9 @@ class AuthService {
     final data = await _get('/auth/me', auth: true);
     username = data['user'] as String?;
     rol = data['rolNombre'] as String?;
+    correo = data['correo'] as String?;
     permisos = (data['permisos'] as List<dynamic>?)?.cast<String>() ?? const [];
+    idEmpleado = data['idEmpleado'] as int?;
   }
 
   static Future<Map<String, dynamic>> _get(String path, {bool auth = false}) async {

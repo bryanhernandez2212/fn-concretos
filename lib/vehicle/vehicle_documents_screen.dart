@@ -1,13 +1,29 @@
 import 'package:flutter/material.dart';
+import '../auth/auth_service.dart';
+import '../operaciones/operaciones_service.dart';
+import '../operaciones/vehiculo.dart';
 import 'vehicle.dart';
 
 const _accentYellow = Color(0xFFFFCC00);
 
-/// Read-only list of the unit's documents (`VehiculoSeguro`/
-/// `VehiculoDocumento`) and their expiration, so the driver doesn't head
-/// out with anything vencido.
-class VehicleDocumentsScreen extends StatelessWidget {
-  const VehicleDocumentsScreen({super.key});
+/// Read-only list of the unit's real documents (`GET
+/// /vehiculos/{vehiculoId}/documentos`), so the driver doesn't head out with
+/// anything vencido. Uploading a new one isn't wired — `POST .../documentos`
+/// needs `archivoUrl`, a pre-existing URL this app has no way to produce
+/// (same blob-storage gap as `SignatureScreen`/`DeliveryPhotoScreen`) — and
+/// this screen never had an upload affordance to begin with.
+class VehicleDocumentsScreen extends StatefulWidget {
+  final VehiculoResumen vehiculo;
+
+  const VehicleDocumentsScreen({super.key, required this.vehiculo});
+
+  @override
+  State<VehicleDocumentsScreen> createState() => _VehicleDocumentsScreenState();
+}
+
+class _VehicleDocumentsScreenState extends State<VehicleDocumentsScreen> {
+  late final Future<List<VehiculoDocumentoResumen>> _documentosFuture =
+      OperacionesService.documentosVehiculo(widget.vehiculo.id);
 
   @override
   Widget build(BuildContext context) {
@@ -26,26 +42,51 @@ class VehicleDocumentsScreen extends StatelessWidget {
         foregroundColor: isDark ? Colors.white : Colors.black,
         elevation: 0,
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-        children: [
-          Text(
-            '$vehiculoPlaca · $vehiculoModelo',
-            style: TextStyle(fontSize: 13, color: mutedColor),
-          ),
-          const SizedBox(height: 16),
-          for (final documento in vehiculoDocumentos) ...[
-            _DocumentCard(documento: documento, cardColor: cardColor, borderColor: borderColor, textColor: textColor, mutedColor: mutedColor),
-            const SizedBox(height: 12),
-          ],
-        ],
+      body: FutureBuilder<List<VehiculoDocumentoResumen>>(
+        future: _documentosFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError) {
+            final error = snapshot.error;
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  error is AuthException ? error.message : 'No se pudieron cargar los documentos',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: mutedColor),
+                ),
+              ),
+            );
+          }
+
+          final documentos = snapshot.data!;
+          return ListView(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+            children: [
+              Text(
+                '${widget.vehiculo.placas} · ${widget.vehiculo.marca} ${widget.vehiculo.modelo}'.trim(),
+                style: TextStyle(fontSize: 13, color: mutedColor),
+              ),
+              const SizedBox(height: 16),
+              if (documentos.isEmpty)
+                Text('Este vehículo no tiene documentos registrados', style: TextStyle(color: mutedColor)),
+              for (final documento in documentos) ...[
+                _DocumentCard(documento: documento, cardColor: cardColor, borderColor: borderColor, textColor: textColor, mutedColor: mutedColor),
+                const SizedBox(height: 12),
+              ],
+            ],
+          );
+        },
       ),
     );
   }
 }
 
 class _DocumentCard extends StatelessWidget {
-  final VehiculoDocumento documento;
+  final VehiculoDocumentoResumen documento;
   final Color cardColor;
   final Color borderColor;
   final Color textColor;
@@ -61,6 +102,12 @@ class _DocumentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final estado = estadoDeVigencia(documento.vigencia);
+    final vigencia = documento.vigencia;
+    final vigenciaTexto = vigencia == null
+        ? 'Sin vigencia registrada'
+        : 'Vigencia: ${vigencia.day.toString().padLeft(2, '0')}/${vigencia.month.toString().padLeft(2, '0')}/${vigencia.year}';
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -75,30 +122,30 @@ class _DocumentCard extends StatelessWidget {
             height: 44,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: documento.estado.color.withValues(alpha: 0.15),
+              color: estado.color.withValues(alpha: 0.15),
             ),
-            child: Icon(Icons.description_outlined, color: documento.estado.color),
+            child: Icon(Icons.description_outlined, color: estado.color),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(documento.nombre, style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: textColor)),
+                Text(documento.tipoDocumento, style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: textColor)),
                 const SizedBox(height: 2),
-                Text('Vigencia: ${documento.vigencia}', style: TextStyle(fontSize: 12.5, color: mutedColor)),
+                Text(vigenciaTexto, style: TextStyle(fontSize: 12.5, color: mutedColor)),
               ],
             ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: documento.estado.color.withValues(alpha: 0.15),
+              color: estado.color.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              documento.estado.label,
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: documento.estado.color),
+              estado.label,
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: estado.color),
             ),
           ),
         ],

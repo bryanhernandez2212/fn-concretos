@@ -1,5 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:google_navigation_flutter/google_navigation_flutter.dart';
 import '../auth/auth_service.dart';
+import '../operaciones/operaciones_service.dart';
+import '../operaciones/remision_tracking.dart';
 import 'comercial_service.dart';
 import 'pedido.dart';
 
@@ -25,12 +29,14 @@ class PedidoDetailScreen extends StatefulWidget {
 
 class _PedidoDetailScreenState extends State<PedidoDetailScreen> {
   late Future<(Cliente, EstadoCuenta)> _future;
+  late Future<List<RemisionResumen>> _remisionesFuture;
   bool _submitting = false;
 
   @override
   void initState() {
     super.initState();
     _future = _load();
+    _remisionesFuture = OperacionesService.remisionesPorPedido(widget.pedido.id);
   }
 
   Future<(Cliente, EstadoCuenta)> _load() async {
@@ -150,6 +156,17 @@ class _PedidoDetailScreenState extends State<PedidoDetailScreen> {
               _EstadoCuentaCard(
                 cliente: cliente,
                 estadoCuenta: estadoCuenta,
+                cardColor: cardColor,
+                borderColor: borderColor,
+                textColor: textColor,
+                mutedColor: mutedColor,
+              ),
+              const SizedBox(height: 28),
+              Text('Ubicación en vivo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: textColor)),
+              const SizedBox(height: 12),
+              _LiveTrackingSection(
+                remisionesFuture: _remisionesFuture,
+                isDark: isDark,
                 cardColor: cardColor,
                 borderColor: borderColor,
                 textColor: textColor,
@@ -440,6 +457,239 @@ class _AutorizacionSection extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Loads the pedido's remisiones and shows one [_LiveTrackingCard] per
+/// remisión found (a pedido can have both an olla and a bomba remisión, per
+/// `AsignacionOllaBomba`). Kept in its own `FutureBuilder`, separate from
+/// [_PedidoDetailScreenState._future], so a tracking failure never blocks
+/// the rest of the pedido detail from loading.
+class _LiveTrackingSection extends StatelessWidget {
+  final Future<List<RemisionResumen>> remisionesFuture;
+  final bool isDark;
+  final Color cardColor;
+  final Color borderColor;
+  final Color textColor;
+  final Color mutedColor;
+
+  const _LiveTrackingSection({
+    required this.remisionesFuture,
+    required this.isDark,
+    required this.cardColor,
+    required this.borderColor,
+    required this.textColor,
+    required this.mutedColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<RemisionResumen>>(
+      future: remisionesFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final remisiones = snapshot.hasError ? const <RemisionResumen>[] : snapshot.data!;
+        if (remisiones.isEmpty) {
+          return _PlaceholderCard(
+            text: snapshot.hasError
+                ? (snapshot.error is AuthException ? (snapshot.error as AuthException).message : 'No se pudo cargar la remisión')
+                : 'Aún no hay una remisión generada para este pedido.',
+            cardColor: cardColor,
+            borderColor: borderColor,
+            mutedColor: mutedColor,
+          );
+        }
+
+        return Column(
+          children: [
+            for (final remision in remisiones) ...[
+              _LiveTrackingCard(
+                remisionId: remision.id,
+                folioRemision: remision.folioRemision,
+                isDark: isDark,
+                cardColor: cardColor,
+                borderColor: borderColor,
+                textColor: textColor,
+                mutedColor: mutedColor,
+              ),
+              if (remision != remisiones.last) const SizedBox(height: 16),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _PlaceholderCard extends StatelessWidget {
+  final String text;
+  final Color cardColor;
+  final Color borderColor;
+  final Color mutedColor;
+
+  const _PlaceholderCard({required this.text, required this.cardColor, required this.borderColor, required this.mutedColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: cardColor, borderRadius: BorderRadius.circular(20), border: Border.all(color: borderColor)),
+      child: Text(text, style: TextStyle(fontSize: 13.5, color: mutedColor)),
+    );
+  }
+}
+
+/// One remisión's live map: current position (marker) plus its recorrido
+/// (polyline), refreshed every 15s via `GET /remisiones/{id}/ruta` until the
+/// remisión reaches a terminal estatus.
+class _LiveTrackingCard extends StatefulWidget {
+  final int remisionId;
+  final String folioRemision;
+  final bool isDark;
+  final Color cardColor;
+  final Color borderColor;
+  final Color textColor;
+  final Color mutedColor;
+
+  const _LiveTrackingCard({
+    required this.remisionId,
+    required this.folioRemision,
+    required this.isDark,
+    required this.cardColor,
+    required this.borderColor,
+    required this.textColor,
+    required this.mutedColor,
+  });
+
+  @override
+  State<_LiveTrackingCard> createState() => _LiveTrackingCardState();
+}
+
+class _LiveTrackingCardState extends State<_LiveTrackingCard> {
+  static const _terminales = {'entregado', 'con_incidencia'};
+
+  RutaRemision? _ruta;
+  String? _errorText;
+  GoogleMapViewController? _mapController;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    _timer = Timer.periodic(const Duration(seconds: 15), (_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    try {
+      final ruta = await OperacionesService.rutaRemision(widget.remisionId);
+      if (!mounted) return;
+      setState(() {
+        _ruta = ruta;
+        _errorText = null;
+      });
+      await _updateMapOverlays(ruta);
+      if (_terminales.contains(ruta.estatus)) _timer?.cancel();
+    } on AuthException catch (e) {
+      if (mounted) setState(() => _errorText = e.message);
+    }
+  }
+
+  Future<void> _updateMapOverlays(RutaRemision ruta) async {
+    final controller = _mapController;
+    final ultima = ruta.ultimaUbicacion;
+    if (controller == null || ultima == null) return;
+
+    final posicion = LatLng(latitude: ultima.latitud, longitude: ultima.longitud);
+    await controller.clearMarkers();
+    await controller.addMarkers([MarkerOptions(position: posicion)]);
+
+    if (ruta.historial.length > 1) {
+      await controller.clearPolylines();
+      await controller.addPolylines([
+        PolylineOptions(
+          points: ruta.historial.map((p) => LatLng(latitude: p.latitud, longitude: p.longitud)).toList(),
+          strokeColor: _accentYellow,
+        ),
+      ]);
+    }
+
+    await controller.animateCamera(CameraUpdate.newLatLng(posicion));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ruta = _ruta;
+
+    return Container(
+      decoration: BoxDecoration(color: widget.cardColor, borderRadius: BorderRadius.circular(20), border: Border.all(color: widget.borderColor)),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+            child: Row(
+              children: [
+                Icon(Icons.local_shipping_outlined, size: 18, color: widget.mutedColor),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    widget.folioRemision,
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: widget.textColor),
+                  ),
+                ),
+                if (ruta != null)
+                  Text(ruta.estatus, style: TextStyle(fontSize: 12.5, color: widget.mutedColor)),
+              ],
+            ),
+          ),
+          if (_errorText != null && ruta == null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Text(_errorText!, style: TextStyle(fontSize: 13, color: widget.mutedColor)),
+            )
+          else if (ruta == null)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 20),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (ruta.ultimaUbicacion == null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Text(
+                'Esperando la primera señal GPS de este viaje.',
+                style: TextStyle(fontSize: 13, color: widget.mutedColor),
+              ),
+            )
+          else
+            SizedBox(
+              height: 220,
+              child: GoogleMapsMapView(
+                initialCameraPosition: CameraPosition(
+                  target: LatLng(latitude: ruta.ultimaUbicacion!.latitud, longitude: ruta.ultimaUbicacion!.longitud),
+                  zoom: 15,
+                ),
+                initialMapColorScheme: widget.isDark ? MapColorScheme.dark : MapColorScheme.light,
+                onViewCreated: (controller) {
+                  _mapController = controller;
+                  _updateMapOverlays(ruta);
+                },
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

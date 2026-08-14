@@ -1,33 +1,38 @@
-/// The 9-step delivery lifecycle a `Remisión` moves through, from assignment
-/// at the plant to the client's signature. Mirrors the real state machine
-/// (`RemisionService.avanzarHito`) so the mock data lines up once wired.
+/// The real `RemisionService.avanzarHito` state machine (`PATCH
+/// /remisiones/{id}/hitos`'s `evento` values): 7 sequential steps plus
+/// `conIncidencia`, an exception state outside the normal sequence. `estatus`
+/// (from `GET /remisiones`) can also be overridden to `con_atraso` when
+/// late — that's a computed status, not a hito, so it deliberately has no
+/// member here; see [HitoEntrega.fromBackendValue].
 enum HitoEntrega {
-  pedidoAsignado,
-  cargaEnPlanta,
-  salidaDePlanta,
-  enRuta,
-  llegadaAObra,
-  posicionadoParaDescarga,
-  descarga,
-  entregaCompleta,
-  remisionFirmada,
+  cargandoPlanta('cargando_planta', 'Cargando en planta'),
+  salioPlanta('salio_planta', 'Salió de planta'),
+  enCamino('en_camino', 'En camino'),
+  proximoLlegar('proximo_llegar', 'Próximo a llegar'),
+  enObra('en_obra', 'En obra'),
+  descargando('descargando', 'Descargando'),
+  entregado('entregado', 'Entregado'),
+  conIncidencia('con_incidencia', 'Con incidencia');
+
+  /// The literal snake_case string the backend expects/returns.
+  final String backendValue;
+  final String label;
+
+  const HitoEntrega(this.backendValue, this.label);
+
+  /// Parses a raw `estatus` string from the backend. Returns `null` for
+  /// anything that isn't one of the 8 known hito values — notably
+  /// `con_atraso`, which is a computed status override, not a hito.
+  static HitoEntrega? fromBackendValue(String value) {
+    for (final hito in HitoEntrega.values) {
+      if (hito.backendValue == value) return hito;
+    }
+    return null;
+  }
 }
 
-extension HitoEntregaLabel on HitoEntrega {
-  String get label => switch (this) {
-    HitoEntrega.pedidoAsignado => 'Pedido asignado',
-    HitoEntrega.cargaEnPlanta => 'Carga en planta',
-    HitoEntrega.salidaDePlanta => 'Salida de planta',
-    HitoEntrega.enRuta => 'En ruta',
-    HitoEntrega.llegadaAObra => 'Llegada a obra',
-    HitoEntrega.posicionadoParaDescarga => 'Posicionado para descarga',
-    HitoEntrega.descarga => 'Descarga',
-    HitoEntrega.entregaCompleta => 'Entrega completa',
-    HitoEntrega.remisionFirmada => 'Remisión firmada',
-  };
-}
-
-/// A delivery run (mock data) assigned to the driver's vehicle/shift.
+/// A delivery run assigned to the driver's vehicle/shift, built from
+/// `EntregasService.entregasDelDia`.
 class Remision {
   final String folio;
   final String cliente;
@@ -36,14 +41,31 @@ class Remision {
   final String horaProgramada;
   final String tipoConcreto;
   final double volumenM3;
-  final HitoEntrega hitoActual;
 
-  /// Job-site coordinates the delivery-detail map centers on and routes to
-  /// (see `delivery_map_section.dart`). Mock lat/lng for now — the real
-  /// pipeline is WhatsApp → Google Maps link → `obra-controller`, per
-  /// vistas.md's note on how obras get their location.
+  /// Null until a real Remisión (with its own hito state machine) exists
+  /// for this delivery — today's production programming alone doesn't have
+  /// one yet (see `deliveries/entregas_service.dart`).
+  final HitoEntrega? hitoActual;
+
+  /// The real Remisión backing this delivery, if `EntregasService` found one
+  /// already created for the pedido (by planta/producción). Null means no
+  /// Remisión exists yet, so there's nothing to `POST /remisiones/{id}/gps`
+  /// against — [RouteNavigationScreen] simply skips sending GPS in that case
+  /// rather than fabricating one (see `vistas.md`; the app doesn't create
+  /// Remisiones itself).
+  final int? remisionId;
+
+  /// Job-site coordinates the delivery-detail map centers on and routes to,
+  /// from the pedido's `Obra` (real, via `ComercialService.obtenerObra`).
   final double destinoLat;
   final double destinoLng;
+
+  /// Ids of the pedido/cliente/obra this delivery belongs to — carried along
+  /// so a `POST /pruebas-concreto-fresco` (see `PruebaConcretoScreen`) can
+  /// link back to them without an extra lookup.
+  final int pedidoId;
+  final int clienteId;
+  final int obraId;
 
   const Remision({
     required this.folio,
@@ -54,62 +76,11 @@ class Remision {
     required this.tipoConcreto,
     required this.volumenM3,
     required this.hitoActual,
+    required this.remisionId,
     required this.destinoLat,
     required this.destinoLng,
+    required this.pedidoId,
+    required this.clienteId,
+    required this.obraId,
   });
 }
-
-/// Static placeholder list standing in for "mis entregas del día" until the
-/// backend is wired up.
-const misEntregasDeHoy = [
-  Remision(
-    folio: 'REM-10432',
-    cliente: 'Constructora Del Valle',
-    obra: 'Residencial Las Lomas, Torre B',
-    direccion: 'Av. Insurgentes Sur 1234, CDMX',
-    horaProgramada: '08:30 AM',
-    tipoConcreto: "f'c 250",
-    volumenM3: 7.0,
-    hitoActual: HitoEntrega.enRuta,
-    destinoLat: 19.3654,
-    destinoLng: -99.1706,
-  ),
-  Remision(
-    folio: 'REM-10433',
-    cliente: 'Grupo Edifica',
-    obra: 'Plaza Comercial Norte, local 12',
-    direccion: 'Calz. Vallejo 890, CDMX',
-    horaProgramada: '10:15 AM',
-    tipoConcreto: "f'c 200",
-    volumenM3: 5.5,
-    hitoActual: HitoEntrega.pedidoAsignado,
-    destinoLat: 19.4726,
-    destinoLng: -99.1495,
-  ),
-  Remision(
-    folio: 'REM-10429',
-    cliente: 'Inmobiliaria Sáenz',
-    obra: 'Casa habitación, calle Roble 45',
-    direccion: 'Col. Del Carmen, Coyoacán, CDMX',
-    horaProgramada: '07:00 AM',
-    tipoConcreto: "f'c 300",
-    volumenM3: 9.0,
-    hitoActual: HitoEntrega.entregaCompleta,
-    destinoLat: 19.3467,
-    destinoLng: -99.1618,
-  ),
-  // Destino real (no CDMX) para probar navegación con GPS/ruta reales en
-  // Tuxtla Gutiérrez, Chiapas — ver lib/deliveries/route_navigation_screen.dart.
-  Remision(
-    folio: 'REM-10441',
-    cliente: 'Grupo Comercial Chiapas',
-    obra: 'Plaza Crystal Tuxtla Gutiérrez',
-    direccion: 'Blvd. Belisario Domínguez Km. 1081, Tuxtla Gutiérrez, Chiapas',
-    horaProgramada: '11:00 AM',
-    tipoConcreto: "f'c 250",
-    volumenM3: 6.0,
-    hitoActual: HitoEntrega.enRuta,
-    destinoLat: 16.7533,
-    destinoLng: -93.14987,
-  ),
-];

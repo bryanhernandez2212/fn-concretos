@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
+import '../auth/auth_service.dart';
+import '../operaciones/operaciones_service.dart';
 import 'vehicle.dart';
 
 const _accentYellow = Color(0xFFFFCC00);
 
 /// Report a `VehiculoPendiente`: mechanical failure, tire, or maintenance
-/// need. Submitting just confirms and pops until the endpoint is wired.
+/// need. Real `POST /vehiculos/{vehiculoId}/pendientes` — `vehiculoId` comes
+/// from `VehicleScreen`'s `VehiculoService.miVehiculo()` lookup. Backend's
+/// `VehiculoPendienteRequest` has no urgencia field at all, so that selector
+/// was dropped rather than collecting input the server would just discard.
 class VehiclePendingScreen extends StatefulWidget {
-  const VehiclePendingScreen({super.key});
+  final int vehiculoId;
+
+  const VehiclePendingScreen({super.key, required this.vehiculoId});
 
   @override
   State<VehiclePendingScreen> createState() => _VehiclePendingScreenState();
@@ -15,7 +22,7 @@ class VehiclePendingScreen extends StatefulWidget {
 class _VehiclePendingScreenState extends State<VehiclePendingScreen> {
   final _descriptionController = TextEditingController();
   TipoPendiente _tipo = TipoPendiente.fallaMecanica;
-  UrgenciaPendiente _urgencia = UrgenciaPendiente.media;
+  bool _enviando = false;
 
   @override
   void dispose() {
@@ -23,17 +30,39 @@ class _VehiclePendingScreenState extends State<VehiclePendingScreen> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (_descriptionController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Describe el pendiente antes de enviar')),
       );
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Pendiente reportado (demostración)')),
-    );
-    Navigator.of(context).pop();
+
+    setState(() => _enviando = true);
+    try {
+      await OperacionesService.registrarPendienteVehiculo(
+        widget.vehiculoId,
+        tipoPendiente: _tipo.backendValue,
+        descripcion: _descriptionController.text.trim(),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pendiente reportado')),
+      );
+      Navigator.of(context).pop();
+    } on AuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo reportar el pendiente')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _enviando = false);
+    }
   }
 
   @override
@@ -84,32 +113,6 @@ class _VehiclePendingScreenState extends State<VehiclePendingScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          _SectionLabel(text: 'Urgencia', textColor: textColor),
-          const SizedBox(height: 10),
-          _FieldGroup(
-            cardColor: cardColor,
-            borderColor: borderColor,
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final urgencia in UrgenciaPendiente.values)
-                  ChoiceChip(
-                    label: Text(urgencia.label),
-                    selected: _urgencia == urgencia,
-                    onSelected: (_) => setState(() => _urgencia = urgencia),
-                    selectedColor: urgencia.color,
-                    labelStyle: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: _urgencia == urgencia ? Colors.white : textColor,
-                    ),
-                    backgroundColor: fillColor,
-                    side: BorderSide.none,
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
           _SectionLabel(text: 'Descripción', textColor: textColor),
           const SizedBox(height: 10),
           TextField(
@@ -134,7 +137,7 @@ class _VehiclePendingScreenState extends State<VehiclePendingScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: _submit,
+              onPressed: _enviando ? null : _submit,
               style: ElevatedButton.styleFrom(
                 backgroundColor: _accentYellow,
                 foregroundColor: Colors.black,
@@ -142,7 +145,9 @@ class _VehiclePendingScreenState extends State<VehiclePendingScreen> {
                 elevation: 0,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              child: const Text('Enviar reporte', style: TextStyle(fontWeight: FontWeight.w700)),
+              child: _enviando
+                  ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.black))
+                  : const Text('Enviar reporte', style: TextStyle(fontWeight: FontWeight.w700)),
             ),
           ),
         ],
