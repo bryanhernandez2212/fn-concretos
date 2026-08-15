@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../auth/auth_service.dart';
 import 'pedido.dart';
@@ -21,6 +22,7 @@ class ComercialService {
 
   static Future<List<Pedido>> pedidosPendientesDePago() async {
     final data = await _get('/pedidos?estatusGeneral=pendiente_autorizacion_pago');
+    debugPrint('pedidosPendientesDePago raw: ${jsonEncode(data)}'); // TEMP debug
     return (data as List<dynamic>).map((e) => Pedido.fromJson(e as Map<String, dynamic>)).toList();
   }
 

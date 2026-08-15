@@ -8,6 +8,26 @@ import 'remision.dart';
 
 const _accentYellow = Color(0xFFFFCC00);
 
+/// Matches this screen's own always-dark chrome (`_BackButton`, `_BottomBar`)
+/// so the native turn-by-turn header never clashes with it. Set for both
+/// day/night slots because [NavigationForceNightMode.forceNight] below pins
+/// the SDK to its night skin regardless of time of day — without that, the
+/// header would flip to a bright day skin mid-route and jar against this
+/// screen's dark bars.
+const _navigationHeaderStyle = NavigationHeaderStylingOptions(
+  primaryDayModeBackgroundColor: Color(0xFF1E1E1E),
+  secondaryDayModeBackgroundColor: Color(0xFF141414),
+  primaryNightModeBackgroundColor: Color(0xFF1E1E1E),
+  secondaryNightModeBackgroundColor: Color(0xFF141414),
+  largeManeuverIconColor: _accentYellow,
+  smallManeuverIconColor: _accentYellow,
+  instructionsTextColor: Colors.white,
+  nextStepTextColor: Colors.white70,
+  distanceValueTextColor: _accentYellow,
+  distanceUnitsTextColor: Colors.white70,
+  guidanceRecommendedLaneColor: _accentYellow,
+);
+
 /// Full-screen, real Google Navigation experience — the same turn-by-turn
 /// banner, voice guidance, ETA/distance footer, and tilted following
 /// camera that DiDi/Uber/Rappi embed, because it *is* Google's own
@@ -169,6 +189,8 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
               child: GoogleMapsNavigationView(
                 onViewCreated: (controller) => _viewController = controller,
                 initialNavigationUIEnabledPreference: NavigationUIEnabledPreference.automatic,
+                initialForceNightMode: NavigationForceNightMode.forceNight,
+                initialNavigationHeaderStylingOptions: _navigationHeaderStyle,
                 initialPadding: EdgeInsets.only(
                   bottom: 96 + MediaQuery.of(context).padding.bottom,
                 ),

@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import '../auth/auth_service.dart';
+import '../profile/mfa_screen.dart';
 import '../profile/profile_screen.dart';
 import '../widgets/bottom_nav_bar.dart';
 import 'autorizaciones_screen.dart';
+
+const _accentYellow = Color(0xFFFFCC00);
 
 /// App shell for the Dirección role: just Autorizaciones + Perfil for now —
 /// vistas.md only scopes Dirección's mobile screens to pedido credit
@@ -20,6 +24,40 @@ class _DireccionHomeScreenState extends State<DireccionHomeScreen> {
     AutorizacionesScreen(),
     ProfileScreen(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // The auth-service API docs mark MFA as mandatory for whoever can
+    // authorize credit (Dirección), but login itself doesn't enforce it —
+    // nudge once per session rather than assuming the backend already
+    // blocked unenrolled accounts from reaching this screen.
+    if (!AuthService.mfaHabilitado) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _mostrarAvisoMfa());
+    }
+  }
+
+  Future<void> _mostrarAvisoMfa() async {
+    if (!mounted) return;
+    final configurarAhora = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        icon: const Icon(Icons.shield_outlined, color: _accentYellow, size: 32),
+        title: const Text('Verificación en dos pasos requerida'),
+        content: const Text(
+          'Tu rol requiere activar la verificación en dos pasos (MFA) para proteger la autorización de pedidos a crédito.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Más tarde')),
+          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Configurar ahora')),
+        ],
+      ),
+    );
+    if (configurarAhora == true && mounted) {
+      await Navigator.of(context).push(MaterialPageRoute(builder: (context) => const MfaScreen()));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

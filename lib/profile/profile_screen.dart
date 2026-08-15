@@ -180,10 +180,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
               icon: Icons.shield_outlined,
               iconColor: _accentYellow,
               title: 'Verificación en dos pasos',
-              trailing: Icon(Icons.chevron_right, color: onCardMuted),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const MfaScreen()),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    AuthService.mfaHabilitado ? 'Activada' : 'Desactivada',
+                    style: TextStyle(
+                      color: AuthService.mfaHabilitado ? const Color(0xFF4CAF50) : onCardMuted,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Icon(Icons.chevron_right, color: onCardMuted),
+                ],
               ),
+              onTap: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const MfaScreen()),
+                );
+                if (mounted) setState(() {});
+              },
             ),
           ],
         ),

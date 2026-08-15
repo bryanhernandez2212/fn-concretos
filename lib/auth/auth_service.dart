@@ -43,6 +43,14 @@ class AuthService {
   static String? correo;
   static List<String> permisos = const [];
 
+  /// Whether the account has TOTP MFA enabled, per `/auth/me`'s
+  /// `mfaHabilitado`. The API docs mark MFA enrollment as mandatory for
+  /// Dirección/Pagos, but the backend doesn't block login over it, so the
+  /// app surfaces this instead (see `ProfileScreen`'s MFA tile and
+  /// `DireccionHomeScreen`'s enrollment nudge) rather than assuming an
+  /// unenrolled account can't happen.
+  static bool mfaHabilitado = false;
+
   /// The employee id backing this session. Used to cross-reference records
   /// in other microservices that identify a person by employee id rather
   /// than username — e.g. `operaciones`'s `AsignacionResponse.conductorId`
@@ -105,6 +113,7 @@ class AuthService {
   /// account instead.
   static Future<void> confirmMfaEnable(String code) async {
     await _post('/auth/mfa/verify', {'challengeToken': '', 'code': code}, auth: true);
+    mfaHabilitado = true;
   }
 
   static Future<String> forgotPassword(String correo) async {
@@ -154,6 +163,7 @@ class AuthService {
     correo = null;
     permisos = const [];
     idEmpleado = null;
+    mfaHabilitado = false;
   }
 
   static void _setTokens(Map<String, dynamic> data) {
@@ -189,6 +199,7 @@ class AuthService {
     correo = data['correo'] as String?;
     permisos = (data['permisos'] as List<dynamic>?)?.cast<String>() ?? const [];
     idEmpleado = data['idEmpleado'] as int?;
+    mfaHabilitado = data['mfaHabilitado'] as bool? ?? false;
   }
 
   static Future<Map<String, dynamic>> _get(String path, {bool auth = false}) async {

@@ -78,6 +78,9 @@ class _AutorizacionesScreenState extends State<AutorizacionesScreen> {
             if (snapshot.connectionState != ConnectionState.done) {
               children.add(const Padding(padding: EdgeInsets.only(top: 60), child: Center(child: CircularProgressIndicator())));
             } else if (snapshot.hasError) {
+              // TEMP debug: surface the real exception, since the fallback
+              // message below only fires for non-AuthException errors.
+              debugPrint('AutorizacionesScreen error: ${snapshot.error.runtimeType}: ${snapshot.error}');
               children.add(_ErrorState(
                 message: snapshot.error is AuthException ? (snapshot.error as AuthException).message : 'No se pudo cargar la bandeja',
                 onRetry: _refresh,

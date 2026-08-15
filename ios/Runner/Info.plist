@@ -47,6 +47,17 @@
 	<string>FN Concretos usa la cámara para capturar fotos de evidencia de entrega.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>FN Concretos accede a tus fotos para adjuntar evidencia de entrega.</string>
+	<!-- Required since iOS 14 for `flutter run`/hot-reload to discover the
+	     Dart VM Service over the local network (mDNS/Bonjour) — without
+	     these, the app runs fine on-device but the host tooling never finds
+	     it and "flutter run" hangs on "Dart VM Service was not discovered".
+	     Debug-tooling only; irrelevant to release builds/end users. -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>FN Concretos usa la red local para depuración durante el desarrollo.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_dartobservatory._tcp</string>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

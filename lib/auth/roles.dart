@@ -30,9 +30,11 @@ const catalogoRoles = [
 
 /// Roles this build has real mobile screens for. Both field operators ride
 /// the same Remisión through its hitos (see `AsignacionOllaBomba` in
-/// vistas.md), so they share `HomeScreen` as-is — Operador de Bomba just
-/// doesn't get the dosificación-report entry point yet (that needs backend
-/// work first, per vistas.md).
+/// vistas.md), so they share `HomeScreen` as-is — Operador de Bomba
+/// additionally gets a dosificación-report entry point (still a mock
+/// submission, since `InformePesadora` has no backend service yet, per
+/// vistas.md) and, once a Remisión exists, the real prueba-de-concreto-fresco
+/// form (see `deliveries/delivery_detail_screen.dart`).
 const rolesConAppMovil = {'Operador de Olla', 'Operador de Bomba'};
 
 Rol? rolPorNombre(String? nombre) {
