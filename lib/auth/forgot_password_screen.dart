@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'auth_service.dart';
+import 'forgot_password_widgets.dart';
 
 const _accentYellow = Color(0xFFFFCC00);
 
@@ -147,9 +148,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         textAlign: TextAlign.center,
       ),
       const SizedBox(height: 24),
-      _FieldGroup(
+      FieldGroup(
         children: [
-          _AuthField(
+          AuthField(
             controller: _correoController,
             label: 'Correo',
             icon: Icons.mail_outline,
@@ -167,18 +168,18 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         textAlign: TextAlign.center,
       ),
       const SizedBox(height: 24),
-      _FieldGroup(
+      FieldGroup(
         children: [
-          _AuthField(controller: _tokenController, label: 'Código de recuperación', icon: Icons.key_outlined),
+          AuthField(controller: _tokenController, label: 'Código de recuperación', icon: Icons.key_outlined),
           const SizedBox(height: 14),
-          _AuthField(
+          AuthField(
             controller: _newPasswordController,
             label: 'Nueva contraseña',
             icon: Icons.lock_outline,
             obscureText: true,
           ),
           const SizedBox(height: 14),
-          _AuthField(
+          AuthField(
             controller: _confirmPasswordController,
             label: 'Confirmar contraseña',
             icon: Icons.lock_outline,
@@ -187,75 +188,5 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ],
       ),
     ];
-  }
-}
-
-/// Rounded card that groups related fields, matching the style used across
-/// the rest of the app (see edit_profile_screen.dart / profile_screen.dart).
-class _FieldGroup extends StatelessWidget {
-  final List<Widget> children;
-
-  const _FieldGroup({required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? const Color(0xFF141414) : Colors.white;
-    final borderColor = isDark ? Colors.white.withValues(alpha: 0.10) : Colors.black.withValues(alpha: 0.12);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
-      ),
-      child: Column(children: children),
-    );
-  }
-}
-
-/// A filled, icon-prefixed text field, matching `_EditField` in
-/// edit_profile_screen.dart.
-class _AuthField extends StatelessWidget {
-  final TextEditingController controller;
-  final String label;
-  final IconData icon;
-  final TextInputType? keyboardType;
-  final bool obscureText;
-
-  const _AuthField({
-    required this.controller,
-    required this.label,
-    required this.icon,
-    this.keyboardType,
-    this.obscureText = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final fillColor = isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.045);
-    final textColor = isDark ? Colors.white : Colors.black87;
-
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      obscureText: obscureText,
-      style: TextStyle(color: textColor),
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, size: 20, color: _accentYellow),
-        filled: true,
-        fillColor: fillColor,
-        contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _accentYellow, width: 1.5),
-        ),
-      ),
-    );
   }
 }

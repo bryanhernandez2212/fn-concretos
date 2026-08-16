@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../auth/auth_service.dart';
 import '../operaciones/operaciones_service.dart';
 import '../operaciones/vehiculo.dart';
-import 'vehicle.dart';
+import 'vehicle_pendientes_widgets.dart';
 
 const _accentYellow = Color(0xFFFFCC00);
 
@@ -74,94 +74,12 @@ class _VehiclePendientesScreenState extends State<VehiclePendientesScreen> {
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
             children: [
               for (final pendiente in pendientes) ...[
-                _PendienteCard(pendiente: pendiente, cardColor: cardColor, borderColor: borderColor, textColor: textColor, mutedColor: mutedColor),
+                PendienteCard(pendiente: pendiente, cardColor: cardColor, borderColor: borderColor, textColor: textColor, mutedColor: mutedColor),
                 const SizedBox(height: 12),
               ],
             ],
           );
         },
-      ),
-    );
-  }
-}
-
-class _PendienteCard extends StatelessWidget {
-  final VehiculoPendienteResumen pendiente;
-  final Color cardColor;
-  final Color borderColor;
-  final Color textColor;
-  final Color mutedColor;
-
-  const _PendienteCard({
-    required this.pendiente,
-    required this.cardColor,
-    required this.borderColor,
-    required this.textColor,
-    required this.mutedColor,
-  });
-
-  static String _fecha(DateTime? d) =>
-      d == null ? '—' : '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
-
-  @override
-  Widget build(BuildContext context) {
-    final resuelto = pendiente.fechaResolucion != null;
-    final color = resuelto ? const Color(0xFF4CAF50) : const Color(0xFFFFA000);
-    final tipo = TipoPendiente.values.where((t) => t.backendValue == pendiente.tipoPendiente);
-    final tipoLabel = tipo.isEmpty ? pendiente.tipoPendiente : tipo.first.label;
-    final tipoIcon = tipo.isEmpty ? Icons.report_problem_outlined : tipo.first.icon;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: color.withValues(alpha: 0.15)),
-            child: Icon(tipoIcon, color: color),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(tipoLabel, style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: textColor)),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20)),
-                      child: Text(
-                        resuelto ? 'Resuelto' : 'Abierto',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
-                      ),
-                    ),
-                  ],
-                ),
-                if (pendiente.descripcion.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(pendiente.descripcion, style: TextStyle(fontSize: 13, color: mutedColor)),
-                ],
-                const SizedBox(height: 8),
-                Text(
-                  resuelto
-                      ? 'Reportado ${_fecha(pendiente.fechaDeteccion)} · resuelto ${_fecha(pendiente.fechaResolucion)}'
-                      : 'Reportado ${_fecha(pendiente.fechaDeteccion)}',
-                  style: TextStyle(fontSize: 12, color: mutedColor),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

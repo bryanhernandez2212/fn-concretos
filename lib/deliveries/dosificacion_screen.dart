@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dosificacion_widgets.dart';
 
 const _accentYellow = Color(0xFFFFCC00);
 
@@ -74,22 +75,22 @@ class _DosificacionScreenState extends State<DosificacionScreen> {
             style: TextStyle(fontSize: 13.5, color: mutedColor),
           ),
           const SizedBox(height: 20),
-          _FieldGroup(
+          FieldGroup(
             cardColor: cardColor,
             borderColor: borderColor,
             child: Column(
               children: [
-                _IngredienteField(controller: _cementoController, label: 'Cemento', unidad: 'kg', textColor: textColor, mutedColor: mutedColor),
+                IngredienteField(controller: _cementoController, label: 'Cemento', unidad: 'kg', textColor: textColor, mutedColor: mutedColor),
                 const SizedBox(height: 14),
-                _IngredienteField(controller: _arenaController, label: 'Arena', unidad: 'kg', textColor: textColor, mutedColor: mutedColor),
+                IngredienteField(controller: _arenaController, label: 'Arena', unidad: 'kg', textColor: textColor, mutedColor: mutedColor),
                 const SizedBox(height: 14),
-                _IngredienteField(controller: _gravaController, label: 'Grava', unidad: 'kg', textColor: textColor, mutedColor: mutedColor),
+                IngredienteField(controller: _gravaController, label: 'Grava', unidad: 'kg', textColor: textColor, mutedColor: mutedColor),
                 const SizedBox(height: 14),
-                _IngredienteField(controller: _aguaController, label: 'Agua', unidad: 'L', textColor: textColor, mutedColor: mutedColor),
+                IngredienteField(controller: _aguaController, label: 'Agua', unidad: 'L', textColor: textColor, mutedColor: mutedColor),
                 const SizedBox(height: 14),
-                _IngredienteField(controller: _aditivoController, label: 'Aditivo', unidad: 'L', textColor: textColor, mutedColor: mutedColor, requerido: false),
+                IngredienteField(controller: _aditivoController, label: 'Aditivo', unidad: 'L', textColor: textColor, mutedColor: mutedColor, requerido: false),
                 const SizedBox(height: 14),
-                _IngredienteField(controller: _aceleranteController, label: 'Acelerante', unidad: 'L', textColor: textColor, mutedColor: mutedColor, requerido: false),
+                IngredienteField(controller: _aceleranteController, label: 'Acelerante', unidad: 'L', textColor: textColor, mutedColor: mutedColor, requerido: false),
               ],
             ),
           ),
@@ -109,72 +110,6 @@ class _DosificacionScreenState extends State<DosificacionScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _FieldGroup extends StatelessWidget {
-  final Color cardColor;
-  final Color borderColor;
-  final Widget child;
-
-  const _FieldGroup({required this.cardColor, required this.borderColor, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
-      ),
-      child: child,
-    );
-  }
-}
-
-class _IngredienteField extends StatelessWidget {
-  final TextEditingController controller;
-  final String label;
-  final String unidad;
-  final Color textColor;
-  final Color mutedColor;
-  final bool requerido;
-
-  const _IngredienteField({
-    required this.controller,
-    required this.label,
-    required this.unidad,
-    required this.textColor,
-    required this.mutedColor,
-    this.requerido = true,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final fillColor = isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.045);
-
-    return TextField(
-      controller: controller,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      style: TextStyle(color: textColor),
-      decoration: InputDecoration(
-        labelText: requerido ? label : '$label (opcional)',
-        suffixText: unidad,
-        suffixStyle: TextStyle(color: mutedColor),
-        filled: true,
-        fillColor: fillColor,
-        contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _accentYellow, width: 1.5),
-        ),
       ),
     );
   }

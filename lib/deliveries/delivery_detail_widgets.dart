@@ -1,0 +1,317 @@
+import 'package:flutter/material.dart';
+import 'remision.dart';
+
+const _accentYellow = Color(0xFFFFCC00);
+
+class SummaryCard extends StatelessWidget {
+  final Remision remision;
+  final Color cardColor;
+  final Color borderColor;
+  final Color textColor;
+  final Color mutedColor;
+
+  const SummaryCard({
+    super.key,
+    required this.remision,
+    required this.cardColor,
+    required this.borderColor,
+    required this.textColor,
+    required this.mutedColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            remision.obra,
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: textColor,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            remision.cliente,
+            style: TextStyle(fontSize: 13.5, color: mutedColor),
+          ),
+          const SizedBox(height: 14),
+          DetailLine(
+            icon: Icons.location_on_outlined,
+            text: remision.direccion,
+            textColor: textColor,
+            mutedColor: mutedColor,
+          ),
+          const SizedBox(height: 8),
+          DetailLine(
+            icon: Icons.access_time,
+            text: 'Programada: ${remision.horaProgramada}',
+            textColor: textColor,
+            mutedColor: mutedColor,
+          ),
+          const SizedBox(height: 8),
+          DetailLine(
+            icon: Icons.grain,
+            text: '${remision.tipoConcreto} · ${remision.volumenM3} m³',
+            textColor: textColor,
+            mutedColor: mutedColor,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class DetailLine extends StatelessWidget {
+  final IconData icon;
+  final String text;
+  final Color textColor;
+  final Color mutedColor;
+
+  const DetailLine({
+    super.key,
+    required this.icon,
+    required this.text,
+    required this.textColor,
+    required this.mutedColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: mutedColor),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(text, style: TextStyle(fontSize: 13.5, color: textColor)),
+        ),
+      ],
+    );
+  }
+}
+
+/// Rounded card wrapper matching the style used across the rest of the app.
+/// Real hito timestamps stamped by the backend (`RemisionResumen.hora*`) —
+/// only the ones that already happened are passed in, so this only ever
+/// renders entries with a non-null `DateTime`.
+class HorariosCard extends StatelessWidget {
+  final List<(String, DateTime?)> horarios;
+  final Color cardColor;
+  final Color borderColor;
+  final Color textColor;
+  final Color mutedColor;
+
+  const HorariosCard({
+    super.key,
+    required this.horarios,
+    required this.cardColor,
+    required this.borderColor,
+    required this.textColor,
+    required this.mutedColor,
+  });
+
+  static String _formatHora(DateTime hora) {
+    final local = hora.toLocal();
+    final hh = local.hour.toString().padLeft(2, '0');
+    final mm = local.minute.toString().padLeft(2, '0');
+    return '$hh:$mm';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FieldGroup(
+      cardColor: cardColor,
+      borderColor: borderColor,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final (index, entry) in horarios.indexed) ...[
+              if (index > 0) const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      entry.$1,
+                      style: TextStyle(fontSize: 13.5, color: mutedColor),
+                    ),
+                  ),
+                  Text(
+                    _formatHora(entry.$2!),
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: textColor,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class FieldGroup extends StatelessWidget {
+  final Color cardColor;
+  final Color borderColor;
+  final Widget child;
+
+  const FieldGroup({
+    super.key,
+    required this.cardColor,
+    required this.borderColor,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor),
+      ),
+      child: child,
+    );
+  }
+}
+
+/// One row of the hito stepper: a filled/checked circle for done steps, a
+/// highlighted circle for the current one, an outlined circle for what's
+/// ahead, connected by a vertical line.
+class HitoRow extends StatelessWidget {
+  final HitoEntrega hito;
+
+  /// Null means nothing has been registered yet (a blank `estatus`) — every
+  /// row renders as pending, none done/current.
+  final HitoEntrega? current;
+  final bool isLast;
+  final Color textColor;
+  final Color mutedColor;
+
+  const HitoRow({
+    super.key,
+    required this.hito,
+    required this.current,
+    required this.isLast,
+    required this.textColor,
+    required this.mutedColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final current = this.current;
+    final isDone = current != null && hito.index < current.index;
+    final isCurrent = current != null && hito.index == current.index;
+    final circleColor = isDone
+        ? const Color(0xFF4CAF50)
+        : isCurrent
+        ? _accentYellow
+        : mutedColor.withValues(alpha: 0.3);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            children: [
+              Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isDone || isCurrent ? circleColor : Colors.transparent,
+                  border: Border.all(color: circleColor, width: 2),
+                ),
+                child: isDone
+                    ? const Icon(Icons.check, size: 14, color: Colors.black)
+                    : null,
+              ),
+              if (!isLast)
+                Container(
+                  width: 2,
+                  height: 28,
+                  color: mutedColor.withValues(alpha: 0.2),
+                ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                hito.label,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
+                  color: isCurrent || isDone ? textColor : mutedColor,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class ActionRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color textColor;
+  final Color mutedColor;
+  final VoidCallback onTap;
+
+  const ActionRow({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.textColor,
+    required this.mutedColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: _accentYellow),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
+                  ),
+                ),
+              ),
+              Icon(Icons.chevron_right, color: mutedColor),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

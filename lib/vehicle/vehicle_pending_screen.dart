@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../auth/auth_service.dart';
 import '../operaciones/operaciones_service.dart';
 import 'vehicle.dart';
+import 'vehicle_pending_widgets.dart';
 
 const _accentYellow = Color(0xFFFFCC00);
 
@@ -86,9 +87,9 @@ class _VehiclePendingScreenState extends State<VehiclePendingScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
         children: [
-          _SectionLabel(text: 'Tipo de pendiente', textColor: textColor),
+          SectionLabel(text: 'Tipo de pendiente', textColor: textColor),
           const SizedBox(height: 10),
-          _FieldGroup(
+          FieldGroup(
             cardColor: cardColor,
             borderColor: borderColor,
             child: Wrap(
@@ -113,7 +114,7 @@ class _VehiclePendingScreenState extends State<VehiclePendingScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          _SectionLabel(text: 'Descripción', textColor: textColor),
+          SectionLabel(text: 'Descripción', textColor: textColor),
           const SizedBox(height: 10),
           TextField(
             controller: _descriptionController,
@@ -152,40 +153,6 @@ class _VehiclePendingScreenState extends State<VehiclePendingScreen> {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _SectionLabel extends StatelessWidget {
-  final String text;
-  final Color textColor;
-
-  const _SectionLabel({required this.text, required this.textColor});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(text, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: textColor));
-  }
-}
-
-class _FieldGroup extends StatelessWidget {
-  final Color cardColor;
-  final Color borderColor;
-  final Widget child;
-
-  const _FieldGroup({required this.cardColor, required this.borderColor, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
-      ),
-      child: child,
     );
   }
 }

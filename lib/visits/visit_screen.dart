@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'visit_screen_widgets.dart';
 
 const _accentYellow = Color(0xFFFFCC00);
 
@@ -61,23 +62,23 @@ class _VisitScreenState extends State<VisitScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
         children: [
-          const _SectionLabel(text: 'Datos de la obra'),
+          const SectionLabel(text: 'Datos de la obra'),
           const SizedBox(height: 10),
-          _FieldGroup(
+          FieldGroup(
             children: [
-              _StyledField(
+              StyledField(
                 controller: _siteNameController,
                 label: 'Nombre de la obra',
                 icon: Icons.construction_outlined,
               ),
               const SizedBox(height: 12),
-              _StyledField(
+              StyledField(
                 controller: _contactController,
                 label: 'Cliente / Contacto',
                 icon: Icons.person_outline,
               ),
               const SizedBox(height: 12),
-              _StyledField(
+              StyledField(
                 controller: _phoneController,
                 label: 'Teléfono',
                 icon: Icons.phone_outlined,
@@ -86,13 +87,13 @@ class _VisitScreenState extends State<VisitScreen> {
             ],
           ),
           const SizedBox(height: 24),
-          const _SectionLabel(text: 'Ubicación'),
+          const SectionLabel(text: 'Ubicación'),
           const SizedBox(height: 10),
-          _FieldGroup(
+          FieldGroup(
             children: [
-              _MapPreview(onTap: _openInMaps),
+              MapPreview(onTap: _openInMaps),
               const SizedBox(height: 12),
-              _StyledField(
+              StyledField(
                 controller: _addressController,
                 label: 'Dirección',
                 icon: Icons.location_on_outlined,
@@ -110,9 +111,9 @@ class _VisitScreenState extends State<VisitScreen> {
             ],
           ),
           const SizedBox(height: 24),
-          const _SectionLabel(text: 'Detalles de la cotización'),
+          const SectionLabel(text: 'Detalles de la cotización'),
           const SizedBox(height: 10),
-          _FieldGroup(
+          FieldGroup(
             children: [
               Text(
                 'Tipo de concreto',
@@ -145,14 +146,14 @@ class _VisitScreenState extends State<VisitScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              _StyledField(
+              StyledField(
                 controller: _volumeController,
                 label: 'Volumen estimado (m³)',
                 icon: Icons.water_drop_outlined,
                 keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 12),
-              _StyledField(
+              StyledField(
                 controller: _notesController,
                 label: 'Notas adicionales',
                 icon: Icons.notes_outlined,
@@ -193,181 +194,4 @@ class _VisitScreenState extends State<VisitScreen> {
       ),
     );
   }
-}
-
-/// Small uppercase heading used to introduce a grouped section.
-class _SectionLabel extends StatelessWidget {
-  final String text;
-
-  const _SectionLabel({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Padding(
-      padding: const EdgeInsets.only(left: 4),
-      child: Text(
-        text.toUpperCase(),
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.6,
-          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.55),
-        ),
-      ),
-    );
-  }
-}
-
-/// Rounded card that groups related fields together, matching the style
-/// used across the rest of the app (see profile_screen.dart).
-class _FieldGroup extends StatelessWidget {
-  final List<Widget> children;
-
-  const _FieldGroup({required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? const Color(0xFF141414) : Colors.white;
-    final borderColor = isDark
-        ? Colors.white.withValues(alpha: 0.10)
-        : Colors.black.withValues(alpha: 0.12);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
-    );
-  }
-}
-
-/// Filled, icon-prefixed text field consistent with the edit-profile dialog.
-class _StyledField extends StatelessWidget {
-  final TextEditingController controller;
-  final String label;
-  final IconData icon;
-  final TextInputType? keyboardType;
-  final int maxLines;
-
-  const _StyledField({
-    required this.controller,
-    required this.label,
-    required this.icon,
-    this.keyboardType,
-    this.maxLines = 1,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final fillColor = isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.045);
-    final textColor = isDark ? Colors.white : Colors.black87;
-
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      maxLines: maxLines,
-      style: TextStyle(color: textColor),
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, size: 20, color: _accentYellow),
-        filled: true,
-        fillColor: fillColor,
-        contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _accentYellow, width: 1.5),
-        ),
-      ),
-    );
-  }
-}
-
-/// Static mock of a map tile with a pin — stands in for a real Google Maps
-/// embed, which would need the maps SDK and an API key.
-class _MapPreview extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _MapPreview({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: SizedBox(
-          height: 150,
-          width: double.infinity,
-          child: Stack(
-            alignment: Alignment.center,
-            fit: StackFit.expand,
-            children: [
-              Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFFB8D8BA), Color(0xFF8FB996)],
-                  ),
-                ),
-              ),
-              CustomPaint(painter: _MapGridPainter(), size: Size.infinite),
-              const Icon(Icons.location_on, color: Colors.redAccent, size: 42, shadows: [
-                Shadow(color: Colors.black38, blurRadius: 4, offset: Offset(0, 2)),
-              ]),
-              Positioned(
-                right: 10,
-                bottom: 10,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text(
-                    'Toca para abrir el mapa',
-                    style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _MapGridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.25)
-      ..strokeWidth = 1;
-
-    const step = 22.0;
-    for (double x = 0; x < size.width; x += step) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-    for (double y = 0; y < size.height; y += step) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _MapGridPainter oldDelegate) => false;
 }

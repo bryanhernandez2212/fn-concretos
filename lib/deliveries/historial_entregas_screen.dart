@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../auth/auth_service.dart';
-import 'deliveries_screen.dart' show RemisionCard;
+import 'deliveries_widgets.dart' show RemisionCard;
 import 'entregas_service.dart';
 import 'delivery_detail_screen.dart';
 import 'remision.dart';

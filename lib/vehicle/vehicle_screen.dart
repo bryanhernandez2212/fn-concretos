@@ -6,6 +6,7 @@ import 'vehicle.dart';
 import 'vehicle_documents_screen.dart';
 import 'vehicle_pendientes_screen.dart';
 import 'vehicle_pending_screen.dart';
+import 'vehicle_screen_widgets.dart';
 import 'vehiculo_service.dart';
 
 const _accentYellow = Color(0xFFFFCC00);
@@ -146,22 +147,22 @@ class _VehicleScreenState extends State<VehicleScreen> {
                   ),
                   child: Column(
                     children: [
-                      _DetailRow(icon: Icons.numbers, label: 'Número de unidad', value: vehiculo.numeroUnidad, textColor: textColor, mutedColor: mutedColor),
-                      _DetailRow(icon: Icons.badge_outlined, label: 'Placas', value: vehiculo.placas, textColor: textColor, mutedColor: mutedColor),
-                      _DetailRow(icon: Icons.category_outlined, label: 'Grupo', value: vehiculo.grupo, textColor: textColor, mutedColor: mutedColor),
-                      _DetailRow(icon: Icons.description_outlined, label: 'Descripción', value: vehiculo.descripcion, textColor: textColor, mutedColor: mutedColor),
-                      _DetailRow(icon: Icons.palette_outlined, label: 'Color', value: vehiculo.color, textColor: textColor, mutedColor: mutedColor),
-                      _DetailRow(icon: Icons.pin_outlined, label: 'VIN', value: vehiculo.numeroSerieVin, textColor: textColor, mutedColor: mutedColor),
-                      _DetailRow(icon: Icons.toggle_on_outlined, label: 'Estatus', value: vehiculo.estatus, textColor: textColor, mutedColor: mutedColor),
-                      _DetailRow(icon: Icons.gps_fixed, label: 'GPS', value: vehiculo.gpsInstalado, textColor: textColor, mutedColor: mutedColor),
-                      _DetailRow(
+                      DetailRow(icon: Icons.numbers, label: 'Número de unidad', value: vehiculo.numeroUnidad, textColor: textColor, mutedColor: mutedColor),
+                      DetailRow(icon: Icons.badge_outlined, label: 'Placas', value: vehiculo.placas, textColor: textColor, mutedColor: mutedColor),
+                      DetailRow(icon: Icons.category_outlined, label: 'Grupo', value: vehiculo.grupo, textColor: textColor, mutedColor: mutedColor),
+                      DetailRow(icon: Icons.description_outlined, label: 'Descripción', value: vehiculo.descripcion, textColor: textColor, mutedColor: mutedColor),
+                      DetailRow(icon: Icons.palette_outlined, label: 'Color', value: vehiculo.color, textColor: textColor, mutedColor: mutedColor),
+                      DetailRow(icon: Icons.pin_outlined, label: 'VIN', value: vehiculo.numeroSerieVin, textColor: textColor, mutedColor: mutedColor),
+                      DetailRow(icon: Icons.toggle_on_outlined, label: 'Estatus', value: vehiculo.estatus, textColor: textColor, mutedColor: mutedColor),
+                      DetailRow(icon: Icons.gps_fixed, label: 'GPS', value: vehiculo.gpsInstalado, textColor: textColor, mutedColor: mutedColor),
+                      DetailRow(
                         icon: Icons.videocam_outlined,
                         label: 'Cámara instalada',
                         value: vehiculo.camaraInstalada ? 'Sí' : 'No',
                         textColor: textColor,
                         mutedColor: mutedColor,
                       ),
-                      _DetailRow(
+                      DetailRow(
                         icon: Icons.build_circle_outlined,
                         label: 'Último servicio',
                         value: vehiculo.fechaUltimoServicio == null
@@ -175,7 +176,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
                   ),
                 ),
               const SizedBox(height: 24),
-              _NavCard(
+              NavCard(
                 icon: Icons.report_problem_outlined,
                 title: 'Reportar pendiente del vehículo',
                 subtitle: vehiculo == null ? 'Sin vehículo asignado' : 'Falla mecánica, llanta o mantenimiento',
@@ -193,7 +194,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
               ),
               const SizedBox(height: 12),
               if (vehiculo == null)
-                _NavCard(
+                NavCard(
                   icon: Icons.description_outlined,
                   title: 'Documentos del vehículo',
                   subtitle: 'Sin vehículo asignado',
@@ -212,7 +213,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
                         ?.where((d) => estadoDeVigencia(d.vigencia) != VehiculoDocumentoEstado.vigente)
                         .length;
 
-                    return _NavCard(
+                    return NavCard(
                       icon: Icons.description_outlined,
                       title: 'Documentos del vehículo',
                       subtitle: docsPorAtender == null
@@ -233,7 +234,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
                 ),
               const SizedBox(height: 12),
               if (vehiculo == null)
-                _NavCard(
+                NavCard(
                   icon: Icons.assignment_late_outlined,
                   title: 'Pendientes reportados',
                   subtitle: 'Sin vehículo asignado',
@@ -250,7 +251,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
                     final pendientes = pendSnapshot.data;
                     final abiertos = pendientes?.where((p) => p.fechaResolucion == null).length;
 
-                    return _NavCard(
+                    return NavCard(
                       icon: Icons.assignment_late_outlined,
                       title: 'Pendientes reportados',
                       subtitle: abiertos == null
@@ -272,130 +273,6 @@ class _VehicleScreenState extends State<VehicleScreen> {
             ],
           );
         },
-      ),
-    );
-  }
-}
-
-/// One row of the "mi vehículo" details card: icon, label, value, with an
-/// optional divider below (skipped on the last row).
-class _DetailRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color textColor;
-  final Color mutedColor;
-  final bool isLast;
-
-  const _DetailRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.textColor,
-    required this.mutedColor,
-    this.isLast = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            children: [
-              Icon(icon, color: mutedColor, size: 18),
-              const SizedBox(width: 8),
-              Text(label, style: TextStyle(fontSize: 13, color: mutedColor)),
-              const Spacer(),
-              Text(
-                value.isEmpty ? '—' : value,
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: textColor),
-              ),
-            ],
-          ),
-        ),
-        if (!isLast) Divider(height: 1, color: mutedColor.withValues(alpha: 0.15)),
-      ],
-    );
-  }
-}
-
-class _NavCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color? badgeColor;
-  final Color cardColor;
-  final Color borderColor;
-  final Color textColor;
-  final Color mutedColor;
-  final VoidCallback? onTap;
-
-  const _NavCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    this.badgeColor,
-    required this.cardColor,
-    required this.borderColor,
-    required this.textColor,
-    required this.mutedColor,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: cardColor,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: borderColor),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _accentYellow.withValues(alpha: 0.15),
-                ),
-                child: Icon(icon, color: _accentYellow),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: textColor)),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        if (badgeColor != null) ...[
-                          Container(
-                            width: 7,
-                            height: 7,
-                            margin: const EdgeInsets.only(right: 6),
-                            decoration: BoxDecoration(color: badgeColor, shape: BoxShape.circle),
-                          ),
-                        ],
-                        Text(subtitle, style: TextStyle(fontSize: 12.5, color: mutedColor)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right, color: mutedColor),
-            ],
-          ),
-        ),
       ),
     );
   }

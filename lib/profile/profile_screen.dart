@@ -6,6 +6,7 @@ import '../widgets/bottom_nav_bar.dart';
 import 'change_password_screen.dart';
 import 'edit_profile_screen.dart';
 import 'mfa_screen.dart';
+import 'profile_widgets.dart';
 
 const _accentYellow = Color(0xFFFFCC00);
 
@@ -98,9 +99,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const SizedBox(height: 20),
 
         // Preferencias
-        _SettingsGroup(
+        SettingsGroup(
           children: [
-            _SettingsTile(
+            SettingsTile(
               icon: Icons.notifications_none,
               iconColor: _accentYellow,
               title: 'Notificaciones',
@@ -109,7 +110,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 onChanged: (value) => setState(() => _notificationsEnabled = value),
               ),
             ),
-            _SettingsTile(
+            SettingsTile(
               icon: isDark ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
               iconColor: _accentYellow,
               title: 'Modo Oscuro',
@@ -128,33 +129,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
         // (`AuthService`, poblado desde `GET /auth/me`); planta/ciudad no
         // tienen fuente en el backend todavía, así que se quedan como
         // valores locales editables (ver `EditProfileScreen`).
-        _SettingsGroup(
+        SettingsGroup(
           children: [
-            _SettingsTile(
+            SettingsTile(
               icon: Icons.badge_outlined,
               iconColor: _accentYellow,
               title: 'Usuario',
               trailing: Text(AuthService.username ?? '—', style: TextStyle(color: onCardMuted, fontSize: 14)),
             ),
-            _SettingsTile(
+            SettingsTile(
               icon: Icons.work_outline,
               iconColor: _accentYellow,
               title: 'Cargo',
               trailing: Text(AuthService.rol ?? '—', style: TextStyle(color: onCardMuted, fontSize: 14)),
             ),
-            _SettingsTile(
+            SettingsTile(
               icon: Icons.mail_outline,
               iconColor: _accentYellow,
               title: 'Correo',
               trailing: Text(AuthService.correo ?? '—', style: TextStyle(color: onCardMuted, fontSize: 14)),
             ),
-            _SettingsTile(
+            SettingsTile(
               icon: Icons.factory_outlined,
               iconColor: _accentYellow,
               title: 'Planta',
               trailing: Text(_plant, style: TextStyle(color: onCardMuted, fontSize: 14)),
             ),
-            _SettingsTile(
+            SettingsTile(
               icon: Icons.location_city_outlined,
               iconColor: _accentYellow,
               title: 'Ciudad',
@@ -165,9 +166,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const SizedBox(height: 20),
 
         // Seguridad
-        _SettingsGroup(
+        SettingsGroup(
           children: [
-            _SettingsTile(
+            SettingsTile(
               icon: Icons.lock_outline,
               iconColor: _accentYellow,
               title: 'Cambiar contraseña',
@@ -176,7 +177,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 MaterialPageRoute(builder: (context) => const ChangePasswordScreen()),
               ),
             ),
-            _SettingsTile(
+            SettingsTile(
               icon: Icons.shield_outlined,
               iconColor: _accentYellow,
               title: 'Verificación en dos pasos',
@@ -206,23 +207,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const SizedBox(height: 20),
 
         // Soporte
-        _SettingsGroup(
+        SettingsGroup(
           children: [
-            _SettingsTile(
+            SettingsTile(
               icon: Icons.help_outline,
               iconColor: onCardMuted,
               title: 'Preguntas Frecuentes',
               trailing: Icon(Icons.chevron_right, color: onCardMuted),
               onTap: () {},
             ),
-            _SettingsTile(
+            SettingsTile(
               icon: Icons.description_outlined,
               iconColor: onCardMuted,
               title: 'Términos de Servicio',
               trailing: Icon(Icons.chevron_right, color: onCardMuted),
               onTap: () {},
             ),
-            _SettingsTile(
+            SettingsTile(
               icon: Icons.privacy_tip_outlined,
               iconColor: onCardMuted,
               title: 'Política de Privacidad',
@@ -271,80 +272,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// Rounded card that groups related [_SettingsTile]s together. Solid black
-/// (bordered) in dark mode to stand out against the dark background; white
-/// with a visible border in light mode so it doesn't read as a stray black box.
-class _SettingsGroup extends StatelessWidget {
-  final List<Widget> children;
-
-  const _SettingsGroup({required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? const Color(0xFF141414) : Colors.white;
-    final borderColor = isDark
-        ? Colors.white.withValues(alpha: 0.10)
-        : Colors.black.withValues(alpha: 0.12);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
-      ),
-      child: Column(children: children),
-    );
-  }
-}
-
-/// A single row inside a [_SettingsGroup]: icon, title, and optional
-/// trailing content (switch, value text, or chevron).
-class _SettingsTile extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final Widget? trailing;
-  final VoidCallback? onTap;
-
-  const _SettingsTile({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    this.trailing,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : Colors.black87;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Icon(icon, size: 20, color: iconColor),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: textColor),
-                ),
-              ),
-              ?trailing,
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
