@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../auth/auth_service.dart';
 import '../operaciones/operaciones_service.dart';
 import '../operaciones/vehiculo.dart';
+import 'vehicle_pendiente_detail_screen.dart';
 import 'vehicle_pendientes_widgets.dart';
 
 const _accentYellow = Color(0xFFFFCC00);
