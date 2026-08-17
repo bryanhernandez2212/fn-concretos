@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../auth/auth_service.dart';
+import '../operaciones/operaciones_service.dart';
 import 'delivery_photo_widgets.dart';
 
 const _accentYellow = Color(0xFFFFCC00);
@@ -7,13 +9,16 @@ const _accentYellow = Color(0xFFFFCC00);
 /// Photo/evidence capture for a delivery, backed by `RemisionArchivo`.
 /// "Tomar foto" / "Elegir de galería" are real — tapping either triggers
 /// the OS's own camera/photo-library permission prompt automatically (via
-/// `image_picker`), no manual in-app toggle asks first — but "Guardar
-/// evidencia" stays a mock save: there's no upload endpoint documented for
-/// RemisionArchivo yet, so the picked photos never leave the device.
+/// `image_picker`), no manual in-app toggle asks first. "Guardar evidencia"
+/// is real too: each photo goes through the same presigned-upload round
+/// trip as `SignatureScreen` (`POST /evidencias/presigned-url` + direct
+/// `PUT` to storage), then `POST /remisiones/{id}/archivos` with the
+/// resulting `publicUrl`. Requires [permisoOperarRemisiones].
 class DeliveryPhotoScreen extends StatefulWidget {
+  final int remisionId;
   final String remisionFolio;
 
-  const DeliveryPhotoScreen({super.key, required this.remisionFolio});
+  const DeliveryPhotoScreen({super.key, required this.remisionId, required this.remisionFolio});
 
   @override
   State<DeliveryPhotoScreen> createState() => _DeliveryPhotoScreenState();
@@ -22,6 +27,7 @@ class DeliveryPhotoScreen extends StatefulWidget {
 class _DeliveryPhotoScreenState extends State<DeliveryPhotoScreen> {
   final List<XFile> _photos = [];
   final _picker = ImagePicker();
+  bool _guardando = false;
 
   Future<void> _addPhoto() async {
     final source = await showModalBottomSheet<ImageSource>(
@@ -46,17 +52,53 @@ class _DeliveryPhotoScreenState extends State<DeliveryPhotoScreen> {
     setState(() => _photos.remove(photo));
   }
 
-  void _save() {
+  String _contentTypeOf(XFile photo) {
+    final path = photo.path.toLowerCase();
+    if (path.endsWith('.png')) return 'image/png';
+    if (path.endsWith('.heic')) return 'image/heic';
+    return 'image/jpeg';
+  }
+
+  Future<void> _save() async {
     if (_photos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Agrega al menos una foto')),
       );
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Evidencia guardada (demostración)')),
-    );
-    Navigator.of(context).pop();
+
+    setState(() => _guardando = true);
+    try {
+      for (final photo in _photos) {
+        final bytes = await photo.readAsBytes();
+        final contentType = _contentTypeOf(photo);
+        final extension = contentType.split('/').last;
+        final nombreArchivo = 'evidencia_${widget.remisionId}_${DateTime.now().millisecondsSinceEpoch}.$extension';
+        final presigned = await OperacionesService.presignedUploadUrl(
+          carpeta: 'remision-evidencias',
+          nombreArchivo: nombreArchivo,
+          contentType: contentType,
+        );
+        await OperacionesService.subirArchivoPresignado(presigned.uploadUrl, bytes, contentType);
+        await OperacionesService.agregarArchivo(
+          widget.remisionId,
+          tipoArchivo: 'foto_evidencia',
+          archivoUrl: presigned.publicUrl,
+        );
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Evidencia guardada')),
+      );
+      Navigator.of(context).pop(true);
+    } on AuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } finally {
+      if (mounted) setState(() => _guardando = false);
+    }
   }
 
   @override
@@ -103,15 +145,22 @@ class _DeliveryPhotoScreenState extends State<DeliveryPhotoScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: _save,
+              onPressed: _guardando ? null : _save,
               style: ElevatedButton.styleFrom(
                 backgroundColor: _accentYellow,
                 foregroundColor: Colors.black,
+                disabledBackgroundColor: _accentYellow.withValues(alpha: 0.5),
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 elevation: 0,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              child: const Text('Guardar evidencia', style: TextStyle(fontWeight: FontWeight.w700)),
+              child: _guardando
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.black),
+                    )
+                  : const Text('Guardar evidencia', style: TextStyle(fontWeight: FontWeight.w700)),
             ),
           ),
         ],

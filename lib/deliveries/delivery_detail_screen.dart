@@ -51,6 +51,11 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   /// /remisiones/{id}/firma` comes back non-empty.
   Future<List<FirmaResponse>>? _firmasFuture;
 
+  /// How many fotos/evidencia are already attached (`GET
+  /// /remisiones/{id}/archivos`) — same "no boolean flag, derive from the
+  /// list" situation as firmas.
+  Future<List<ArchivoResponse>>? _archivosFuture;
+
   @override
   void initState() {
     super.initState();
@@ -58,6 +63,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     if (remisionId != null) {
       _detalleFuture = OperacionesService.remisionDetalle(remisionId);
       _firmasFuture = OperacionesService.firmasPorRemision(remisionId);
+      _archivosFuture = OperacionesService.archivosPorRemision(remisionId);
     }
   }
 
@@ -65,6 +71,12 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     final remisionId = widget.remision.remisionId;
     if (remisionId == null || !mounted) return;
     setState(() => _firmasFuture = OperacionesService.firmasPorRemision(remisionId));
+  }
+
+  void _refrescarArchivos() {
+    final remisionId = widget.remision.remisionId;
+    if (remisionId == null || !mounted) return;
+    setState(() => _archivosFuture = OperacionesService.archivosPorRemision(remisionId));
   }
 
   /// Re-fetches after returning from `RouteNavigationScreen` — that screen
@@ -424,21 +436,34 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                     ),
                     Divider(height: 1, color: borderColor),
                   ],
-                  ActionRow(
-                    icon: Icons.photo_camera_outlined,
-                    label: 'Foto / evidencia de entrega',
-                    textColor: textColor,
-                    mutedColor: mutedColor,
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => DeliveryPhotoScreen(
-                            remisionFolio: remision.folio,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                  if (remision.remisionId != null && puedeOperar) ...[
+                    FutureBuilder<List<ArchivoResponse>>(
+                      future: _archivosFuture,
+                      builder: (context, snapshot) {
+                        final total = snapshot.hasData ? snapshot.data!.length : 0;
+                        return ActionRow(
+                          icon: Icons.photo_camera_outlined,
+                          label: 'Foto / evidencia de entrega',
+                          textColor: textColor,
+                          mutedColor: mutedColor,
+                          statusLabel: total > 0 ? (total == 1 ? '1 foto' : '$total fotos') : null,
+                          statusColor: total > 0 ? const Color(0xFF4CAF50) : null,
+                          onTap: () async {
+                            final guardado = await Navigator.of(context).push<bool>(
+                              MaterialPageRoute(
+                                builder: (context) => DeliveryPhotoScreen(
+                                  remisionId: remision.remisionId!,
+                                  remisionFolio: remision.folio,
+                                ),
+                              ),
+                            );
+                            if (guardado == true) _refrescarArchivos();
+                          },
+                        );
+                      },
+                    ),
+                    Divider(height: 1, color: borderColor),
+                  ],
                   if (AuthService.rol == 'Operador de Bomba') ...[
                     Divider(height: 1, color: borderColor),
                     ActionRow(

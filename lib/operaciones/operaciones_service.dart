@@ -179,6 +179,29 @@ class OperacionesService {
     return (data as List<dynamic>).map((e) => FirmaResponse.fromJson(e as Map<String, dynamic>)).toList();
   }
 
+  /// Attaches a file/evidencia to a remisión (photo, PDF, etc). `archivoUrl`
+  /// is the `publicUrl` from a prior [presignedUploadUrl] +
+  /// [subirArchivoPresignado] round trip, same mechanism as
+  /// [registrarFirma]. Requires [permisoOperarRemisiones].
+  static Future<ArchivoResponse> agregarArchivo(
+    int remisionId, {
+    required String tipoArchivo,
+    required String archivoUrl,
+  }) async {
+    final data = await _post('/remisiones/$remisionId/archivos', {
+      'tipoArchivo': tipoArchivo,
+      'archivoUrl': archivoUrl,
+    });
+    return ArchivoResponse.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// Lists the archivos/evidencias already attached to a remisión (`GET
+  /// /remisiones/{id}/archivos`).
+  static Future<List<ArchivoResponse>> archivosPorRemision(int remisionId) async {
+    final data = await _get('/remisiones/$remisionId/archivos');
+    return (data as List<dynamic>).map((e) => ArchivoResponse.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
   /// Fleet-wide — no query param filters by conductor, so callers cross-
   /// reference `conductorAsignadoId` themselves (see
   /// `vehicle/vehiculo_service.dart`'s `miVehiculo`).

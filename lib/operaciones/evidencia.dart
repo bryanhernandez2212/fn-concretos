@@ -68,3 +68,35 @@ class FirmaResponse {
     );
   }
 }
+
+/// Mirrors `ArchivoResponse` — the `RemisionArchivo` row created by
+/// `POST /remisiones/{id}/archivos` (also listable via the `GET` of the
+/// same path).
+class ArchivoResponse {
+  final int id;
+  final int remisionId;
+  final String tipoArchivo;
+  final String archivoUrl;
+  final int? cargadoPor;
+  final String? fechaCarga;
+
+  const ArchivoResponse({
+    required this.id,
+    required this.remisionId,
+    required this.tipoArchivo,
+    required this.archivoUrl,
+    required this.cargadoPor,
+    required this.fechaCarga,
+  });
+
+  factory ArchivoResponse.fromJson(Map<String, dynamic> json) {
+    return ArchivoResponse(
+      id: _asInt(json['id']),
+      remisionId: _asInt(json['remisionId']),
+      tipoArchivo: json['tipoArchivo'] as String? ?? '',
+      archivoUrl: json['archivoUrl'] as String? ?? '',
+      cargadoPor: json['cargadoPor'] == null ? null : _asInt(json['cargadoPor']),
+      fechaCarga: json['fechaCarga'] as String?,
+    );
+  }
+}
