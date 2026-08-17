@@ -113,7 +113,13 @@ class NavCard extends StatelessWidget {
                             decoration: BoxDecoration(color: badgeColor, shape: BoxShape.circle),
                           ),
                         ],
-                        Text(subtitle, style: TextStyle(fontSize: 12.5, color: mutedColor)),
+                        Expanded(
+                          child: Text(
+                            subtitle,
+                            style: TextStyle(fontSize: 12.5, color: mutedColor),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ],
                     ),
                   ],

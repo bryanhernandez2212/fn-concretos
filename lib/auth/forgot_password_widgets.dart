@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 
 const _accentYellow = Color(0xFFFFCC00);
 
-/// A filled, icon-prefixed text field, matching `_EditField` in
-/// edit_profile_screen.dart.
+/// A filled, icon-prefixed text field.
 class AuthField extends StatelessWidget {
   final TextEditingController controller;
   final String label;

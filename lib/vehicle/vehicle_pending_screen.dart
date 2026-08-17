@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../auth/auth_service.dart';
 import '../operaciones/operaciones_service.dart';
 import '../widgets/field_group.dart';
@@ -23,7 +25,9 @@ class VehiclePendingScreen extends StatefulWidget {
 
 class _VehiclePendingScreenState extends State<VehiclePendingScreen> {
   final _descriptionController = TextEditingController();
+  final _picker = ImagePicker();
   TipoPendiente _tipo = TipoPendiente.fallaMecanica;
+  XFile? _photo;
   bool _enviando = false;
 
   @override
@@ -31,6 +35,20 @@ class _VehiclePendingScreenState extends State<VehiclePendingScreen> {
     _descriptionController.dispose();
     super.dispose();
   }
+
+  Future<void> _takePhoto() async {
+    try {
+      final photo = await _picker.pickImage(source: ImageSource.camera, imageQuality: 80);
+      if (photo != null) setState(() => _photo = photo);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo acceder a la cámara')),
+      );
+    }
+  }
+
+  void _removePhoto() => setState(() => _photo = null);
 
   Future<void> _submit() async {
     if (_descriptionController.text.trim().isEmpty) {
@@ -42,10 +60,25 @@ class _VehiclePendingScreenState extends State<VehiclePendingScreen> {
 
     setState(() => _enviando = true);
     try {
+      String? evidenciaApertura;
+      final photo = _photo;
+      if (photo != null) {
+        final bytes = await photo.readAsBytes();
+        final nombreArchivo = 'pendiente_${widget.vehiculoId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final presigned = await OperacionesService.presignedUploadUrl(
+          carpeta: 'vehiculo-pendientes',
+          nombreArchivo: nombreArchivo,
+          contentType: 'image/jpeg',
+        );
+        await OperacionesService.subirArchivoPresignado(presigned.uploadUrl, bytes, 'image/jpeg');
+        evidenciaApertura = presigned.publicUrl;
+      }
+
       await OperacionesService.registrarPendienteVehiculo(
         widget.vehiculoId,
         tipoPendiente: _tipo.backendValue,
         descripcion: _descriptionController.text.trim(),
+        evidenciaApertura: evidenciaApertura,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -136,6 +169,47 @@ class _VehiclePendingScreenState extends State<VehiclePendingScreen> {
               ),
             ),
           ),
+          const SizedBox(height: 20),
+          SectionLabel(text: 'Evidencia (opcional)', textColor: textColor),
+          const SizedBox(height: 10),
+          if (_photo != null)
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    height: 160,
+                    width: double.infinity,
+                    decoration: BoxDecoration(border: Border.all(color: borderColor)),
+                    child: Image.file(File(_photo!.path), fit: BoxFit.cover),
+                  ),
+                ),
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: GestureDetector(
+                    onTap: _removePhoto,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                      child: const Icon(Icons.close, size: 16, color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else
+            OutlinedButton.icon(
+              onPressed: _takePhoto,
+              icon: const Icon(Icons.camera_alt_outlined, size: 18),
+              label: const Text('Tomar foto'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: textColor,
+                side: BorderSide(color: borderColor),
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
           const SizedBox(height: 28),
           SizedBox(
             width: double.infinity,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../auth/auth_service.dart';
+import '../operaciones/evidencia.dart';
 import '../operaciones/operaciones_service.dart';
 import '../operaciones/remision_tracking.dart';
 import '../widgets/field_group.dart';
@@ -45,13 +46,25 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   RemisionResumen? _detalleOverride;
   bool _avanzando = false;
 
+  /// Whether the remisión has been firmada — `RemisionResponse` has no
+  /// boolean flag for it, so this is derived from whether `GET
+  /// /remisiones/{id}/firma` comes back non-empty.
+  Future<List<FirmaResponse>>? _firmasFuture;
+
   @override
   void initState() {
     super.initState();
     final remisionId = widget.remision.remisionId;
     if (remisionId != null) {
       _detalleFuture = OperacionesService.remisionDetalle(remisionId);
+      _firmasFuture = OperacionesService.firmasPorRemision(remisionId);
     }
+  }
+
+  void _refrescarFirmas() {
+    final remisionId = widget.remision.remisionId;
+    if (remisionId == null || !mounted) return;
+    setState(() => _firmasFuture = OperacionesService.firmasPorRemision(remisionId));
   }
 
   /// Re-fetches after returning from `RouteNavigationScreen` — that screen
@@ -383,21 +396,34 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
               padding: EdgeInsets.zero,
               child: Column(
                 children: [
-                  ActionRow(
-                    icon: Icons.draw_outlined,
-                    label: 'Firma digital de entrega',
-                    textColor: textColor,
-                    mutedColor: mutedColor,
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              SignatureScreen(remisionFolio: remision.folio),
-                        ),
-                      );
-                    },
-                  ),
-                  Divider(height: 1, color: borderColor),
+                  if (remision.remisionId != null && puedeOperar) ...[
+                    FutureBuilder<List<FirmaResponse>>(
+                      future: _firmasFuture,
+                      builder: (context, snapshot) {
+                        final firmada = snapshot.hasData && snapshot.data!.isNotEmpty;
+                        return ActionRow(
+                          icon: Icons.draw_outlined,
+                          label: 'Firma digital de entrega',
+                          textColor: textColor,
+                          mutedColor: mutedColor,
+                          statusLabel: firmada ? 'Firmada' : null,
+                          statusColor: firmada ? const Color(0xFF4CAF50) : null,
+                          onTap: () async {
+                            final firmada = await Navigator.of(context).push<bool>(
+                              MaterialPageRoute(
+                                builder: (context) => SignatureScreen(
+                                  remisionId: remision.remisionId!,
+                                  remisionFolio: remision.folio,
+                                ),
+                              ),
+                            );
+                            if (firmada == true) _refrescarFirmas();
+                          },
+                        );
+                      },
+                    ),
+                    Divider(height: 1, color: borderColor),
+                  ],
                   ActionRow(
                     icon: Icons.photo_camera_outlined,
                     label: 'Foto / evidencia de entrega',

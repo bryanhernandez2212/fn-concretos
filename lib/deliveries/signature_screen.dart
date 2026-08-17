@@ -1,17 +1,31 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import '../auth/auth_service.dart';
+import '../operaciones/operaciones_service.dart';
 
 const _accentYellow = Color(0xFFFFCC00);
 
-/// Digital signature capture for a delivery: the client signs on-screen
-/// with a finger/stylus, backed by `RemisionFirma`. The pad takes up most
-/// of the screen — signing is the whole point of this view — with
-/// "Limpiar" to reset and try again if it came out wrong, and "Aceptar
-/// firma" to confirm. Purely local drawing — accepting just pops back with
-/// a confirmation until the endpoint is wired.
+/// Digital signature capture for a delivery: the person receiving in obra
+/// signs on-screen with a finger/stylus, backed by `RemisionFirma`. The pad
+/// takes up most of the screen — signing is the whole point of this view —
+/// with "Limpiar" to reset and try again if it came out wrong, and "Aceptar
+/// firma" to confirm.
+///
+/// Accepting: renders the pad to a PNG, requests a presigned upload URL
+/// (`POST /evidencias/presigned-url`), `PUT`s the bytes there directly, then
+/// registers the signature (`POST /remisiones/{id}/firma`) with the
+/// resulting `publicUrl`. Requires [permisoOperarRemisiones].
+///
+/// `FirmaRequest.operadorId` would be the id of whoever receives at the job
+/// site, but this app has no lookup against `administracion-service` to
+/// resolve a name to that id — and the field isn't schema-required — so it's
+/// omitted; the driver's hand-typed name goes in `comentarios` instead.
 class SignatureScreen extends StatefulWidget {
+  final int remisionId;
   final String remisionFolio;
 
-  const SignatureScreen({super.key, required this.remisionFolio});
+  const SignatureScreen({super.key, required this.remisionId, required this.remisionFolio});
 
   @override
   State<SignatureScreen> createState() => _SignatureScreenState();
@@ -20,6 +34,9 @@ class SignatureScreen extends StatefulWidget {
 class _SignatureScreenState extends State<SignatureScreen> {
   final _nameController = TextEditingController();
   final List<List<Offset>> _strokes = [];
+  final _signatureKey = GlobalKey();
+  bool _submitting = false;
+  String? _errorText;
 
   @override
   void dispose() {
@@ -37,17 +54,47 @@ class _SignatureScreenState extends State<SignatureScreen> {
 
   void _clear() => setState(() => _strokes.clear());
 
-  void _accept() {
+  Future<void> _accept() async {
     if (_strokes.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Falta capturar la firma')),
-      );
+      setState(() => _errorText = 'Falta capturar la firma');
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Firma guardada (demostración)')),
-    );
-    Navigator.of(context).pop();
+
+    setState(() {
+      _submitting = true;
+      _errorText = null;
+    });
+
+    try {
+      final boundary = _signatureKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      final image = await boundary.toImage(pixelRatio: 2.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      final pngBytes = byteData!.buffer.asUint8List();
+
+      final nombreArchivo = 'firma_${widget.remisionId}_${DateTime.now().millisecondsSinceEpoch}.png';
+      final presigned = await OperacionesService.presignedUploadUrl(
+        carpeta: 'remision-firmas',
+        nombreArchivo: nombreArchivo,
+        contentType: 'image/png',
+      );
+      await OperacionesService.subirArchivoPresignado(presigned.uploadUrl, pngBytes, 'image/png');
+      final nombre = _nameController.text.trim();
+      await OperacionesService.registrarFirma(
+        widget.remisionId,
+        firmaDigitalUrl: presigned.publicUrl,
+        comentarios: nombre.isEmpty ? null : 'Recibido por: $nombre',
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Firma guardada')),
+      );
+      Navigator.of(context).pop(true);
+    } on AuthException catch (e) {
+      setState(() => _errorText = e.message);
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
   }
 
   @override
@@ -73,7 +120,7 @@ class _SignatureScreenState extends State<SignatureScreen> {
           child: Column(
             children: [
               Text(
-                'Pide al cliente que firme para confirmar la entrega',
+                'Pide a quien recibe que firme para confirmar la entrega',
                 style: TextStyle(fontSize: 13.5, color: mutedColor),
               ),
               const SizedBox(height: 12),
@@ -107,30 +154,42 @@ class _SignatureScreenState extends State<SignatureScreen> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(20),
-                    child: Stack(
-                      children: [
-                        if (_strokes.isEmpty)
-                          const Center(
-                            child: Text('Firme aquí', style: TextStyle(color: Colors.black26, fontSize: 16)),
+                    child: RepaintBoundary(
+                      key: _signatureKey,
+                      child: Stack(
+                        children: [
+                          Container(color: Colors.white),
+                          if (_strokes.isEmpty)
+                            const Center(
+                              child: Text('Firme aquí', style: TextStyle(color: Colors.black26, fontSize: 16)),
+                            ),
+                          GestureDetector(
+                            onPanStart: _onPanStart,
+                            onPanUpdate: _onPanUpdate,
+                            child: CustomPaint(
+                              painter: _SignaturePainter(_strokes),
+                              size: Size.infinite,
+                            ),
                           ),
-                        GestureDetector(
-                          onPanStart: _onPanStart,
-                          onPanUpdate: _onPanUpdate,
-                          child: CustomPaint(
-                            painter: _SignaturePainter(_strokes),
-                            size: Size.infinite,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
+              if (_errorText != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _errorText!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+              ],
               const SizedBox(height: 16),
               Row(
                 children: [
                   OutlinedButton.icon(
-                    onPressed: _clear,
+                    onPressed: _submitting ? null : _clear,
                     icon: const Icon(Icons.refresh, size: 18),
                     label: const Text('Limpiar'),
                     style: OutlinedButton.styleFrom(
@@ -143,15 +202,22 @@ class _SignatureScreenState extends State<SignatureScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: _accept,
+                      onPressed: _submitting ? null : _accept,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _accentYellow,
                         foregroundColor: Colors.black,
+                        disabledBackgroundColor: _accentYellow.withValues(alpha: 0.5),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         elevation: 0,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
-                      child: const Text('Aceptar firma', style: TextStyle(fontWeight: FontWeight.w700)),
+                      child: _submitting
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.black),
+                            )
+                          : const Text('Aceptar firma', style: TextStyle(fontWeight: FontWeight.w700)),
                     ),
                   ),
                 ],

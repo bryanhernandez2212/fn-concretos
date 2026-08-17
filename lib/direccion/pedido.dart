@@ -37,16 +37,16 @@ class Pedido {
 
   factory Pedido.fromJson(Map<String, dynamic> json) {
     return Pedido(
-      id: json['id'] as int,
+      id: _parseInt(json['id']),
       folio: json['folio'] as String? ?? '',
-      clienteId: json['clienteId'] as int,
-      obraId: json['obraId'] as int,
+      clienteId: _parseInt(json['clienteId']),
+      obraId: _parseInt(json['obraId']),
       clienteNombre: json['clienteNombre'] as String? ?? 'Cliente sin nombre',
       obraNombre: json['obraNombre'] as String? ?? 'Obra sin nombre',
       tipoServicio: json['tipoServicio'] as String? ?? '',
       volumenSolicitadoM3: (json['volumenSolicitadoM3'] as num?)?.toDouble() ?? 0,
       condicionPago: json['condicionPago'] as String? ?? '',
-      diasCredito: json['diasCredito'] as int?,
+      diasCredito: _parseIntOrNull(json['diasCredito']),
       fechaProgramada: json['fechaProgramada'] as String?,
       estatusPagoAutorizacion: json['estatusPagoAutorizacion'] as String? ?? '',
       estatusLogisticaAutorizacion: json['estatusLogisticaAutorizacion'] as String? ?? '',
@@ -55,6 +55,20 @@ class Pedido {
     );
   }
 }
+
+/// The backend documents `id`/`clienteId`/`obraId` as `int64` but doesn't
+/// mark them required, and some Spring/Jackson setups serialize `Long`
+/// fields as JSON strings to dodge JS's 53-bit safe-integer limit — either
+/// of which would throw a raw `TypeError` (not the `AuthException` that
+/// screens special-case) if cast directly with `as int`.
+int _parseInt(dynamic value, {int fallback = 0}) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value) ?? fallback;
+  return fallback;
+}
+
+int? _parseIntOrNull(dynamic value) => value == null ? null : _parseInt(value);
 
 /// Mirrors `ClienteResponse` — only the credit-relevant fields Dirección
 /// needs when judging a pedido.

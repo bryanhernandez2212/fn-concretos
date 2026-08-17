@@ -129,6 +129,8 @@ class VehiculoPendienteResumen {
   final String estatus;
   final DateTime? fechaDeteccion;
   final DateTime? fechaResolucion;
+  final String? evidenciaApertura;
+  final String? evidenciaCierre;
 
   const VehiculoPendienteResumen({
     required this.id,
@@ -137,6 +139,8 @@ class VehiculoPendienteResumen {
     required this.estatus,
     required this.fechaDeteccion,
     required this.fechaResolucion,
+    required this.evidenciaApertura,
+    required this.evidenciaCierre,
   });
 
   factory VehiculoPendienteResumen.fromJson(Map<String, dynamic> json) {
@@ -147,6 +151,8 @@ class VehiculoPendienteResumen {
       estatus: json['estatus'] as String? ?? '',
       fechaDeteccion: DateTime.tryParse(json['fechaDeteccion'] as String? ?? ''),
       fechaResolucion: DateTime.tryParse(json['fechaResolucion'] as String? ?? ''),
+      evidenciaApertura: json['evidenciaApertura'] as String?,
+      evidenciaCierre: json['evidenciaCierre'] as String?,
     );
   }
 }

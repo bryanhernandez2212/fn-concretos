@@ -74,7 +74,18 @@ class _VehiclePendientesScreenState extends State<VehiclePendientesScreen> {
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
             children: [
               for (final pendiente in pendientes) ...[
-                PendienteCard(pendiente: pendiente, cardColor: cardColor, borderColor: borderColor, textColor: textColor, mutedColor: mutedColor),
+                PendienteCard(
+                  pendiente: pendiente,
+                  cardColor: cardColor,
+                  borderColor: borderColor,
+                  textColor: textColor,
+                  mutedColor: mutedColor,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (context) => VehiclePendienteDetailScreen(pendiente: pendiente)),
+                    );
+                  },
+                ),
                 const SizedBox(height: 12),
               ],
             ],

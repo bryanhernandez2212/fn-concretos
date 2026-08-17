@@ -253,6 +253,11 @@ class ActionRow extends StatelessWidget {
   final Color mutedColor;
   final VoidCallback onTap;
 
+  /// Optional status pill shown before the chevron (e.g. "Firmada") once
+  /// this action has already been completed. Null shows no pill.
+  final String? statusLabel;
+  final Color? statusColor;
+
   const ActionRow({
     super.key,
     required this.icon,
@@ -260,6 +265,8 @@ class ActionRow extends StatelessWidget {
     required this.textColor,
     required this.mutedColor,
     required this.onTap,
+    this.statusLabel,
+    this.statusColor,
   });
 
   @override
@@ -284,6 +291,20 @@ class ActionRow extends StatelessWidget {
                   ),
                 ),
               ),
+              if (statusLabel != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: (statusColor ?? mutedColor).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    statusLabel!,
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: statusColor ?? mutedColor),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
               Icon(Icons.chevron_right, color: mutedColor),
             ],
           ),

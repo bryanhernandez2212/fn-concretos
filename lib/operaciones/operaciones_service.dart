@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../auth/auth_service.dart';
+import 'evidencia.dart';
 import 'produccion.dart';
 import 'remision_tracking.dart';
 import 'vehiculo.dart';
@@ -107,6 +108,77 @@ class OperacionesService {
     });
   }
 
+  /// Requests a presigned upload URL for `carpeta`/`nombreArchivo`. The app
+  /// then `PUT`s the file bytes directly to the returned `uploadUrl` (see
+  /// [subirArchivoPresignado]) and keeps `publicUrl` to save back onto
+  /// whichever business resource needs it (e.g. [registrarFirma]'s
+  /// `firmaDigitalUrl`).
+  static Future<PresignedUploadResponse> presignedUploadUrl({
+    required String carpeta,
+    required String nombreArchivo,
+    required String contentType,
+  }) async {
+    final data = await _post('/evidencias/presigned-url', {
+      'carpeta': carpeta,
+      'nombreArchivo': nombreArchivo,
+      'contentType': contentType,
+    });
+    return PresignedUploadResponse.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// Uploads raw bytes directly to a presigned URL from
+  /// [presignedUploadUrl] — this goes straight to storage, not through
+  /// operaciones-service, so it deliberately skips [AuthService.authHeaders]
+  /// and sends only the `Content-Type` the presigned URL was issued for.
+  static Future<void> subirArchivoPresignado(String uploadUrl, List<int> bytes, String contentType) async {
+    final http.Response response;
+    try {
+      response = await http.put(
+        Uri.parse(uploadUrl),
+        headers: {'Content-Type': contentType},
+        body: bytes,
+      );
+    } catch (_) {
+      throw AuthException('No se pudo conectar con el servidor');
+    }
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw AuthException('No se pudo subir el archivo');
+    }
+  }
+
+  /// Registers the digital signature of receipt in obra for a remisión,
+  /// marking it as firmada. Requires [permisoOperarRemisiones].
+  ///
+  /// `operadorId` would be the id of whoever receives at the job site (not
+  /// the driver), but this app has no lookup against `administracion-service`
+  /// to resolve a name to that id, and the schema doesn't mark it required —
+  /// so it's optional here, and `comentarios` is where the driver's
+  /// hand-typed name of who received goes instead.
+  static Future<FirmaResponse> registrarFirma(
+    int remisionId, {
+    int? operadorId,
+    required String firmaDigitalUrl,
+    String? evidenciaUrl,
+    String? comentarios,
+  }) async {
+    final data = await _post('/remisiones/$remisionId/firma', {
+      if (operadorId != null) 'operadorId': operadorId,
+      'firmaDigitalUrl': firmaDigitalUrl,
+      if (evidenciaUrl != null) 'evidenciaUrl': evidenciaUrl,
+      if (comentarios != null && comentarios.isNotEmpty) 'comentarios': comentarios,
+    });
+    return FirmaResponse.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// Lists the firmas already registered for a remisión (`GET
+  /// /remisiones/{id}/firma`) — a non-empty list is how the app knows the
+  /// remisión has been firmada, since [remisionDetalle]'s `RemisionResponse`
+  /// has no boolean flag for it.
+  static Future<List<FirmaResponse>> firmasPorRemision(int remisionId) async {
+    final data = await _get('/remisiones/$remisionId/firma');
+    return (data as List<dynamic>).map((e) => FirmaResponse.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
   /// Fleet-wide — no query param filters by conductor, so callers cross-
   /// reference `conductorAsignadoId` themselves (see
   /// `vehicle/vehiculo_service.dart`'s `miVehiculo`).
@@ -132,12 +204,16 @@ class OperacionesService {
 
   /// Reports a pendiente (falla mecánica/llanta/mantenimiento/otro) on a
   /// vehicle. `fechaDeteccion` is stamped as today — this is reported at
-  /// the moment it's noticed, not scheduled ahead. Requires
-  /// [permisoReportarPendienteVehiculo].
+  /// the moment it's noticed, not scheduled ahead. `evidenciaApertura` is
+  /// the `publicUrl` from a prior [presignedUploadUrl] +
+  /// [subirArchivoPresignado] round trip — unlike `RemisionFirma`, there's
+  /// no separate photo table/endpoint here, it's just another field on the
+  /// same `VehiculoPendiente` row. Requires [permisoReportarPendienteVehiculo].
   static Future<void> registrarPendienteVehiculo(
     int vehiculoId, {
     required String tipoPendiente,
     String? descripcion,
+    String? evidenciaApertura,
   }) {
     final hoy = DateTime.now();
     final fechaDeteccion =
@@ -146,6 +222,7 @@ class OperacionesService {
     return _post('/vehiculos/$vehiculoId/pendientes', {
       'tipoPendiente': tipoPendiente,
       if (descripcion != null && descripcion.isNotEmpty) 'descripcion': descripcion,
+      if (evidenciaApertura != null) 'evidenciaApertura': evidenciaApertura,
       'fechaDeteccion': fechaDeteccion,
     });
   }

@@ -4,7 +4,6 @@ import '../auth/auth_service.dart';
 import '../auth/login_screen.dart';
 import '../widgets/bottom_nav_bar.dart';
 import 'change_password_screen.dart';
-import 'edit_profile_screen.dart';
 import 'mfa_screen.dart';
 import 'profile_widgets.dart';
 
@@ -18,27 +17,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // Planta/Ciudad have no backend source (auth-service's `/auth/me` doesn't
-  // return them) — they stay local-only stubs, unlike usuario/cargo/correo
-  // below which now come straight from the real session.
-  String _plant = 'Planta Norte';
-  String _city = 'Ciudad de México';
   bool _notificationsEnabled = true;
-
-  Future<void> _editProfile() async {
-    final result = await Navigator.of(context).push<Map<String, String>>(
-      MaterialPageRoute(
-        builder: (context) => EditProfileScreen(plant: _plant, city: _city),
-      ),
-    );
-
-    if (result != null) {
-      setState(() {
-        if (result['plant']?.isNotEmpty ?? false) _plant = result['plant']!;
-        if (result['city']?.isNotEmpty ?? false) _city = result['city']!;
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,46 +32,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return ListView(
       padding: EdgeInsets.fromLTRB(20, 20, 20, BottomNavBar.clearance(context) + 16),
       children: [
-        // Profile summary — tap to edit
+        // Profile summary
         Container(
           decoration: BoxDecoration(
             color: cardColor,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: cardBorderColor),
           ),
-          child: Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(20),
-              onTap: _editProfile,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 28,
-                      backgroundColor: _accentYellow.withValues(alpha: 0.18),
-                      child: const Icon(Icons.person, size: 30, color: _accentYellow),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            AuthService.username ?? 'Usuario',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: onCardText),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(AuthService.rol ?? '', style: TextStyle(fontSize: 13, color: onCardMuted)),
-                        ],
-                      ),
-                    ),
-                    Icon(Icons.chevron_right, color: onCardMuted),
-                  ],
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: _accentYellow.withValues(alpha: 0.18),
+                  child: const Icon(Icons.person, size: 30, color: _accentYellow),
                 ),
-              ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        AuthService.username ?? 'Usuario',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: onCardText),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(AuthService.rol ?? '', style: TextStyle(fontSize: 13, color: onCardMuted)),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -126,9 +96,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const SizedBox(height: 20),
 
         // Datos personales — usuario/cargo/correo vienen de la sesión real
-        // (`AuthService`, poblado desde `GET /auth/me`); planta/ciudad no
-        // tienen fuente en el backend todavía, así que se quedan como
-        // valores locales editables (ver `EditProfileScreen`).
+        // (`AuthService`, poblado desde `GET /auth/me`). Planta/ciudad se
+        // quitaron: no tienen fuente en el backend todavía, así que no hay
+        // nada real que mostrar ahí.
         SettingsGroup(
           children: [
             SettingsTile(
@@ -148,18 +118,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               iconColor: _accentYellow,
               title: 'Correo',
               trailing: Text(AuthService.correo ?? '—', style: TextStyle(color: onCardMuted, fontSize: 14)),
-            ),
-            SettingsTile(
-              icon: Icons.factory_outlined,
-              iconColor: _accentYellow,
-              title: 'Planta',
-              trailing: Text(_plant, style: TextStyle(color: onCardMuted, fontSize: 14)),
-            ),
-            SettingsTile(
-              icon: Icons.location_city_outlined,
-              iconColor: _accentYellow,
-              title: 'Ciudad',
-              trailing: Text(_city, style: TextStyle(color: onCardMuted, fontSize: 14)),
             ),
           ],
         ),
