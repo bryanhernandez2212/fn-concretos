@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../auth/auth_service.dart';
 import '../operaciones/operaciones_service.dart';
+import '../widgets/field_group.dart';
 import 'prueba_concreto_widgets.dart';
 import 'remision.dart';
 
@@ -116,6 +117,7 @@ class _PruebaConcretoScreenState extends State<PruebaConcretoScreen> {
           FieldGroup(
             cardColor: cardColor,
             borderColor: borderColor,
+            expand: true,
             child: Column(
               children: [
                 PruebaTextField(

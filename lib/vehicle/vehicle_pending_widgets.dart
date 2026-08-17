@@ -12,24 +12,3 @@ class SectionLabel extends StatelessWidget {
   }
 }
 
-class FieldGroup extends StatelessWidget {
-  final Color cardColor;
-  final Color borderColor;
-  final Widget child;
-
-  const FieldGroup({super.key, required this.cardColor, required this.borderColor, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
-      ),
-      child: child,
-    );
-  }
-}

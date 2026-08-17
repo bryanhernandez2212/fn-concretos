@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/field_group.dart';
 import 'dosificacion_widgets.dart';
 
 const _accentYellow = Color(0xFFFFCC00);
@@ -78,6 +79,7 @@ class _DosificacionScreenState extends State<DosificacionScreen> {
           FieldGroup(
             cardColor: cardColor,
             borderColor: borderColor,
+            expand: true,
             child: Column(
               children: [
                 IngredienteField(controller: _cementoController, label: 'Cemento', unidad: 'kg', textColor: textColor, mutedColor: mutedColor),

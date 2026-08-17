@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../auth/auth_service.dart';
+import '../widgets/field_group.dart';
 import 'change_password_widgets.dart';
 
 const _accentYellow = Color(0xFFFFCC00);
@@ -83,13 +84,15 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           ),
           const SizedBox(height: 24),
           FieldGroup(
-            children: [
-              PasswordField(controller: _currentPasswordController, label: 'Contraseña actual'),
-              const SizedBox(height: 14),
-              PasswordField(controller: _newPasswordController, label: 'Nueva contraseña'),
-              const SizedBox(height: 14),
-              PasswordField(controller: _confirmPasswordController, label: 'Confirmar nueva contraseña'),
-            ],
+            child: Column(
+              children: [
+                PasswordField(controller: _currentPasswordController, label: 'Contraseña actual'),
+                const SizedBox(height: 14),
+                PasswordField(controller: _newPasswordController, label: 'Nueva contraseña'),
+                const SizedBox(height: 14),
+                PasswordField(controller: _confirmPasswordController, label: 'Confirmar nueva contraseña'),
+              ],
+            ),
           ),
           if (_errorText != null) ...[
             const SizedBox(height: 14),

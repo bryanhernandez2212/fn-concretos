@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../auth/auth_service.dart';
 import '../operaciones/operaciones_service.dart';
+import '../widgets/field_group.dart';
 import 'vehicle.dart';
 import 'vehicle_pending_widgets.dart';
 
@@ -92,6 +93,7 @@ class _VehiclePendingScreenState extends State<VehiclePendingScreen> {
           FieldGroup(
             cardColor: cardColor,
             borderColor: borderColor,
+            expand: true,
             child: Wrap(
               spacing: 8,
               runSpacing: 8,

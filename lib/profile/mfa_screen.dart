@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../auth/auth_service.dart';
+import '../widgets/field_group.dart';
 import 'mfa_widgets.dart';
 
 const _accentYellow = Color(0xFFFFCC00);
@@ -107,20 +108,23 @@ class _MfaScreenState extends State<MfaScreen> {
             SecretCard(secret: enrollment.secret, textColor: textColor, mutedColor: mutedColor),
             const SizedBox(height: 20),
             FieldGroup(
-              children: [
-                TextField(
-                  controller: _codeController,
-                  autofocus: true,
-                  keyboardType: TextInputType.number,
-                  maxLength: 6,
-                  style: TextStyle(color: textColor, letterSpacing: 4, fontSize: 20),
-                  decoration: const InputDecoration(
-                    counterText: '',
-                    hintText: '000000',
-                    border: InputBorder.none,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _codeController,
+                    autofocus: true,
+                    keyboardType: TextInputType.number,
+                    maxLength: 6,
+                    style: TextStyle(color: textColor, letterSpacing: 4, fontSize: 20),
+                    decoration: const InputDecoration(
+                      counterText: '',
+                      hintText: '000000',
+                      border: InputBorder.none,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
           if (_errorText != null) ...[

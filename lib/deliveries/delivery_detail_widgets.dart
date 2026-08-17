@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/field_group.dart';
 import 'remision.dart';
 
 const _accentYellow = Color(0xFFFFCC00);
@@ -131,6 +132,7 @@ class HorariosCard extends StatelessWidget {
     return FieldGroup(
       cardColor: cardColor,
       borderColor: borderColor,
+      padding: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -160,31 +162,6 @@ class HorariosCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-class FieldGroup extends StatelessWidget {
-  final Color cardColor;
-  final Color borderColor;
-  final Widget child;
-
-  const FieldGroup({
-    super.key,
-    required this.cardColor,
-    required this.borderColor,
-    required this.child,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
-      ),
-      child: child,
     );
   }
 }

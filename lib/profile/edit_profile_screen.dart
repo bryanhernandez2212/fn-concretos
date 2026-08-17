@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/field_group.dart';
 import 'edit_profile_widgets.dart';
 
 const _accentYellow = Color(0xFFFFCC00);
@@ -67,19 +68,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ),
           const SizedBox(height: 24),
           FieldGroup(
-            children: [
-              EditField(
-                controller: _plantController,
-                label: 'Planta',
-                icon: Icons.factory_outlined,
-              ),
-              const SizedBox(height: 14),
-              EditField(
-                controller: _cityController,
-                label: 'Ciudad',
-                icon: Icons.location_city_outlined,
-              ),
-            ],
+            child: Column(
+              children: [
+                EditField(
+                  controller: _plantController,
+                  label: 'Planta',
+                  icon: Icons.factory_outlined,
+                ),
+                const SizedBox(height: 14),
+                EditField(
+                  controller: _cityController,
+                  label: 'Ciudad',
+                  icon: Icons.location_city_outlined,
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 28),
           Row(

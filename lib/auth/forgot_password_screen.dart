@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/field_group.dart';
 import 'auth_service.dart';
 import 'forgot_password_widgets.dart';
 
@@ -149,14 +150,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       ),
       const SizedBox(height: 24),
       FieldGroup(
-        children: [
-          AuthField(
-            controller: _correoController,
-            label: 'Correo',
-            icon: Icons.mail_outline,
-            keyboardType: TextInputType.emailAddress,
-          ),
-        ],
+        child: Column(
+          children: [
+            AuthField(
+              controller: _correoController,
+              label: 'Correo',
+              icon: Icons.mail_outline,
+              keyboardType: TextInputType.emailAddress,
+            ),
+          ],
+        ),
       ),
     ];
   }
@@ -169,23 +172,25 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       ),
       const SizedBox(height: 24),
       FieldGroup(
-        children: [
-          AuthField(controller: _tokenController, label: 'Código de recuperación', icon: Icons.key_outlined),
-          const SizedBox(height: 14),
-          AuthField(
-            controller: _newPasswordController,
-            label: 'Nueva contraseña',
-            icon: Icons.lock_outline,
-            obscureText: true,
-          ),
-          const SizedBox(height: 14),
-          AuthField(
-            controller: _confirmPasswordController,
-            label: 'Confirmar contraseña',
-            icon: Icons.lock_outline,
-            obscureText: true,
-          ),
-        ],
+        child: Column(
+          children: [
+            AuthField(controller: _tokenController, label: 'Código de recuperación', icon: Icons.key_outlined),
+            const SizedBox(height: 14),
+            AuthField(
+              controller: _newPasswordController,
+              label: 'Nueva contraseña',
+              icon: Icons.lock_outline,
+              obscureText: true,
+            ),
+            const SizedBox(height: 14),
+            AuthField(
+              controller: _confirmPasswordController,
+              label: 'Confirmar contraseña',
+              icon: Icons.lock_outline,
+              obscureText: true,
+            ),
+          ],
+        ),
       ),
     ];
   }

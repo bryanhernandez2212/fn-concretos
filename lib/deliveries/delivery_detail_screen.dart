@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../auth/auth_service.dart';
 import '../operaciones/operaciones_service.dart';
 import '../operaciones/remision_tracking.dart';
+import '../widgets/field_group.dart';
 import 'delivery_detail_widgets.dart';
 import 'delivery_photo_screen.dart';
 import 'dosificacion_screen.dart';
@@ -271,6 +272,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                         FieldGroup(
                           cardColor: cardColor,
                           borderColor: borderColor,
+                          padding: EdgeInsets.zero,
                           child: Padding(
                             padding: const EdgeInsets.all(16),
                             child: Text(
@@ -306,6 +308,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                       FieldGroup(
                         cardColor: cardColor,
                         borderColor: borderColor,
+                        padding: EdgeInsets.zero,
                         child: Column(
                           children: [
                             for (final hito in _secuenciaHitos)
@@ -377,6 +380,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
             FieldGroup(
               cardColor: cardColor,
               borderColor: borderColor,
+              padding: EdgeInsets.zero,
               child: Column(
                 children: [
                   ActionRow(
