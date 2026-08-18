@@ -3,6 +3,7 @@ import '../auth/auth_service.dart';
 import '../operaciones/evidencia.dart';
 import '../operaciones/operaciones_service.dart';
 import '../operaciones/remision_tracking.dart';
+import '../widgets/evidencia_viewer_screen.dart';
 import '../widgets/field_group.dart';
 import 'delivery_detail_widgets.dart';
 import 'delivery_photo_screen.dart';
@@ -70,13 +71,18 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   void _refrescarFirmas() {
     final remisionId = widget.remision.remisionId;
     if (remisionId == null || !mounted) return;
-    setState(() => _firmasFuture = OperacionesService.firmasPorRemision(remisionId));
+    setState(
+      () => _firmasFuture = OperacionesService.firmasPorRemision(remisionId),
+    );
   }
 
   void _refrescarArchivos() {
     final remisionId = widget.remision.remisionId;
     if (remisionId == null || !mounted) return;
-    setState(() => _archivosFuture = OperacionesService.archivosPorRemision(remisionId));
+    setState(
+      () =>
+          _archivosFuture = OperacionesService.archivosPorRemision(remisionId),
+    );
   }
 
   /// Re-fetches after returning from `RouteNavigationScreen` — that screen
@@ -165,12 +171,19 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
           children: [
-            SummaryCard(
-              remision: remision,
-              cardColor: cardColor,
-              borderColor: borderColor,
-              textColor: textColor,
-              mutedColor: mutedColor,
+            FutureBuilder<RemisionResumen?>(
+              future: _detalleFuture,
+              builder: (context, snapshot) {
+                final detalle = _detalleOverride ?? snapshot.data;
+                return SummaryCard(
+                  remision: remision,
+                  folioRemision: detalle?.folioRemision,
+                  cardColor: cardColor,
+                  borderColor: borderColor,
+                  textColor: textColor,
+                  mutedColor: mutedColor,
+                );
+              },
             ),
             const SizedBox(height: 24),
             FutureBuilder<RemisionResumen?>(
@@ -412,23 +425,45 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                     FutureBuilder<List<FirmaResponse>>(
                       future: _firmasFuture,
                       builder: (context, snapshot) {
-                        final firmada = snapshot.hasData && snapshot.data!.isNotEmpty;
+                        final firma =
+                            snapshot.hasData && snapshot.data!.isNotEmpty
+                            ? snapshot.data!.first
+                            : null;
                         return ActionRow(
                           icon: Icons.draw_outlined,
                           label: 'Firma digital de entrega',
                           textColor: textColor,
                           mutedColor: mutedColor,
-                          statusLabel: firmada ? 'Firmada' : null,
-                          statusColor: firmada ? const Color(0xFF4CAF50) : null,
+                          statusLabel: firma != null ? 'Firmada' : null,
+                          statusColor: firma != null
+                              ? const Color(0xFF4CAF50)
+                              : null,
                           onTap: () async {
-                            final firmada = await Navigator.of(context).push<bool>(
-                              MaterialPageRoute(
-                                builder: (context) => SignatureScreen(
-                                  remisionId: remision.remisionId!,
-                                  remisionFolio: remision.folio,
+                            // Backend blocks re-firmar (409) since it would
+                            // double-count entregado volume on the pedido —
+                            // once firmada, tapping views the firma instead
+                            // of reopening SignatureScreen.
+                            if (firma != null) {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) => EvidenciaViewerScreen(
+                                    url: firma.firmaDigitalUrl,
+                                    label: 'Firma digital',
+                                  ),
+                                  fullscreenDialog: true,
                                 ),
-                              ),
-                            );
+                              );
+                              return;
+                            }
+                            final firmada = await Navigator.of(context)
+                                .push<bool>(
+                                  MaterialPageRoute(
+                                    builder: (context) => SignatureScreen(
+                                      remisionId: remision.remisionId!,
+                                      remisionFolio: remision.folio,
+                                    ),
+                                  ),
+                                );
                             if (firmada == true) _refrescarFirmas();
                           },
                         );
@@ -440,25 +475,43 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                     FutureBuilder<List<ArchivoResponse>>(
                       future: _archivosFuture,
                       builder: (context, snapshot) {
-                        final total = snapshot.hasData ? snapshot.data!.length : 0;
-                        return ActionRow(
-                          icon: Icons.photo_camera_outlined,
-                          label: 'Foto / evidencia de entrega',
-                          textColor: textColor,
-                          mutedColor: mutedColor,
-                          statusLabel: total > 0 ? (total == 1 ? '1 foto' : '$total fotos') : null,
-                          statusColor: total > 0 ? const Color(0xFF4CAF50) : null,
-                          onTap: () async {
-                            final guardado = await Navigator.of(context).push<bool>(
-                              MaterialPageRoute(
-                                builder: (context) => DeliveryPhotoScreen(
-                                  remisionId: remision.remisionId!,
-                                  remisionFolio: remision.folio,
-                                ),
+                        final archivos =
+                            snapshot.data ?? const <ArchivoResponse>[];
+                        return Column(
+                          children: [
+                            ActionRow(
+                              icon: Icons.photo_camera_outlined,
+                              label: 'Foto / evidencia de entrega',
+                              textColor: textColor,
+                              mutedColor: mutedColor,
+                              statusLabel: archivos.isNotEmpty
+                                  ? (archivos.length == 1
+                                        ? '1 foto'
+                                        : '${archivos.length} fotos')
+                                  : null,
+                              statusColor: archivos.isNotEmpty
+                                  ? const Color(0xFF4CAF50)
+                                  : null,
+                              onTap: () async {
+                                final guardado = await Navigator.of(context)
+                                    .push<bool>(
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            DeliveryPhotoScreen(
+                                              remisionId: remision.remisionId!,
+                                              remisionFolio: remision.folio,
+                                            ),
+                                      ),
+                                    );
+                                if (guardado == true) _refrescarArchivos();
+                              },
+                            ),
+                            if (archivos.isNotEmpty)
+                              EvidenciaThumbnailStrip(
+                                archivos: archivos,
+                                borderColor: borderColor,
                               ),
-                            );
-                            if (guardado == true) _refrescarArchivos();
-                          },
+                          ],
                         );
                       },
                     ),

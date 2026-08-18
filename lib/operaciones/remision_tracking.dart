@@ -17,6 +17,18 @@ class RemisionResumen {
   final DateTime? horaLlegadaObra;
   final DateTime? horaEntrega;
 
+  /// This remisión's own volume — how much *this specific* truck/olla is
+  /// carrying, not the pedido's total (a pedido like "40 m³" can be split
+  /// across several remisiones, e.g. 4 trucks of 10 m³ each). `metrosCargados`
+  /// is set once actually loaded at planta; `metrosSolicitados` is the plan
+  /// before that. `metrosAcumuladosPedido`/`metrosPendientesPedido` track the
+  /// whole pedido's running total as of this remisión, for context (see
+  /// `deliveries/entregas_service.dart`).
+  final double? metrosSolicitados;
+  final double? metrosCargados;
+  final double? metrosAcumuladosPedido;
+  final double? metrosPendientesPedido;
+
   const RemisionResumen({
     required this.id,
     required this.folioRemision,
@@ -26,20 +38,38 @@ class RemisionResumen {
     this.horaSalida,
     this.horaLlegadaObra,
     this.horaEntrega,
+    this.metrosSolicitados,
+    this.metrosCargados,
+    this.metrosAcumuladosPedido,
+    this.metrosPendientesPedido,
   });
 
   factory RemisionResumen.fromJson(Map<String, dynamic> json) {
     return RemisionResumen(
-      id: json['id'] as int,
+      id: _parseInt(json['id']),
       folioRemision: json['folioRemision'] as String? ?? '',
       estatus: json['estatus'] as String? ?? '',
-      conductorId: json['conductorId'] as int?,
+      conductorId: json['conductorId'] == null ? null : _parseInt(json['conductorId']),
       horaCarga: DateTime.tryParse(json['horaCarga'] as String? ?? ''),
       horaSalida: DateTime.tryParse(json['horaSalida'] as String? ?? ''),
       horaLlegadaObra: DateTime.tryParse(json['horaLlegadaObra'] as String? ?? ''),
       horaEntrega: DateTime.tryParse(json['horaEntrega'] as String? ?? ''),
+      metrosSolicitados: (json['metrosSolicitados'] as num?)?.toDouble(),
+      metrosCargados: (json['metrosCargados'] as num?)?.toDouble(),
+      metrosAcumuladosPedido: (json['metrosAcumuladosPedido'] as num?)?.toDouble(),
+      metrosPendientesPedido: (json['metrosPendientesPedido'] as num?)?.toDouble(),
     );
   }
+}
+
+/// See `direccion/pedido.dart`'s identical helper — some Spring/Jackson
+/// setups serialize `Long` fields as JSON strings, and this schema doesn't
+/// mark `id`/`conductorId` as required either.
+int _parseInt(dynamic value, {int fallback = 0}) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value) ?? fallback;
+  return fallback;
 }
 
 /// Mirrors `GpsPingResponse` — one position report from the olla/bomba en

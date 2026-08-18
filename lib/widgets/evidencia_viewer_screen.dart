@@ -21,12 +21,42 @@ class EvidenciaViewerScreen extends StatelessWidget {
         elevation: 0,
       ),
       body: Center(
-        child: InteractiveViewer(
-          child: Image.network(
-            url,
-            errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image_outlined, color: Colors.white54, size: 48),
-          ),
-        ),
+        child: url.isEmpty
+            ? const Padding(
+                padding: EdgeInsets.all(24),
+                child: Text(
+                  'No hay una URL guardada para esta evidencia.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white54),
+                ),
+              )
+            : InteractiveViewer(
+                child: Image.network(
+                  url,
+                  loadingBuilder: (context, child, progress) {
+                    if (progress == null) return child;
+                    return const CircularProgressIndicator(color: Colors.white54);
+                  },
+                  errorBuilder: (context, error, stackTrace) => Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.broken_image_outlined, color: Colors.white54, size: 48),
+                        const SizedBox(height: 12),
+                        // TEMP debug: surface the URL that failed so we can
+                        // tell a bad/empty save apart from a real network/
+                        // decode error without needing device logs.
+                        Text(
+                          'No se pudo cargar:\n$url',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Colors.white54, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
       ),
     );
   }

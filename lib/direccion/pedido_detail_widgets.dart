@@ -45,8 +45,67 @@ class SummaryCard extends StatelessWidget {
             const SizedBox(height: 8),
             Line(icon: Icons.event_outlined, text: 'Programada: ${pedido.fechaProgramada}', textColor: textColor, mutedColor: mutedColor),
           ],
+          if (pedido.estatusGeneral == 'parcial' || pedido.estatusGeneral == 'completo' || pedido.volumenEntregadoM3 > 0) ...[
+            const SizedBox(height: 14),
+            _EntregaProgress(pedido: pedido, textColor: textColor, mutedColor: mutedColor),
+          ],
         ],
       ),
+    );
+  }
+}
+
+/// Delivery progress bar — `volumenEntregadoM3`/`estatusGeneral` update in
+/// real time as each remisión gets firmada (the signature flow triggers
+/// `comercial-service`'s internal entrega-tracking on the backend), so this
+/// reflects actual accumulated delivery, not a static request snapshot.
+class _EntregaProgress extends StatelessWidget {
+  final Pedido pedido;
+  final Color textColor;
+  final Color mutedColor;
+
+  const _EntregaProgress({required this.pedido, required this.textColor, required this.mutedColor});
+
+  @override
+  Widget build(BuildContext context) {
+    final completo = pedido.estatusGeneral == 'completo';
+    final color = completo ? _green : _accentYellow;
+    final fraction = pedido.volumenSolicitadoM3 > 0
+        ? (pedido.volumenEntregadoM3 / pedido.volumenSolicitadoM3).clamp(0.0, 1.0)
+        : 0.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text('Entrega', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: textColor)),
+            ),
+            if (completo)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
+                child: Text('Completo', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: LinearProgressIndicator(
+            value: fraction,
+            minHeight: 6,
+            backgroundColor: mutedColor.withValues(alpha: 0.15),
+            valueColor: AlwaysStoppedAnimation(color),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          '${pedido.volumenEntregadoM3} / ${pedido.volumenSolicitadoM3} m³ entregado',
+          style: TextStyle(fontSize: 12.5, color: mutedColor),
+        ),
+      ],
     );
   }
 }
@@ -320,6 +379,8 @@ class LiveTrackingSection extends StatelessWidget {
               LiveTrackingCard(
                 remisionId: remision.id,
                 folioRemision: remision.folioRemision,
+                conductorId: remision.conductorId,
+                volumen: remision.metrosCargados ?? remision.metrosSolicitados,
                 isDark: isDark,
                 cardColor: cardColor,
                 borderColor: borderColor,
@@ -360,6 +421,18 @@ class PlaceholderCard extends StatelessWidget {
 class LiveTrackingCard extends StatefulWidget {
   final int remisionId;
   final String folioRemision;
+
+  /// The driver assigned to this specific remisión — a pedido can be split
+  /// across several (e.g. 40 m³ as 4 trucks of 10 m³ each), so Dirección
+  /// needs to see which conductor carries which remisión, not just one
+  /// combined pedido total. No employee-name lookup exists in this app yet,
+  /// so this shows the raw id rather than fabricating a name.
+  final int? conductorId;
+
+  /// This remisión's own volume (`metrosCargados` once loaded, else
+  /// `metrosSolicitados`) — not the pedido's total.
+  final double? volumen;
+
   final bool isDark;
   final Color cardColor;
   final Color borderColor;
@@ -370,6 +443,8 @@ class LiveTrackingCard extends StatefulWidget {
     super.key,
     required this.remisionId,
     required this.folioRemision,
+    required this.conductorId,
+    required this.volumen,
     required this.isDark,
     required this.cardColor,
     required this.borderColor,
@@ -451,18 +526,36 @@ class _LiveTrackingCardState extends State<LiveTrackingCard> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.local_shipping_outlined, size: 18, color: widget.mutedColor),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    widget.folioRemision,
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: widget.textColor),
-                  ),
+                Row(
+                  children: [
+                    Icon(Icons.local_shipping_outlined, size: 18, color: widget.mutedColor),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        widget.folioRemision,
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: widget.textColor),
+                      ),
+                    ),
+                    if (ruta != null)
+                      Text(ruta.estatus, style: TextStyle(fontSize: 12.5, color: widget.mutedColor)),
+                  ],
                 ),
-                if (ruta != null)
-                  Text(ruta.estatus, style: TextStyle(fontSize: 12.5, color: widget.mutedColor)),
+                if (widget.conductorId != null || widget.volumen != null) ...[
+                  const SizedBox(height: 4),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 26),
+                    child: Text(
+                      [
+                        if (widget.conductorId != null) 'Conductor #${widget.conductorId}',
+                        if (widget.volumen != null) '${widget.volumen} m³',
+                      ].join(' · '),
+                      style: TextStyle(fontSize: 12.5, color: widget.mutedColor),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

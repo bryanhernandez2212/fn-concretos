@@ -41,6 +41,7 @@ class EntregasService {
       // just means no GPS posting yet.
       final remisiones = await OperacionesService.remisionesPorPedido(pedido.id);
       final propia = remisiones.where((r) => r.conductorId == idEmpleado);
+      final remisionPropia = propia.isEmpty ? null : propia.first;
 
       entregas.add(Remision(
         folio: pedido.folio,
@@ -49,9 +50,14 @@ class EntregasService {
         direccion: obra.direccion,
         horaProgramada: item.horaArranque,
         tipoConcreto: pedido.tipoServicio,
-        volumenM3: pedido.volumenSolicitadoM3,
+        // This remisión's own volume once one exists — not the pedido's
+        // total, since a pedido can be split across several remisiones.
+        volumenM3: remisionPropia?.metrosCargados ?? remisionPropia?.metrosSolicitados ?? pedido.volumenSolicitadoM3,
+        volumenPedidoTotal: pedido.volumenSolicitadoM3,
+        volumenAcumuladoPedido: remisionPropia?.metrosAcumuladosPedido,
+        volumenPendientePedido: remisionPropia?.metrosPendientesPedido,
         hitoActual: null,
-        remisionId: propia.isEmpty ? null : propia.first.id,
+        remisionId: remisionPropia?.id,
         destinoLat: obra.latitud,
         destinoLng: obra.longitud,
         pedidoId: pedido.id,

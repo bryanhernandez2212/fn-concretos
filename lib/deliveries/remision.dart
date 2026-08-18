@@ -40,7 +40,25 @@ class Remision {
   final String direccion;
   final String horaProgramada;
   final String tipoConcreto;
+
+  /// This specific remisión's own volume (from `RemisionResumen.metrosCargados`
+  /// / `metrosSolicitados`) once a Remisión exists — a pedido's total can be
+  /// split across several remisiones (e.g. 40 m³ as 4 trucks of 10 m³ each),
+  /// so this is NOT the same as [volumenPedidoTotal]. Falls back to the
+  /// pedido's total before a Remisión exists, since there's nothing more
+  /// specific to show yet.
   final double volumenM3;
+
+  /// The pedido's total requested volume, always known (from
+  /// `Pedido.volumenSolicitadoM3`) regardless of whether a Remisión exists.
+  final double volumenPedidoTotal;
+
+  /// The pedido's running delivered/pending totals as of this remisión
+  /// (`RemisionResumen.metrosAcumuladosPedido`/`metrosPendientesPedido`) —
+  /// null until a Remisión exists, since only the backend's remisión record
+  /// tracks this.
+  final double? volumenAcumuladoPedido;
+  final double? volumenPendientePedido;
 
   /// Null until a real Remisión (with its own hito state machine) exists
   /// for this delivery — today's production programming alone doesn't have
@@ -75,6 +93,9 @@ class Remision {
     required this.horaProgramada,
     required this.tipoConcreto,
     required this.volumenM3,
+    required this.volumenPedidoTotal,
+    this.volumenAcumuladoPedido,
+    this.volumenPendientePedido,
     required this.hitoActual,
     required this.remisionId,
     required this.destinoLat,

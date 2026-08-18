@@ -9,6 +9,8 @@ class Pedido {
   final String obraNombre;
   final String tipoServicio;
   final double volumenSolicitadoM3;
+  final double volumenEntregadoM3;
+  final double volumenPendienteM3;
   final String condicionPago;
   final int? diasCredito;
   final String? fechaProgramada;
@@ -26,6 +28,8 @@ class Pedido {
     required this.obraNombre,
     required this.tipoServicio,
     required this.volumenSolicitadoM3,
+    required this.volumenEntregadoM3,
+    required this.volumenPendienteM3,
     required this.condicionPago,
     required this.diasCredito,
     required this.fechaProgramada,
@@ -45,6 +49,8 @@ class Pedido {
       obraNombre: json['obraNombre'] as String? ?? 'Obra sin nombre',
       tipoServicio: json['tipoServicio'] as String? ?? '',
       volumenSolicitadoM3: (json['volumenSolicitadoM3'] as num?)?.toDouble() ?? 0,
+      volumenEntregadoM3: (json['volumenEntregadoM3'] as num?)?.toDouble() ?? 0,
+      volumenPendienteM3: (json['volumenPendienteM3'] as num?)?.toDouble() ?? 0,
       condicionPago: json['condicionPago'] as String? ?? '',
       diasCredito: _parseIntOrNull(json['diasCredito']),
       fechaProgramada: json['fechaProgramada'] as String?,
