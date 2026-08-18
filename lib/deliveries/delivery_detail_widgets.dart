@@ -102,7 +102,7 @@ class SummaryCard extends StatelessWidget {
             DetailLine(
               icon: Icons.water_drop_outlined,
               text:
-                  'm³ solicitados: ${remision.volumenM3} / ${remision.volumenPedidoTotal} m³ entregados'
+                  'm³ solicitados: ${remision.volumenAcumuladoPedido} / ${remision.volumenM3} m³ entregados'
                   '${remision.volumenPendientePedido != null && remision.volumenPendientePedido! > 0 ? ' · ${remision.volumenPendientePedido} m³ pendiente' : ''}',
               textColor: textColor,
               mutedColor: mutedColor,
