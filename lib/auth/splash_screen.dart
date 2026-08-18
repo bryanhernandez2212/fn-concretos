@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
 import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -9,54 +10,66 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  late final VideoPlayerController _controller;
+  bool _navigated = false;
+
   @override
   void initState() {
     super.initState();
-    _navigateToLogin();
+    _controller = VideoPlayerController.asset('assets/video/splash.mp4')
+      ..initialize().then((_) {
+        if (!mounted) return;
+        setState(() {});
+        _controller.play();
+      }).catchError((_) {
+        _navigateToLogin();
+      });
+    _controller.addListener(_onVideoTick);
   }
 
-  void _navigateToLogin() async {
-    // Wait for 3 seconds before navigating
-    await Future.delayed(const Duration(seconds: 3));
-    if (mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const LoginScreen()),
-      );
+  void _onVideoTick() {
+    final value = _controller.value;
+    if (value.isInitialized &&
+        !value.isPlaying &&
+        value.position >= value.duration) {
+      _navigateToLogin();
     }
+  }
+
+  void _navigateToLogin() {
+    if (_navigated || !mounted) return;
+    _navigated = true;
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (context) => const LoginScreen()));
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_onVideoTick);
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage('assets/images/background.png'),
-            fit: BoxFit.cover,
-          ),
-        ),
-        child: Container(
-          // Dark overlay similar to login screen
-          color: Colors.black.withOpacity(0.4),
-          child: Center(
-            // No entrance animation: the native launch screen already shows
-            // this same logo, so it must look identical from the very first
-            // frame for it to read as a single continuous screen.
-            child: Image.asset(
-              'assets/images/logo.png',
-              width: 250,
-              // Fallback icon in case logo is missing or loading fails
-              errorBuilder: (context, error, stackTrace) {
-                return const Icon(
-                  Icons.business,
-                  color: Color(0xFFFFCC00),
-                  size: 100,
-                );
-              },
-            ),
-          ),
-        ),
-      ),
+      // Same color as the native launch screen (drawable/launch_background.xml,
+      // LaunchScreen.storyboard) so there's no visible flash while the video
+      // is still initializing.
+      backgroundColor: const Color(0xFF15181B),
+      body: _controller.value.isInitialized
+          ? SizedBox.expand(
+              child: FittedBox(
+                fit: BoxFit.cover,
+                child: SizedBox(
+                  width: _controller.value.size.width,
+                  height: _controller.value.size.height,
+                  child: VideoPlayer(_controller),
+                ),
+              ),
+            )
+          : const SizedBox.expand(),
     );
   }
 }
