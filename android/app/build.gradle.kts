@@ -7,7 +7,9 @@ plugins {
 
 android {
     namespace = "com.example.my_flutter_app"
-    compileSdk = flutter.compileSdkVersion
+    // flutter_secure_storage requires compileSdk 37; flutter.compileSdkVersion
+    // (36) is backward compatible with this bump per Flutter's own guidance.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

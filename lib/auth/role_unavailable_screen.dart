@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 import 'auth_service.dart';
 import 'login_screen.dart';
 import 'roles.dart';
 
-const _accentYellow = Color(0xFFFFCC00);
+const _accentYellow = AppColors.accent;
 
 /// Shown after a successful login when the account's role has no mobile
 /// screens yet (only Operador de Olla/Bomba do — see [rolesConAppMovil]).

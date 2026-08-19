@@ -13,6 +13,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  bool _navCompact = false;
 
   final List<Widget> _pages = const [
     DeliveriesScreen(),
@@ -26,29 +27,43 @@ class _HomeScreenState extends State<HomeScreen> {
       extendBody: true,
       body: SafeArea(
         bottom: false,
-        child: Stack(
-          fit: StackFit.expand,
-          children: List.generate(_pages.length, (index) {
-            final isActive = index == _currentIndex;
-            return IgnorePointer(
-              ignoring: !isActive,
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 260),
-                curve: Curves.easeOut,
-                opacity: isActive ? 1.0 : 0.0,
-                child: AnimatedScale(
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            if (notification is ScrollUpdateNotification) {
+              final delta = notification.scrollDelta ?? 0;
+              if (delta < 0 && !_navCompact) {
+                setState(() => _navCompact = true);
+              } else if (delta > 0 && _navCompact) {
+                setState(() => _navCompact = false);
+              }
+            }
+            return false;
+          },
+          child: Stack(
+            fit: StackFit.expand,
+            children: List.generate(_pages.length, (index) {
+              final isActive = index == _currentIndex;
+              return IgnorePointer(
+                ignoring: !isActive,
+                child: AnimatedOpacity(
                   duration: const Duration(milliseconds: 260),
                   curve: Curves.easeOut,
-                  scale: isActive ? 1.0 : 0.96,
-                  child: _pages[index],
+                  opacity: isActive ? 1.0 : 0.0,
+                  child: AnimatedScale(
+                    duration: const Duration(milliseconds: 260),
+                    curve: Curves.easeOut,
+                    scale: isActive ? 1.0 : 0.96,
+                    child: _pages[index],
+                  ),
                 ),
-              ),
-            );
-          }),
+              );
+            }),
+          ),
         ),
       ),
       bottomNavigationBar: BottomNavBar(
         currentIndex: _currentIndex,
+        compact: _navCompact,
         onTap: (int index) {
           setState(() {
             _currentIndex = index;
@@ -75,4 +90,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-

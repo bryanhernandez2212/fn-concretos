@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import '../operaciones/evidencia.dart';
+import '../theme/app_colors.dart';
 import '../widgets/evidencia_viewer_screen.dart';
 import '../widgets/field_group.dart';
 import 'remision.dart';
 
-const _accentYellow = Color(0xFFFFCC00);
+const _accentYellow = AppColors.accent;
 
 class SummaryCard extends StatelessWidget {
   final Remision remision;
@@ -236,7 +237,7 @@ class HitoRow extends StatelessWidget {
     final isDone = current != null && hito.index < current.index;
     final isCurrent = current != null && hito.index == current.index;
     final circleColor = isDone
-        ? const Color(0xFF4CAF50)
+        ? AppColors.success
         : isCurrent
         ? _accentYellow
         : mutedColor.withValues(alpha: 0.3);
@@ -363,12 +364,13 @@ class ActionRow extends StatelessWidget {
   }
 }
 
-/// Horizontal strip of tappable evidencia thumbnails, one per archivo
-/// already attached to the remisión. Wrapped in a `NotificationListener`
-/// that swallows its own scroll notifications — without that, this nested
-/// horizontal list's scroll metrics can bubble into the outer vertical
-/// `ListView` and make it bounce instead of settling, especially since this
-/// strip sits near the bottom of `DeliveryDetailScreen`.
+/// Wrapping grid of tappable evidencia thumbnails, one per archivo already
+/// attached to the remisión. Deliberately a `Wrap`, not a horizontal
+/// `ListView` — a nested scrollable of a different axis inside the outer
+/// vertical `ListView` fought it for the drag gesture (visible as a
+/// stutter/rubber-band whenever you reversed scroll direction near this
+/// strip, since it sits near the bottom of `DeliveryDetailScreen`). A `Wrap`
+/// has no scroll behavior of its own, so there's nothing left to compete.
 class EvidenciaThumbnailStrip extends StatelessWidget {
   final List<ArchivoResponse> archivos;
   final Color borderColor;
@@ -381,58 +383,48 @@ class EvidenciaThumbnailStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-      child: SizedBox(
-        height: 64,
-        child: NotificationListener<ScrollNotification>(
-          onNotification: (notification) => true,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: archivos.length,
-            separatorBuilder: (context, _) => const SizedBox(width: 8),
-            itemBuilder: (context, index) {
-              final archivo = archivos[index];
-              return GestureDetector(
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => EvidenciaViewerScreen(
-                        url: archivo.archivoUrl,
-                        label: 'Evidencia de entrega',
-                      ),
-                      fullscreenDialog: true,
-                    ),
-                  );
-                },
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    width: 64,
-                    height: 64,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: borderColor),
-                    ),
-                    child: Image.network(
-                      archivo.archivoUrl,
-                      fit: BoxFit.cover,
-                      cacheWidth: 128,
-                      loadingBuilder: (context, child, progress) {
-                        if (progress == null) return child;
-                        return const Center(
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Icon(Icons.broken_image_outlined, size: 20),
-                    ),
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        for (final archivo in archivos)
+          GestureDetector(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => EvidenciaViewerScreen(
+                    url: archivo.archivoUrl,
+                    label: 'Evidencia de entrega',
                   ),
+                  fullscreenDialog: true,
                 ),
               );
             },
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  border: Border.all(color: borderColor),
+                ),
+                child: Image.network(
+                  archivo.archivoUrl,
+                  fit: BoxFit.cover,
+                  cacheWidth: 128,
+                  loadingBuilder: (context, child, progress) {
+                    if (progress == null) return child;
+                    return const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) =>
+                      const Icon(Icons.broken_image_outlined, size: 20),
+                ),
+              ),
+            ),
           ),
-        ),
-      ),
+      ],
     );
   }
 }

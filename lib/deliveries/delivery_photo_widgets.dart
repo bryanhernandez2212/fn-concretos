@@ -1,8 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../theme/app_colors.dart';
 
-const _accentYellow = Color(0xFFFFCC00);
+const _accentYellow = AppColors.accent;
 
 /// Bottom sheet offering "Tomar foto" (camera) or "Elegir de galería"
 /// (existing files), returning the chosen [ImageSource] or null if

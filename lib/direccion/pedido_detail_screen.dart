@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import '../auth/auth_service.dart';
 import '../operaciones/operaciones_service.dart';
 import '../operaciones/remision_tracking.dart';
+import '../theme/app_colors.dart';
+import '../widgets/app_feedback.dart';
 import 'comercial_service.dart';
 import 'pedido.dart';
 import 'pedido_detail_widgets.dart';
 
-const _accentYellow = Color(0xFFFFCC00);
-const _red = Color(0xFFEF5350);
+const _red = AppColors.error;
 
 /// Detail view for a single Pedido: summary, the client's credit info (with
 /// a loud warning that estado-de-cuenta is a stub — finanzas-service
@@ -53,7 +54,7 @@ class _PedidoDetailScreenState extends State<PedidoDetailScreen> {
       Navigator.of(context).pop(true);
     } on AuthException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      AppSnack.error(context, e.message);
       setState(() => _submitting = false);
     }
   }
@@ -66,34 +67,57 @@ class _PedidoDetailScreenState extends State<PedidoDetailScreen> {
       Navigator.of(context).pop(true);
     } on AuthException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      AppSnack.error(context, e.message);
       setState(() => _submitting = false);
     }
   }
 
   Future<void> _confirmarRechazo({required bool esLogistica}) async {
     final motivoController = TextEditingController();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final mutedColor = (isDark ? Colors.white : Colors.black).withValues(alpha: 0.55);
+    final fieldFillColor = isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04);
+
     final motivo = await showDialog<String>(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Motivo del rechazo'),
+          backgroundColor: backgroundColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('Motivo del rechazo', style: TextStyle(color: textColor, fontWeight: FontWeight.w700)),
           content: TextField(
             controller: motivoController,
             autofocus: true,
             maxLines: 3,
-            decoration: const InputDecoration(hintText: 'Explica por qué se rechaza...'),
+            style: TextStyle(color: textColor),
+            decoration: InputDecoration(
+              hintText: 'Explica por qué se rechaza...',
+              hintStyle: TextStyle(color: mutedColor),
+              filled: true,
+              fillColor: fieldFillColor,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancelar')),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancelar', style: TextStyle(color: mutedColor, fontWeight: FontWeight.w600)),
+            ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: _red, foregroundColor: Colors.white),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _red,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
               onPressed: () {
                 final text = motivoController.text.trim();
                 if (text.isEmpty) return;
                 Navigator.of(context).pop(text);
               },
-              child: const Text('Rechazar'),
+              child: const Text('Rechazar', style: TextStyle(fontWeight: FontWeight.w700)),
             ),
           ],
         );
@@ -121,7 +145,7 @@ class _PedidoDetailScreenState extends State<PedidoDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(pedido.folio),
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : _accentYellow,
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         foregroundColor: isDark ? Colors.white : Colors.black,
         elevation: 0,
       ),

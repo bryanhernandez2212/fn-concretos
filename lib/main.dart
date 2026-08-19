@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'auth/splash_screen.dart';
 
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.dark);
@@ -37,6 +38,16 @@ class MyApp extends StatelessWidget {
           ),
           themeMode: currentMode,
           debugShowCheckedModeBanner: false,
+          // App copy is hardcoded Spanish everywhere already — force the
+          // locale to match instead of following the device's, so things
+          // like the date picker calendar aren't in English out of the box.
+          locale: const Locale('es'),
+          supportedLocales: const [Locale('es'), Locale('en')],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
           home: const SplashScreen(),
         );
       },

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 enum VehiculoDocumentoEstado { vigente, porVencer, vencido }
 
@@ -10,9 +11,9 @@ extension VehiculoDocumentoEstadoStyle on VehiculoDocumentoEstado {
   };
 
   Color get color => switch (this) {
-    VehiculoDocumentoEstado.vigente => const Color(0xFF4CAF50),
-    VehiculoDocumentoEstado.porVencer => const Color(0xFFFFA000),
-    VehiculoDocumentoEstado.vencido => const Color(0xFFEF5350),
+    VehiculoDocumentoEstado.vigente => AppColors.success,
+    VehiculoDocumentoEstado.porVencer => AppColors.warning,
+    VehiculoDocumentoEstado.vencido => AppColors.error,
   };
 }
 

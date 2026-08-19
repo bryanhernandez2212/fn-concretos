@@ -4,10 +4,12 @@ import 'package:geolocator/geolocator.dart' as geo;
 import 'package:google_navigation_flutter/google_navigation_flutter.dart';
 import '../auth/auth_service.dart';
 import '../operaciones/operaciones_service.dart';
+import '../theme/app_colors.dart';
+import '../widgets/app_feedback.dart';
 import 'remision.dart';
 import 'route_navigation_widgets.dart';
 
-const _accentYellow = Color(0xFFFFCC00);
+const _accentYellow = AppColors.accent;
 
 /// Matches this screen's own always-dark chrome ([RouteNavBackButton], [RouteNavBottomBar])
 /// so the native turn-by-turn header never clashes with it. Set for both
@@ -172,9 +174,7 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
     try {
       await OperacionesService.avanzarHito(remisionId, hito.backendValue);
     } on AuthException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
-      }
+      if (mounted) AppSnack.error(context, e.message);
     } catch (_) {}
   }
 

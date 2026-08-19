@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../auth/auth_service.dart';
 import '../operaciones/operaciones_service.dart';
+import '../theme/app_colors.dart';
+import '../widgets/app_feedback.dart';
 import '../widgets/field_group.dart';
 import 'vehicle.dart';
 import 'vehicle_pending_widgets.dart';
 
-const _accentYellow = Color(0xFFFFCC00);
+const _accentYellow = AppColors.accent;
 
 /// Report a `VehiculoPendiente`: mechanical failure, tire, or maintenance
 /// need. Real `POST /vehiculos/{vehiculoId}/pendientes` — `vehiculoId` comes
@@ -42,9 +44,7 @@ class _VehiclePendingScreenState extends State<VehiclePendingScreen> {
       if (photo != null) setState(() => _photo = photo);
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo acceder a la cámara')),
-      );
+      AppSnack.error(context, 'No se pudo acceder a la cámara');
     }
   }
 
@@ -52,9 +52,7 @@ class _VehiclePendingScreenState extends State<VehiclePendingScreen> {
 
   Future<void> _submit() async {
     if (_descriptionController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Describe el pendiente antes de enviar')),
-      );
+      AppSnack.error(context, 'Describe el pendiente antes de enviar');
       return;
     }
 
@@ -81,20 +79,12 @@ class _VehiclePendingScreenState extends State<VehiclePendingScreen> {
         evidenciaApertura: evidenciaApertura,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pendiente reportado')),
-      );
-      Navigator.of(context).pop();
+      AppSnack.success(context, 'Pendiente reportado');
+      Navigator.of(context).pop(true);
     } on AuthException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
-      }
+      if (mounted) AppSnack.error(context, e.message);
     } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo reportar el pendiente')),
-        );
-      }
+      if (mounted) AppSnack.error(context, 'No se pudo reportar el pendiente');
     } finally {
       if (mounted) setState(() => _enviando = false);
     }
@@ -114,7 +104,7 @@ class _VehiclePendingScreenState extends State<VehiclePendingScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Reportar Pendiente'),
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : _accentYellow,
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         foregroundColor: isDark ? Colors.white : Colors.black,
         elevation: 0,
       ),

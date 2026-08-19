@@ -4,8 +4,6 @@ import '../operaciones/operaciones_service.dart';
 import '../operaciones/vehiculo.dart';
 import 'vehicle_documents_widgets.dart';
 
-const _accentYellow = Color(0xFFFFCC00);
-
 /// Read-only list of the unit's real documents (`GET
 /// /vehiculos/{vehiculoId}/documentos`), so the driver doesn't head out with
 /// anything vencido. Uploading a new one isn't wired — `POST .../documentos`
@@ -38,7 +36,7 @@ class _VehicleDocumentsScreenState extends State<VehicleDocumentsScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Documentos del Vehículo'),
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : _accentYellow,
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         foregroundColor: isDark ? Colors.white : Colors.black,
         elevation: 0,
       ),

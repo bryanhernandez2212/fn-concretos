@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../widgets/app_feedback.dart';
 import '../widgets/field_group.dart';
 import 'auth_service.dart';
 import 'forgot_password_widgets.dart';
 
-const _accentYellow = Color(0xFFFFCC00);
+const _accentYellow = AppColors.accent;
 
 /// Two-step "olvidé mi contraseña" flow, pushed from [LoginScreen]:
 /// step 0 asks for the account's correo and calls `forgot-password`; step 1
@@ -72,9 +74,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       await AuthService.resetPassword(_tokenController.text.trim(), _newPasswordController.text);
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Contraseña actualizada, inicia sesión de nuevo')),
-      );
+      AppSnack.success(context, 'Contraseña actualizada, inicia sesión de nuevo');
     } on AuthException catch (e) {
       setState(() => _errorText = e.message);
     } finally {
@@ -89,7 +89,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Recuperar contraseña'),
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : _accentYellow,
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         foregroundColor: isDark ? Colors.white : Colors.black,
         elevation: 0,
       ),

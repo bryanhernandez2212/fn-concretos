@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../auth/auth_service.dart';
+import '../theme/app_colors.dart';
+import '../widgets/app_feedback.dart';
 import '../widgets/field_group.dart';
 import 'mfa_widgets.dart';
 
-const _accentYellow = Color(0xFFFFCC00);
+const _accentYellow = AppColors.accent;
 
 /// Enrolls the current session in TOTP-based MFA, pushed from
 /// [ProfileScreen]'s "Verificación en dos pasos" settings tile.
@@ -54,9 +56,7 @@ class _MfaScreenState extends State<MfaScreen> {
       await AuthService.confirmMfaEnable(_codeController.text.trim());
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Verificación en dos pasos activada')),
-      );
+      AppSnack.success(context, 'Verificación en dos pasos activada');
     } on AuthException catch (e) {
       setState(() => _errorText = e.message);
     } finally {
@@ -74,7 +74,7 @@ class _MfaScreenState extends State<MfaScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Verificación en dos pasos'),
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : _accentYellow,
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         foregroundColor: isDark ? Colors.white : Colors.black,
         elevation: 0,
       ),

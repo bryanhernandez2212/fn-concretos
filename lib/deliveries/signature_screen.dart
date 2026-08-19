@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import '../auth/auth_service.dart';
 import '../operaciones/operaciones_service.dart';
+import '../theme/app_colors.dart';
+import '../widgets/app_feedback.dart';
 
-const _accentYellow = Color(0xFFFFCC00);
+const _accentYellow = AppColors.accent;
 
 /// Digital signature capture for a delivery: the person receiving in obra
 /// signs on-screen with a finger/stylus, backed by `RemisionFirma`. The pad
@@ -86,9 +88,7 @@ class _SignatureScreenState extends State<SignatureScreen> {
       );
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Firma guardada')),
-      );
+      AppSnack.success(context, 'Firma guardada');
       Navigator.of(context).pop(true);
     } on AuthException catch (e) {
       setState(() => _errorText = e.message);
@@ -110,7 +110,7 @@ class _SignatureScreenState extends State<SignatureScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Firma · ${widget.remisionFolio}'),
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : _accentYellow,
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         foregroundColor: isDark ? Colors.white : Colors.black,
         elevation: 0,
       ),

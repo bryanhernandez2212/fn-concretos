@@ -1,7 +1,8 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
-const _accentYellow = Color(0xFFFFCC00);
+const _accentYellow = AppColors.accent;
 
 /// Pure-design login background: a checkered grid of white lines drifting
 /// diagonally toward the bottom-right corner, plus small white and yellow

@@ -2,15 +2,19 @@ import 'package:flutter/material.dart';
 import '../auth/auth_service.dart';
 import '../operaciones/operaciones_service.dart';
 import '../operaciones/vehiculo.dart';
+import '../theme/app_colors.dart';
 import 'vehicle_pendiente_detail_screen.dart';
 import 'vehicle_pendientes_widgets.dart';
 
-const _accentYellow = Color(0xFFFFCC00);
+const _accentYellow = AppColors.accent;
 
 /// Read-only list of pendientes already reported on this vehicle (`GET
 /// /pendientes-vehiculos?vehiculoId=`) — falla mecánica/llanta/mantenimiento
 /// reports made via `VehiclePendingScreen`, whoever made them. Resolving one
 /// (`PATCH .../resolver`) is a workshop/dirección action, not wired here.
+///
+/// A two-way segmented toggle ("Pendientes" / "Resueltos") switches which
+/// half of the list shows, in place — no separate history screen.
 class VehiclePendientesScreen extends StatefulWidget {
   final VehiculoResumen vehiculo;
 
@@ -23,6 +27,7 @@ class VehiclePendientesScreen extends StatefulWidget {
 class _VehiclePendientesScreenState extends State<VehiclePendientesScreen> {
   late final Future<List<VehiculoPendienteResumen>> _pendientesFuture =
       OperacionesService.pendientesVehiculo(widget.vehiculo.id);
+  bool _mostrarResueltos = false;
 
   @override
   Widget build(BuildContext context) {
@@ -36,8 +41,8 @@ class _VehiclePendientesScreenState extends State<VehiclePendientesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Pendientes Reportados'),
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : _accentYellow,
+        title: const Text('Reportes'),
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         foregroundColor: isDark ? Colors.white : Colors.black,
         elevation: 0,
       ),
@@ -62,33 +67,95 @@ class _VehiclePendientesScreenState extends State<VehiclePendientesScreen> {
           }
 
           final pendientes = snapshot.data!;
-          if (pendientes.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text('No hay pendientes reportados para este vehículo', style: TextStyle(color: mutedColor)),
+          final abiertos = pendientes.where((p) => p.fechaResolucion == null).toList();
+          final resueltos = pendientes.where((p) => p.fechaResolucion != null).toList();
+          final mostrados = _mostrarResueltos ? resueltos : abiertos;
+
+          Widget segmento(String label, int count, bool seleccionado, VoidCallback onTap) {
+            return Expanded(
+              child: GestureDetector(
+                onTap: onTap,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: seleccionado ? _accentYellow : Colors.transparent,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '$label ($count)',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: seleccionado ? Colors.black : textColor,
+                    ),
+                  ),
+                ),
               ),
             );
           }
 
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+          return Column(
             children: [
-              for (final pendiente in pendientes) ...[
-                PendienteCard(
-                  pendiente: pendiente,
-                  cardColor: cardColor,
-                  borderColor: borderColor,
-                  textColor: textColor,
-                  mutedColor: mutedColor,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (context) => VehiclePendienteDetailScreen(pendiente: pendiente)),
-                    );
-                  },
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: borderColor),
+                  ),
+                  child: Row(
+                    children: [
+                      segmento('Pendientes', abiertos.length, !_mostrarResueltos, () {
+                        if (_mostrarResueltos) setState(() => _mostrarResueltos = false);
+                      }),
+                      segmento('Resueltos', resueltos.length, _mostrarResueltos, () {
+                        if (!_mostrarResueltos) setState(() => _mostrarResueltos = true);
+                      }),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 12),
-              ],
+              ),
+              Expanded(
+                child: mostrados.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(
+                            _mostrarResueltos
+                                ? 'Todavía no hay pendientes resueltos'
+                                : 'No hay pendientes abiertos para este vehículo',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: mutedColor),
+                          ),
+                        ),
+                      )
+                    : ListView(
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+                        children: [
+                          for (final pendiente in mostrados) ...[
+                            PendienteCard(
+                              pendiente: pendiente,
+                              cardColor: cardColor,
+                              borderColor: borderColor,
+                              textColor: textColor,
+                              mutedColor: mutedColor,
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) => VehiclePendienteDetailScreen(pendiente: pendiente),
+                                  ),
+                                );
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                        ],
+                      ),
+              ),
             ],
           );
         },

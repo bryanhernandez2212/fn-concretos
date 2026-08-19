@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
-const _accentYellow = Color(0xFFFFCC00);
+const _accentYellow = AppColors.accent;
 
 class PruebaTextField extends StatelessWidget {
   final TextEditingController controller;

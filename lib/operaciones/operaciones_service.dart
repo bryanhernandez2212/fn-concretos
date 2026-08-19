@@ -23,10 +23,17 @@ const permisoReportarPendienteVehiculo = 'vehiculos.reportar_pendiente';
 /// cached anywhere.
 class OperacionesService {
   static const _baseUrl = 'https://fnconcretos.app/sandbox/operaciones';
+  // Requests had no timeout at all, so a flaky connection (common in the
+  // field, e.g. uploading evidencia from a job site) could hang seemingly
+  // forever with just a spinner instead of failing predictably so the
+  // driver could retry.
+  static const _timeout = Duration(seconds: 20);
 
   static Future<List<RemisionResumen>> remisionesPorPedido(int pedidoId) async {
     final data = await _get('/remisiones?pedidoId=$pedidoId');
-    return (data as List<dynamic>).map((e) => RemisionResumen.fromJson(e as Map<String, dynamic>)).toList();
+    return (data as List<dynamic>)
+        .map((e) => RemisionResumen.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   static Future<RutaRemision> rutaRemision(int remisionId) async {
@@ -37,20 +44,35 @@ class OperacionesService {
   /// `fecha` is `yyyy-MM-dd`. Plant-wide — not scoped to any one conductor —
   /// so callers must cross-reference [asignacionesPorPedido] to know which
   /// of these are actually theirs (see `deliveries/entregas_service.dart`).
-  static Future<List<ProgramacionProduccion>> programacionDelDia(String fecha) async {
+  static Future<List<ProgramacionProduccion>> programacionDelDia(
+    String fecha,
+  ) async {
     final data = await _get('/programacion-produccion?fecha=$fecha');
-    return (data as List<dynamic>).map((e) => ProgramacionProduccion.fromJson(e as Map<String, dynamic>)).toList();
+    return (data as List<dynamic>)
+        .map((e) => ProgramacionProduccion.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
-  static Future<List<AsignacionResumen>> asignacionesPorPedido(int pedidoId) async {
+  static Future<List<AsignacionResumen>> asignacionesPorPedido(
+    int pedidoId,
+  ) async {
     final data = await _get('/asignaciones?pedidoId=$pedidoId');
-    return (data as List<dynamic>).map((e) => AsignacionResumen.fromJson(e as Map<String, dynamic>)).toList();
+    return (data as List<dynamic>)
+        .map((e) => AsignacionResumen.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   /// Reports the olla/bomba's current position while en route. Requires
   /// [permisoOperarRemisiones].
-  static Future<void> enviarPosicion(int remisionId, {required double latitud, required double longitud}) {
-    return _post('/remisiones/$remisionId/gps', {'latitud': latitud, 'longitud': longitud});
+  static Future<void> enviarPosicion(
+    int remisionId, {
+    required double latitud,
+    required double longitud,
+  }) {
+    return _post('/remisiones/$remisionId/gps', {
+      'latitud': latitud,
+      'longitud': longitud,
+    });
   }
 
   /// Full remisión detail — `estatus` plus the `hora*` hito timestamps
@@ -67,8 +89,13 @@ class OperacionesService {
   /// the updated remisión from the response — the source of truth (new
   /// `estatus` and whichever `hora*` timestamp the backend just stamped),
   /// not an optimistic local guess.
-  static Future<RemisionResumen> avanzarHito(int remisionId, String evento) async {
-    final data = await _patch('/remisiones/$remisionId/hitos', {'evento': evento});
+  static Future<RemisionResumen> avanzarHito(
+    int remisionId,
+    String evento,
+  ) async {
+    final data = await _patch('/remisiones/$remisionId/hitos', {
+      'evento': evento,
+    });
     return RemisionResumen.fromJson(data as Map<String, dynamic>);
   }
 
@@ -90,8 +117,10 @@ class OperacionesService {
   }) {
     final ahora = DateTime.now();
     String two(int n) => n.toString().padLeft(2, '0');
-    final fechaPrueba = '${ahora.year.toString().padLeft(4, '0')}-${two(ahora.month)}-${two(ahora.day)}';
-    final horaPrueba = '${two(ahora.hour)}:${two(ahora.minute)}:${two(ahora.second)}';
+    final fechaPrueba =
+        '${ahora.year.toString().padLeft(4, '0')}-${two(ahora.month)}-${two(ahora.day)}';
+    final horaPrueba =
+        '${two(ahora.hour)}:${two(ahora.minute)}:${two(ahora.second)}';
 
     return _post('/pruebas-concreto-fresco', {
       'remisionId': remisionId,
@@ -102,7 +131,8 @@ class OperacionesService {
       'masaUnitaria': masaUnitaria,
       'temperatura': temperatura,
       'rendimiento': rendimiento,
-      if (observaciones != null && observaciones.isNotEmpty) 'observaciones': observaciones,
+      if (observaciones != null && observaciones.isNotEmpty)
+        'observaciones': observaciones,
       'fechaPrueba': fechaPrueba,
       'horaPrueba': horaPrueba,
     });
@@ -130,14 +160,20 @@ class OperacionesService {
   /// [presignedUploadUrl] — this goes straight to storage, not through
   /// operaciones-service, so it deliberately skips [AuthService.authHeaders]
   /// and sends only the `Content-Type` the presigned URL was issued for.
-  static Future<void> subirArchivoPresignado(String uploadUrl, List<int> bytes, String contentType) async {
+  static Future<void> subirArchivoPresignado(
+    String uploadUrl,
+    List<int> bytes,
+    String contentType,
+  ) async {
     final http.Response response;
     try {
-      response = await http.put(
-        Uri.parse(uploadUrl),
-        headers: {'Content-Type': contentType},
-        body: bytes,
-      );
+      response = await http
+          .put(
+            Uri.parse(uploadUrl),
+            headers: {'Content-Type': contentType},
+            body: bytes,
+          )
+          .timeout(_timeout);
     } catch (_) {
       throw AuthException('No se pudo conectar con el servidor');
     }
@@ -165,7 +201,8 @@ class OperacionesService {
       if (operadorId != null) 'operadorId': operadorId,
       'firmaDigitalUrl': firmaDigitalUrl,
       if (evidenciaUrl != null) 'evidenciaUrl': evidenciaUrl,
-      if (comentarios != null && comentarios.isNotEmpty) 'comentarios': comentarios,
+      if (comentarios != null && comentarios.isNotEmpty)
+        'comentarios': comentarios,
     });
     return FirmaResponse.fromJson(data as Map<String, dynamic>);
   }
@@ -176,7 +213,9 @@ class OperacionesService {
   /// has no boolean flag for it.
   static Future<List<FirmaResponse>> firmasPorRemision(int remisionId) async {
     final data = await _get('/remisiones/$remisionId/firma');
-    return (data as List<dynamic>).map((e) => FirmaResponse.fromJson(e as Map<String, dynamic>)).toList();
+    return (data as List<dynamic>)
+        .map((e) => FirmaResponse.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   /// Attaches a file/evidencia to a remisión (photo, PDF, etc). `archivoUrl`
@@ -197,9 +236,13 @@ class OperacionesService {
 
   /// Lists the archivos/evidencias already attached to a remisión (`GET
   /// /remisiones/{id}/archivos`).
-  static Future<List<ArchivoResponse>> archivosPorRemision(int remisionId) async {
+  static Future<List<ArchivoResponse>> archivosPorRemision(
+    int remisionId,
+  ) async {
     final data = await _get('/remisiones/$remisionId/archivos');
-    return (data as List<dynamic>).map((e) => ArchivoResponse.fromJson(e as Map<String, dynamic>)).toList();
+    return (data as List<dynamic>)
+        .map((e) => ArchivoResponse.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   /// Fleet-wide — no query param filters by conductor, so callers cross-
@@ -207,22 +250,43 @@ class OperacionesService {
   /// `vehicle/vehiculo_service.dart`'s `miVehiculo`).
   static Future<List<VehiculoResumen>> vehiculos() async {
     final data = await _get('/vehiculos');
-    return (data as List<dynamic>).map((e) => VehiculoResumen.fromJson(e as Map<String, dynamic>)).toList();
+    return (data as List<dynamic>)
+        .map((e) => VehiculoResumen.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
-  static Future<List<VehiculoMantenimientoResumen>> mantenimientosVehiculo(int vehiculoId) async {
+  static Future<List<VehiculoMantenimientoResumen>> mantenimientosVehiculo(
+    int vehiculoId,
+  ) async {
     final data = await _get('/vehiculos/$vehiculoId/mantenimientos');
-    return (data as List<dynamic>).map((e) => VehiculoMantenimientoResumen.fromJson(e as Map<String, dynamic>)).toList();
+    return (data as List<dynamic>)
+        .map(
+          (e) =>
+              VehiculoMantenimientoResumen.fromJson(e as Map<String, dynamic>),
+        )
+        .toList();
   }
 
-  static Future<List<VehiculoPendienteResumen>> pendientesVehiculo(int vehiculoId) async {
+  static Future<List<VehiculoPendienteResumen>> pendientesVehiculo(
+    int vehiculoId,
+  ) async {
     final data = await _get('/pendientes-vehiculos?vehiculoId=$vehiculoId');
-    return (data as List<dynamic>).map((e) => VehiculoPendienteResumen.fromJson(e as Map<String, dynamic>)).toList();
+    return (data as List<dynamic>)
+        .map(
+          (e) => VehiculoPendienteResumen.fromJson(e as Map<String, dynamic>),
+        )
+        .toList();
   }
 
-  static Future<List<VehiculoDocumentoResumen>> documentosVehiculo(int vehiculoId) async {
+  static Future<List<VehiculoDocumentoResumen>> documentosVehiculo(
+    int vehiculoId,
+  ) async {
     final data = await _get('/vehiculos/$vehiculoId/documentos');
-    return (data as List<dynamic>).map((e) => VehiculoDocumentoResumen.fromJson(e as Map<String, dynamic>)).toList();
+    return (data as List<dynamic>)
+        .map(
+          (e) => VehiculoDocumentoResumen.fromJson(e as Map<String, dynamic>),
+        )
+        .toList();
   }
 
   /// Reports a pendiente (falla mecánica/llanta/mantenimiento/otro) on a
@@ -244,7 +308,8 @@ class OperacionesService {
 
     return _post('/vehiculos/$vehiculoId/pendientes', {
       'tipoPendiente': tipoPendiente,
-      if (descripcion != null && descripcion.isNotEmpty) 'descripcion': descripcion,
+      if (descripcion != null && descripcion.isNotEmpty)
+        'descripcion': descripcion,
       if (evidenciaApertura != null) 'evidenciaApertura': evidenciaApertura,
       'fechaDeteccion': fechaDeteccion,
     });
@@ -254,7 +319,9 @@ class OperacionesService {
     final headers = await AuthService.authHeaders();
     final http.Response response;
     try {
-      response = await http.get(Uri.parse('$_baseUrl$path'), headers: headers);
+      response = await http
+          .get(Uri.parse('$_baseUrl$path'), headers: headers)
+          .timeout(_timeout);
     } catch (_) {
       throw AuthException('No se pudo conectar con el servidor');
     }
@@ -265,11 +332,13 @@ class OperacionesService {
     final headers = await AuthService.authHeaders();
     final http.Response response;
     try {
-      response = await http.post(
-        Uri.parse('$_baseUrl$path'),
-        headers: {...headers, 'Content-Type': 'application/json'},
-        body: jsonEncode(body),
-      );
+      response = await http
+          .post(
+            Uri.parse('$_baseUrl$path'),
+            headers: {...headers, 'Content-Type': 'application/json'},
+            body: jsonEncode(body),
+          )
+          .timeout(_timeout);
     } catch (_) {
       throw AuthException('No se pudo conectar con el servidor');
     }
@@ -280,11 +349,13 @@ class OperacionesService {
     final headers = await AuthService.authHeaders();
     final http.Response response;
     try {
-      response = await http.patch(
-        Uri.parse('$_baseUrl$path'),
-        headers: {...headers, 'Content-Type': 'application/json'},
-        body: jsonEncode(body),
-      );
+      response = await http
+          .patch(
+            Uri.parse('$_baseUrl$path'),
+            headers: {...headers, 'Content-Type': 'application/json'},
+            body: jsonEncode(body),
+          )
+          .timeout(_timeout);
     } catch (_) {
       throw AuthException('No se pudo conectar con el servidor');
     }
@@ -301,7 +372,9 @@ class OperacionesService {
       }
     }
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      final message = data is Map<String, dynamic> ? data['message'] as String? : null;
+      final message = data is Map<String, dynamic>
+          ? data['message'] as String?
+          : null;
       throw AuthException(message ?? 'Ocurrió un error inesperado');
     }
     return data;

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 class AuthException implements Exception {
@@ -34,6 +35,8 @@ class MfaEnrollment {
 /// introducing one.
 class AuthService {
   static const _baseUrl = 'https://fnconcretos.app/sandbox/auth';
+  static const _storage = FlutterSecureStorage();
+  static const _refreshTokenKey = 'fn_concretos_refresh_token';
 
   static String? accessToken;
   static String? refreshToken;
@@ -58,6 +61,13 @@ class AuthService {
   /// services share the same employee id space.
   static int? idEmpleado;
 
+  /// Whether the current session's refresh token should be persisted to
+  /// secure storage (i.e. whether the "Recordar sesión" checkbox was on at
+  /// login) — set on [login]/[verifyMfa]/[restoreSession] and consulted by
+  /// every subsequent [_setTokens] call, including background renewals from
+  /// [_ensureFreshToken], so the choice sticks for the whole session.
+  static bool _rememberSession = false;
+
   static bool get isLoggedIn => accessToken != null;
 
   /// Bearer header for calling other microservices (e.g. `comercial`) that
@@ -70,8 +80,11 @@ class AuthService {
 
   /// Logs in and, on success, populates [username]/[rol]/[permisos] from
   /// `/auth/me`. Throws [MfaRequiredException] if the account needs a TOTP
-  /// code — call [verifyMfa] with it to finish.
-  static Future<void> login(String user, String password) async {
+  /// code — call [verifyMfa] with it to finish. [rememberSession] controls
+  /// whether the refresh token gets persisted so [restoreSession] can pick
+  /// it up on a future launch.
+  static Future<void> login(String user, String password, {bool rememberSession = false}) async {
+    _rememberSession = rememberSession;
     final data = await _post('/auth/login', {'user': user, 'password': password});
 
     if (data['mfaRequired'] == true) {
@@ -82,18 +95,41 @@ class AuthService {
       throw MfaRequiredException(challengeToken);
     }
 
-    _setTokens(data);
+    await _setTokens(data);
     await _fetchMe();
   }
 
   /// Completes a login that was paused by [MfaRequiredException].
-  static Future<void> verifyMfa(String challengeToken, String code) async {
+  static Future<void> verifyMfa(String challengeToken, String code, {bool rememberSession = false}) async {
+    _rememberSession = rememberSession;
     final data = await _post('/auth/mfa/verify', {
       'challengeToken': challengeToken,
       'code': code,
     });
-    _setTokens(data);
+    await _setTokens(data);
     await _fetchMe();
+  }
+
+  /// Tries to resume a previous session from the refresh token persisted in
+  /// secure storage (Keychain/Keystore), so the app doesn't force a
+  /// re-login every time it's reopened. Returns false — leaving the session
+  /// clean — if there's no stored token or the backend no longer accepts it
+  /// (expired/revoked).
+  static Future<bool> restoreSession() async {
+    final storedRefreshToken = await _storage.read(key: _refreshTokenKey);
+    if (storedRefreshToken == null) return false;
+
+    try {
+      _rememberSession = true;
+      final data = await _post('/auth/refresh', {'refreshToken': storedRefreshToken});
+      await _setTokens(data);
+      await _fetchMe();
+      return true;
+    } catch (_) {
+      _clearSession();
+      await _storage.delete(key: _refreshTokenKey);
+      return false;
+    }
   }
 
   /// Generates a TOTP secret for the current session; the user scans
@@ -138,6 +174,11 @@ class AuthService {
     final token = accessToken;
     final refresh = refreshToken;
     _clearSession();
+    try {
+      await _storage.delete(key: _refreshTokenKey);
+    } catch (_) {
+      // Best-effort: the in-memory session is already cleared above.
+    }
 
     if (token == null || refresh == null) return;
     try {
@@ -164,9 +205,10 @@ class AuthService {
     permisos = const [];
     idEmpleado = null;
     mfaHabilitado = false;
+    _rememberSession = false;
   }
 
-  static void _setTokens(Map<String, dynamic> data) {
+  static Future<void> _setTokens(Map<String, dynamic> data) async {
     accessToken = data['accessToken'] as String?;
     refreshToken = data['refreshToken'] as String?;
     if (accessToken == null) {
@@ -174,6 +216,20 @@ class AuthService {
     }
     final expiresIn = data['expiresIn'] as int?;
     _accessTokenExpiresAt = expiresIn == null ? null : DateTime.now().add(Duration(seconds: expiresIn));
+
+    // The refresh token rotates on every use (including background renewals
+    // from _ensureFreshToken), so re-persist it here rather than only at
+    // login — but only if the user opted into "Recordar sesión"; otherwise
+    // make sure nothing lingers from a previous remembered session.
+    // Best-effort: a secure-storage hiccup shouldn't break the actual auth
+    // flow, just mean the session isn't remembered next launch.
+    try {
+      if (refreshToken == null || !_rememberSession) {
+        await _storage.delete(key: _refreshTokenKey);
+      } else {
+        await _storage.write(key: _refreshTokenKey, value: refreshToken!);
+      }
+    } catch (_) {}
   }
 
   /// Renews the access token (rotating the refresh token) if it's expired
@@ -187,7 +243,7 @@ class AuthService {
       return;
     }
     final data = await _post('/auth/refresh', {'refreshToken': refreshToken});
-    _setTokens(data);
+    await _setTokens(data);
   }
 
   /// `/auth/me` is the documented source of truth for who's logged in —

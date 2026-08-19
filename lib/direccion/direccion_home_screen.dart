@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import '../auth/auth_service.dart';
 import '../profile/mfa_screen.dart';
 import '../profile/profile_screen.dart';
+import '../theme/app_colors.dart';
 import '../widgets/bottom_nav_bar.dart';
 import 'autorizaciones_screen.dart';
 
-const _accentYellow = Color(0xFFFFCC00);
+const _accentYellow = AppColors.accent;
 
 /// App shell for the Dirección role: just Autorizaciones + Perfil for now —
 /// vistas.md only scopes Dirección's mobile screens to pedido credit
@@ -19,11 +20,9 @@ class DireccionHomeScreen extends StatefulWidget {
 
 class _DireccionHomeScreenState extends State<DireccionHomeScreen> {
   int _currentIndex = 0;
+  bool _navCompact = false;
 
-  final List<Widget> _pages = const [
-    AutorizacionesScreen(),
-    ProfileScreen(),
-  ];
+  final List<Widget> _pages = const [AutorizacionesScreen(), ProfileScreen()];
 
   @override
   void initState() {
@@ -39,23 +38,56 @@ class _DireccionHomeScreenState extends State<DireccionHomeScreen> {
 
   Future<void> _mostrarAvisoMfa() async {
     if (!mounted) return;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final mutedColor = (isDark ? Colors.white : Colors.black).withValues(alpha: 0.65);
+
     final configurarAhora = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        icon: const Icon(Icons.shield_outlined, color: _accentYellow, size: 32),
-        title: const Text('Verificación en dos pasos requerida'),
-        content: const Text(
-          'Tu rol requiere activar la verificación en dos pasos (MFA) para proteger la autorización de pedidos a crédito.',
+        backgroundColor: backgroundColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        icon: Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(shape: BoxShape.circle, color: _accentYellow.withValues(alpha: 0.15)),
+          child: const Icon(Icons.shield_outlined, color: _accentYellow, size: 28),
         ),
+        title: Text(
+          'Verificación en dos pasos requerida',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: textColor, fontWeight: FontWeight.w700, fontSize: 17),
+        ),
+        content: Text(
+          'Tu rol requiere activar la verificación en dos pasos (MFA) para proteger la autorización de pedidos a crédito.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: mutedColor, fontSize: 13.5),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Más tarde')),
-          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Configurar ahora')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('Más tarde', style: TextStyle(color: mutedColor, fontWeight: FontWeight.w600)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _accentYellow,
+              foregroundColor: Colors.black,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Configurar ahora', style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
         ],
       ),
     );
     if (configurarAhora == true && mounted) {
-      await Navigator.of(context).push(MaterialPageRoute(builder: (context) => const MfaScreen()));
+      await Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (context) => const MfaScreen()));
     }
   }
 
@@ -65,29 +97,43 @@ class _DireccionHomeScreenState extends State<DireccionHomeScreen> {
       extendBody: true,
       body: SafeArea(
         bottom: false,
-        child: Stack(
-          fit: StackFit.expand,
-          children: List.generate(_pages.length, (index) {
-            final isActive = index == _currentIndex;
-            return IgnorePointer(
-              ignoring: !isActive,
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 260),
-                curve: Curves.easeOut,
-                opacity: isActive ? 1.0 : 0.0,
-                child: AnimatedScale(
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            if (notification is ScrollUpdateNotification) {
+              final delta = notification.scrollDelta ?? 0;
+              if (delta < 0 && !_navCompact) {
+                setState(() => _navCompact = true);
+              } else if (delta > 0 && _navCompact) {
+                setState(() => _navCompact = false);
+              }
+            }
+            return false;
+          },
+          child: Stack(
+            fit: StackFit.expand,
+            children: List.generate(_pages.length, (index) {
+              final isActive = index == _currentIndex;
+              return IgnorePointer(
+                ignoring: !isActive,
+                child: AnimatedOpacity(
                   duration: const Duration(milliseconds: 260),
                   curve: Curves.easeOut,
-                  scale: isActive ? 1.0 : 0.96,
-                  child: _pages[index],
+                  opacity: isActive ? 1.0 : 0.0,
+                  child: AnimatedScale(
+                    duration: const Duration(milliseconds: 260),
+                    curve: Curves.easeOut,
+                    scale: isActive ? 1.0 : 0.96,
+                    child: _pages[index],
+                  ),
                 ),
-              ),
-            );
-          }),
+              );
+            }),
+          ),
         ),
       ),
       bottomNavigationBar: BottomNavBar(
         currentIndex: _currentIndex,
+        compact: _navCompact,
         onTap: (int index) => setState(() => _currentIndex = index),
         items: const [
           NavItem(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../operaciones/vehiculo.dart';
+import '../theme/app_colors.dart';
 import '../widgets/evidencia_viewer_screen.dart';
 import 'vehicle.dart';
 
@@ -23,7 +24,7 @@ class VehiclePendienteDetailScreen extends StatelessWidget {
     final borderColor = isDark ? Colors.white.withValues(alpha: 0.10) : Colors.black.withValues(alpha: 0.12);
 
     final resuelto = pendiente.fechaResolucion != null;
-    final color = resuelto ? const Color(0xFF4CAF50) : const Color(0xFFFFA000);
+    final color = resuelto ? AppColors.success : AppColors.warning;
     final tipo = TipoPendiente.values.where((t) => t.backendValue == pendiente.tipoPendiente);
     final tipoLabel = tipo.isEmpty ? pendiente.tipoPendiente : tipo.first.label;
     final tipoIcon = tipo.isEmpty ? Icons.report_problem_outlined : tipo.first.icon;
@@ -31,7 +32,7 @@ class VehiclePendienteDetailScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(tipoLabel),
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFFFCC00),
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         foregroundColor: isDark ? Colors.white : Colors.black,
         elevation: 0,
       ),

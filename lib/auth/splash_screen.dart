@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'auth_service.dart';
 import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -11,18 +12,23 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen> {
   late final VideoPlayerController _controller;
+  late final Future<bool> _restoreSessionFuture;
   bool _navigated = false;
 
   @override
   void initState() {
     super.initState();
+    // Kicked off in parallel with the video so the network round trip isn't
+    // extra wait time on top of playback — by the time the video finishes
+    // (or fails to load) this is almost always already settled.
+    _restoreSessionFuture = AuthService.restoreSession();
     _controller = VideoPlayerController.asset('assets/video/splash.mp4')
       ..initialize().then((_) {
         if (!mounted) return;
         setState(() {});
         _controller.play();
       }).catchError((_) {
-        _navigateToLogin();
+        _navigateNext();
       });
     _controller.addListener(_onVideoTick);
   }
@@ -32,16 +38,19 @@ class _SplashScreenState extends State<SplashScreen> {
     if (value.isInitialized &&
         !value.isPlaying &&
         value.position >= value.duration) {
-      _navigateToLogin();
+      _navigateNext();
     }
   }
 
-  void _navigateToLogin() {
+  Future<void> _navigateNext() async {
     if (_navigated || !mounted) return;
     _navigated = true;
+    final restored = await _restoreSessionFuture;
+    if (!mounted) return;
+    final destination = restored ? destinationForSession() : const LoginScreen();
     Navigator.of(
       context,
-    ).pushReplacement(MaterialPageRoute(builder: (context) => const LoginScreen()));
+    ).pushReplacement(MaterialPageRoute(builder: (context) => destination));
   }
 
   @override

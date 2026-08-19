@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../auth/auth_service.dart';
+import '../operaciones/evidencia.dart';
 import '../operaciones/operaciones_service.dart';
+import '../theme/app_colors.dart';
+import '../widgets/app_feedback.dart';
+import 'delivery_detail_widgets.dart';
 import 'delivery_photo_widgets.dart';
 
-const _accentYellow = Color(0xFFFFCC00);
+const _accentYellow = AppColors.accent;
 
 /// Photo/evidence capture for a delivery, backed by `RemisionArchivo`.
 /// "Tomar foto" / "Elegir de galería" are real — tapping either triggers
@@ -14,11 +18,23 @@ const _accentYellow = Color(0xFFFFCC00);
 /// trip as `SignatureScreen` (`POST /evidencias/presigned-url` + direct
 /// `PUT` to storage), then `POST /remisiones/{id}/archivos` with the
 /// resulting `publicUrl`. Requires [permisoOperarRemisiones].
+///
+/// [archivosExistentes] are shown read-only at the top (tappable, full
+/// screen view) — the row that opens this screen from
+/// `DeliveryDetailScreen` no longer shows an inline thumbnail preview of
+/// its own, so this is the only place they're visible, same idea as
+/// tapping "Firma digital de entrega" to view an existing firma.
 class DeliveryPhotoScreen extends StatefulWidget {
   final int remisionId;
   final String remisionFolio;
+  final List<ArchivoResponse> archivosExistentes;
 
-  const DeliveryPhotoScreen({super.key, required this.remisionId, required this.remisionFolio});
+  const DeliveryPhotoScreen({
+    super.key,
+    required this.remisionId,
+    required this.remisionFolio,
+    this.archivosExistentes = const [],
+  });
 
   @override
   State<DeliveryPhotoScreen> createState() => _DeliveryPhotoScreenState();
@@ -42,9 +58,7 @@ class _DeliveryPhotoScreenState extends State<DeliveryPhotoScreen> {
       if (photo != null) setState(() => _photos.add(photo));
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo acceder a la cámara/galería')),
-      );
+      AppSnack.error(context, 'No se pudo acceder a la cámara/galería');
     }
   }
 
@@ -61,15 +75,20 @@ class _DeliveryPhotoScreenState extends State<DeliveryPhotoScreen> {
 
   Future<void> _save() async {
     if (_photos.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Agrega al menos una foto')),
-      );
+      AppSnack.error(context, 'Agrega al menos una foto');
       return;
     }
 
     setState(() => _guardando = true);
-    try {
-      for (final photo in _photos) {
+    // Snapshot the pending photos and only remove each one from _photos
+    // once it's actually saved — if a later photo in the batch fails (e.g.
+    // a flaky connection in the field), the ones already uploaded/attached
+    // stay removed, so retrying "Guardar evidencia" doesn't re-upload (and
+    // duplicate) them, only the ones still pending.
+    final pendientes = List<XFile>.from(_photos);
+    String? errorMessage;
+    for (final photo in pendientes) {
+      try {
         final bytes = await photo.readAsBytes();
         final contentType = _contentTypeOf(photo);
         final extension = contentType.split('/').last;
@@ -85,20 +104,21 @@ class _DeliveryPhotoScreenState extends State<DeliveryPhotoScreen> {
           tipoArchivo: 'foto_evidencia',
           archivoUrl: presigned.publicUrl,
         );
+        if (mounted) setState(() => _photos.remove(photo));
+      } on AuthException catch (e) {
+        errorMessage = e.message;
+        break;
       }
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Evidencia guardada')),
-      );
-      Navigator.of(context).pop(true);
-    } on AuthException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
-      }
-    } finally {
-      if (mounted) setState(() => _guardando = false);
     }
+
+    if (!mounted) return;
+    setState(() => _guardando = false);
+    if (errorMessage != null) {
+      AppSnack.error(context, errorMessage);
+      return;
+    }
+    AppSnack.success(context, 'Evidencia guardada');
+    Navigator.of(context).pop(true);
   }
 
   @override
@@ -112,13 +132,22 @@ class _DeliveryPhotoScreenState extends State<DeliveryPhotoScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Evidencia · ${widget.remisionFolio}'),
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : _accentYellow,
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         foregroundColor: isDark ? Colors.white : Colors.black,
         elevation: 0,
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
         children: [
+          if (widget.archivosExistentes.isNotEmpty) ...[
+            Text(
+              'Ya guardadas',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: mutedColor, letterSpacing: 0.3),
+            ),
+            const SizedBox(height: 10),
+            EvidenciaThumbnailStrip(archivos: widget.archivosExistentes, borderColor: borderColor),
+            const SizedBox(height: 8),
+          ],
           Text(
             'Adjunta fotos de la descarga como evidencia de entrega',
             style: TextStyle(fontSize: 13.5, color: mutedColor),

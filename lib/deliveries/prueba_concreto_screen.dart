@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import '../auth/auth_service.dart';
 import '../operaciones/operaciones_service.dart';
+import '../theme/app_colors.dart';
+import '../widgets/app_feedback.dart';
 import '../widgets/field_group.dart';
 import 'prueba_concreto_widgets.dart';
 import 'remision.dart';
 
-const _accentYellow = Color(0xFFFFCC00);
+const _accentYellow = AppColors.accent;
 
 /// Registers a "prueba de concreto fresco" (revenimiento/masa unitaria/
 /// temperatura/rendimiento field test) via the real `POST
@@ -47,9 +49,7 @@ class _PruebaConcretoScreenState extends State<PruebaConcretoScreen> {
     final rendimiento = double.tryParse(_rendimientoController.text.trim());
 
     if (revenimiento.isEmpty || masaUnitaria == null || temperatura == null || rendimiento == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Captura revenimiento, masa unitaria, temperatura y rendimiento')),
-      );
+      AppSnack.error(context, 'Captura revenimiento, masa unitaria, temperatura y rendimiento');
       return;
     }
 
@@ -70,20 +70,12 @@ class _PruebaConcretoScreenState extends State<PruebaConcretoScreen> {
         observaciones: _observacionesController.text.trim(),
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Prueba de concreto fresco registrada')),
-      );
+      AppSnack.success(context, 'Prueba de concreto fresco registrada');
       Navigator.of(context).pop();
     } on AuthException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
-      }
+      if (mounted) AppSnack.error(context, e.message);
     } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo registrar la prueba')),
-        );
-      }
+      if (mounted) AppSnack.error(context, 'No se pudo registrar la prueba');
     } finally {
       if (mounted) setState(() => _enviando = false);
     }
@@ -102,7 +94,7 @@ class _PruebaConcretoScreenState extends State<PruebaConcretoScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Prueba de concreto · ${widget.remision.folio}'),
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : _accentYellow,
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         foregroundColor: isDark ? Colors.white : Colors.black,
         elevation: 0,
       ),

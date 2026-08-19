@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../operaciones/vehiculo.dart';
+import '../theme/app_colors.dart';
 import 'vehicle.dart';
 
 class PendienteCard extends StatelessWidget {
@@ -26,7 +27,7 @@ class PendienteCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final resuelto = pendiente.fechaResolucion != null;
-    final color = resuelto ? const Color(0xFF4CAF50) : const Color(0xFFFFA000);
+    final color = resuelto ? AppColors.success : AppColors.warning;
     final tipo = TipoPendiente.values.where((t) => t.backendValue == pendiente.tipoPendiente);
     final tipoLabel = tipo.isEmpty ? pendiente.tipoPendiente : tipo.first.label;
     final tipoIcon = tipo.isEmpty ? Icons.report_problem_outlined : tipo.first.icon;

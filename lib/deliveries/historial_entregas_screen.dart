@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../auth/auth_service.dart';
+import '../theme/app_colors.dart';
 import 'deliveries_widgets.dart' show RemisionCard;
 import 'entregas_service.dart';
 import 'delivery_detail_screen.dart';
 import 'remision.dart';
 
-const _accentYellow = Color(0xFFFFCC00);
+const _accentYellow = AppColors.accent;
 
 /// "Historial de entregas" — same list/card as `DeliveriesScreen`, but for a
 /// past date the conductor picks instead of always today. Reuses
@@ -20,29 +22,49 @@ class HistorialEntregasScreen extends StatefulWidget {
 }
 
 class _HistorialEntregasScreenState extends State<HistorialEntregasScreen> {
+  late final DateTime _hoy;
+  late final DateTime _primeraFecha;
   late DateTime _fecha;
   late Future<List<Remision>> _future;
 
   @override
   void initState() {
     super.initState();
-    _fecha = DateTime.now().subtract(const Duration(days: 1));
+    _hoy = DateTime.now();
+    _primeraFecha = _hoy.subtract(const Duration(days: 90));
+    _fecha = _diaAnterior(_hoy);
     _future = EntregasService.entregasDelDia(fecha: _fecha);
   }
 
+  static DateTime _soloFecha(DateTime d) => DateTime(d.year, d.month, d.day);
+  static DateTime _diaAnterior(DateTime d) => _soloFecha(d.subtract(const Duration(days: 1)));
+
+  void _seleccionar(DateTime fecha) {
+    setState(() {
+      _fecha = fecha;
+      _future = EntregasService.entregasDelDia(fecha: fecha);
+    });
+  }
+
   Future<void> _pickDate() async {
-    final today = DateTime.now();
     final picked = await showDatePicker(
       context: context,
       initialDate: _fecha,
-      firstDate: today.subtract(const Duration(days: 90)),
-      lastDate: today,
+      firstDate: _primeraFecha,
+      lastDate: _hoy,
+      locale: const Locale('es'),
+      builder: (context, child) {
+        final base = Theme.of(context);
+        return Theme(
+          data: base.copyWith(
+            colorScheme: base.colorScheme.copyWith(primary: _accentYellow, onPrimary: Colors.black),
+          ),
+          child: child!,
+        );
+      },
     );
     if (picked == null) return;
-    setState(() {
-      _fecha = picked;
-      _future = EntregasService.entregasDelDia(fecha: picked);
-    });
+    _seleccionar(picked);
   }
 
   @override
@@ -54,44 +76,67 @@ class _HistorialEntregasScreenState extends State<HistorialEntregasScreen> {
     final borderColor = isDark
         ? Colors.white.withValues(alpha: 0.08)
         : Colors.black.withValues(alpha: 0.08);
-    final fechaLabel =
-        '${_fecha.day.toString().padLeft(2, '0')}/${_fecha.month.toString().padLeft(2, '0')}/${_fecha.year}';
+
+    final fechaLabel = _capitalizada(DateFormat("EEEE d 'de' MMMM 'de' y", 'es').format(_fecha));
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Historial de entregas'),
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : _accentYellow,
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         foregroundColor: isDark ? Colors.white : Colors.black,
         elevation: 0,
       ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(14),
-              onTap: _pickDate,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                decoration: BoxDecoration(
-                  color: cardColor,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: borderColor),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.calendar_today_outlined, size: 18, color: _accentYellow),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        fechaLabel,
-                        style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: textColor),
-                      ),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: _pickDate,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: borderColor),
                     ),
-                    Icon(Icons.expand_more, color: mutedColor),
-                  ],
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _accentYellow.withValues(alpha: 0.18),
+                          ),
+                          child: const Icon(Icons.calendar_month_outlined, size: 20, color: _accentYellow),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                fechaLabel,
+                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: textColor),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Toca para elegir otra fecha',
+                                style: TextStyle(fontSize: 12.5, color: mutedColor),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.expand_more, color: mutedColor),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
           Expanded(
@@ -105,12 +150,19 @@ class _HistorialEntregasScreenState extends State<HistorialEntregasScreen> {
                   return Center(
                     child: Padding(
                       padding: const EdgeInsets.all(24),
-                      child: Text(
-                        snapshot.error is AuthException
-                            ? (snapshot.error as AuthException).message
-                            : 'No se pudo cargar el historial',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: mutedColor),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.error_outline, size: 40, color: mutedColor),
+                          const SizedBox(height: 12),
+                          Text(
+                            snapshot.error is AuthException
+                                ? (snapshot.error as AuthException).message
+                                : 'No se pudo cargar el historial',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: mutedColor),
+                          ),
+                        ],
                       ),
                     ),
                   );
@@ -121,10 +173,17 @@ class _HistorialEntregasScreenState extends State<HistorialEntregasScreen> {
                   return Center(
                     child: Padding(
                       padding: const EdgeInsets.all(24),
-                      child: Text(
-                        'No tuviste entregas asignadas ese día',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: mutedColor),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.event_busy_outlined, size: 40, color: mutedColor),
+                          const SizedBox(height: 12),
+                          Text(
+                            'No tuviste entregas asignadas ese día',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: mutedColor),
+                          ),
+                        ],
                       ),
                     ),
                   );
@@ -158,3 +217,5 @@ class _HistorialEntregasScreenState extends State<HistorialEntregasScreen> {
     );
   }
 }
+
+String _capitalizada(String texto) => texto.isEmpty ? texto : '${texto[0].toUpperCase()}${texto.substring(1)}';

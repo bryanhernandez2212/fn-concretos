@@ -4,11 +4,12 @@ import 'package:google_navigation_flutter/google_navigation_flutter.dart';
 import '../auth/auth_service.dart';
 import '../operaciones/operaciones_service.dart';
 import '../operaciones/remision_tracking.dart';
+import '../theme/app_colors.dart';
 import 'pedido.dart';
 
-const _accentYellow = Color(0xFFFFCC00);
-const _green = Color(0xFF4CAF50);
-const _red = Color(0xFFEF5350);
+const _accentYellow = AppColors.accent;
+const _green = AppColors.success;
+const _red = AppColors.error;
 
 class SummaryCard extends StatelessWidget {
   final Pedido pedido;
@@ -30,24 +31,60 @@ class SummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: cardColor, borderRadius: BorderRadius.circular(20), border: Border.all(color: borderColor)),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(pedido.obraNombre, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: textColor)),
+          Text(
+            pedido.obraNombre,
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: textColor,
+            ),
+          ),
           const SizedBox(height: 2),
-          Text(pedido.clienteNombre, style: TextStyle(fontSize: 13.5, color: mutedColor)),
+          Text(
+            pedido.clienteNombre,
+            style: TextStyle(fontSize: 13.5, color: mutedColor),
+          ),
           const SizedBox(height: 14),
-          Line(icon: Icons.water_drop_outlined, text: '${pedido.volumenSolicitadoM3} m³ · ${pedido.tipoServicio}', textColor: textColor, mutedColor: mutedColor),
+          Line(
+            icon: Icons.water_drop_outlined,
+            text: '${pedido.volumenSolicitadoM3} m³ · ${pedido.tipoServicio}',
+            textColor: textColor,
+            mutedColor: mutedColor,
+          ),
           const SizedBox(height: 8),
-          Line(icon: Icons.payments_outlined, text: 'Condición: ${pedido.condicionPago}${pedido.diasCredito != null ? ' · ${pedido.diasCredito} días' : ''}', textColor: textColor, mutedColor: mutedColor),
+          Line(
+            icon: Icons.payments_outlined,
+            text:
+                'Condición: ${pedido.condicionPago}${pedido.diasCredito != null ? ' · ${pedido.diasCredito} días' : ''}',
+            textColor: textColor,
+            mutedColor: mutedColor,
+          ),
           if (pedido.fechaProgramada != null) ...[
             const SizedBox(height: 8),
-            Line(icon: Icons.event_outlined, text: 'Programada: ${pedido.fechaProgramada}', textColor: textColor, mutedColor: mutedColor),
+            Line(
+              icon: Icons.event_outlined,
+              text: 'Programada: ${pedido.fechaProgramada}',
+              textColor: textColor,
+              mutedColor: mutedColor,
+            ),
           ],
-          if (pedido.estatusGeneral == 'parcial' || pedido.estatusGeneral == 'completo' || pedido.volumenEntregadoM3 > 0) ...[
+          if (pedido.estatusGeneral == 'parcial' ||
+              pedido.estatusGeneral == 'completo' ||
+              pedido.volumenEntregadoM3 > 0) ...[
             const SizedBox(height: 14),
-            _EntregaProgress(pedido: pedido, textColor: textColor, mutedColor: mutedColor),
+            _EntregaProgress(
+              pedido: pedido,
+              textColor: textColor,
+              mutedColor: mutedColor,
+            ),
           ],
         ],
       ),
@@ -64,14 +101,21 @@ class _EntregaProgress extends StatelessWidget {
   final Color textColor;
   final Color mutedColor;
 
-  const _EntregaProgress({required this.pedido, required this.textColor, required this.mutedColor});
+  const _EntregaProgress({
+    required this.pedido,
+    required this.textColor,
+    required this.mutedColor,
+  });
 
   @override
   Widget build(BuildContext context) {
     final completo = pedido.estatusGeneral == 'completo';
     final color = completo ? _green : _accentYellow;
     final fraction = pedido.volumenSolicitadoM3 > 0
-        ? (pedido.volumenEntregadoM3 / pedido.volumenSolicitadoM3).clamp(0.0, 1.0)
+        ? (pedido.volumenEntregadoM3 / pedido.volumenSolicitadoM3).clamp(
+            0.0,
+            1.0,
+          )
         : 0.0;
 
     return Column(
@@ -80,13 +124,30 @@ class _EntregaProgress extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: Text('Entrega', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: textColor)),
+              child: Text(
+                'Entrega',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                  color: textColor,
+                ),
+              ),
             ),
             if (completo)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
-                child: Text('Completo', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  'Completo',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
               ),
           ],
         ),
@@ -116,7 +177,13 @@ class Line extends StatelessWidget {
   final Color textColor;
   final Color mutedColor;
 
-  const Line({super.key, required this.icon, required this.text, required this.textColor, required this.mutedColor});
+  const Line({
+    super.key,
+    required this.icon,
+    required this.text,
+    required this.textColor,
+    required this.mutedColor,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -124,7 +191,9 @@ class Line extends StatelessWidget {
       children: [
         Icon(icon, size: 16, color: mutedColor),
         const SizedBox(width: 8),
-        Expanded(child: Text(text, style: TextStyle(fontSize: 13.5, color: textColor))),
+        Expanded(
+          child: Text(text, style: TextStyle(fontSize: 13.5, color: textColor)),
+        ),
       ],
     );
   }
@@ -157,11 +226,22 @@ class EstadoCuentaCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: cardColor, borderRadius: BorderRadius.circular(20), border: Border.all(color: borderColor)),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Crédito del cliente', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: textColor)),
+          Text(
+            'Crédito del cliente',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: textColor,
+            ),
+          ),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -188,18 +268,26 @@ class EstadoCuentaCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFA000).withValues(alpha: 0.15),
+                color: AppColors.warning.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.warning_amber_rounded, color: Color(0xFFFFA000), size: 20),
+                  const Icon(
+                    Icons.warning_amber_rounded,
+                    color: AppColors.warning,
+                    size: 20,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Saldo en tiempo real no disponible (${estadoCuenta.mensaje ?? 'finanzas-service aún no existe'}). Los datos de arriba son los capturados en el expediente del cliente, no un saldo verificado.',
-                      style: const TextStyle(fontSize: 12.5, color: Color(0xFFFFA000), fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        color: AppColors.warning,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
@@ -240,7 +328,13 @@ class StatBlock extends StatelessWidget {
   final Color textColor;
   final Color mutedColor;
 
-  const StatBlock({super.key, required this.label, required this.value, required this.textColor, required this.mutedColor});
+  const StatBlock({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.textColor,
+    required this.mutedColor,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -249,7 +343,14 @@ class StatBlock extends StatelessWidget {
       children: [
         Text(label, style: TextStyle(fontSize: 12, color: mutedColor)),
         const SizedBox(height: 4),
-        Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: textColor)),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: textColor,
+          ),
+        ),
       ],
     );
   }
@@ -279,16 +380,32 @@ class AutorizacionSection extends StatelessWidget {
   Widget build(BuildContext context) {
     if (estatus != 'pendiente') {
       final aprobado = estatus == 'aprobado';
-      final color = aprobado ? _green : (estatus == 'rechazado' ? _red : mutedColor);
+      final color = aprobado
+          ? _green
+          : (estatus == 'rechazado' ? _red : mutedColor);
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(14)),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(14),
+        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(aprobado ? Icons.check_circle_outline : Icons.cancel_outlined, size: 18, color: color),
+            Icon(
+              aprobado ? Icons.check_circle_outline : Icons.cancel_outlined,
+              size: 18,
+              color: color,
+            ),
             const SizedBox(width: 8),
-            Text(estatus, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: color)),
+            Text(
+              estatus,
+              style: TextStyle(
+                fontSize: 13.5,
+                fontWeight: FontWeight.w700,
+                color: color,
+              ),
+            ),
           ],
         ),
       );
@@ -303,9 +420,14 @@ class AutorizacionSection extends StatelessWidget {
               foregroundColor: _red,
               side: const BorderSide(color: _red),
               padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
             ),
-            child: const Text('Rechazar', style: TextStyle(fontWeight: FontWeight.w700)),
+            child: const Text(
+              'Rechazar',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
           ),
         ),
         const SizedBox(width: 12),
@@ -317,11 +439,23 @@ class AutorizacionSection extends StatelessWidget {
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 14),
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
             ),
             child: submitting
-                ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-                : const Text('Aprobar', style: TextStyle(fontWeight: FontWeight.w700)),
+                ? const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text(
+                    'Aprobar',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
           ),
         ),
       ],
@@ -361,11 +495,15 @@ class LiveTrackingSection extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final remisiones = snapshot.hasError ? const <RemisionResumen>[] : snapshot.data!;
+        final remisiones = snapshot.hasError
+            ? const <RemisionResumen>[]
+            : snapshot.data!;
         if (remisiones.isEmpty) {
           return PlaceholderCard(
             text: snapshot.hasError
-                ? (snapshot.error is AuthException ? (snapshot.error as AuthException).message : 'No se pudo cargar la remisión')
+                ? (snapshot.error is AuthException
+                      ? (snapshot.error as AuthException).message
+                      : 'No se pudo cargar la remisión')
                 : 'Aún no hay una remisión generada para este pedido.',
             cardColor: cardColor,
             borderColor: borderColor,
@@ -402,14 +540,24 @@ class PlaceholderCard extends StatelessWidget {
   final Color borderColor;
   final Color mutedColor;
 
-  const PlaceholderCard({super.key, required this.text, required this.cardColor, required this.borderColor, required this.mutedColor});
+  const PlaceholderCard({
+    super.key,
+    required this.text,
+    required this.cardColor,
+    required this.borderColor,
+    required this.mutedColor,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: cardColor, borderRadius: BorderRadius.circular(20), border: Border.all(color: borderColor)),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor),
+      ),
       child: Text(text, style: TextStyle(fontSize: 13.5, color: mutedColor)),
     );
   }
@@ -497,7 +645,10 @@ class _LiveTrackingCardState extends State<LiveTrackingCard> {
     final ultima = ruta.ultimaUbicacion;
     if (controller == null || ultima == null) return;
 
-    final posicion = LatLng(latitude: ultima.latitud, longitude: ultima.longitud);
+    final posicion = LatLng(
+      latitude: ultima.latitud,
+      longitude: ultima.longitud,
+    );
     await controller.clearMarkers();
     await controller.addMarkers([MarkerOptions(position: posicion)]);
 
@@ -505,7 +656,9 @@ class _LiveTrackingCardState extends State<LiveTrackingCard> {
       await controller.clearPolylines();
       await controller.addPolylines([
         PolylineOptions(
-          points: ruta.historial.map((p) => LatLng(latitude: p.latitud, longitude: p.longitud)).toList(),
+          points: ruta.historial
+              .map((p) => LatLng(latitude: p.latitud, longitude: p.longitud))
+              .toList(),
           strokeColor: _accentYellow,
         ),
       ]);
@@ -519,7 +672,11 @@ class _LiveTrackingCardState extends State<LiveTrackingCard> {
     final ruta = _ruta;
 
     return Container(
-      decoration: BoxDecoration(color: widget.cardColor, borderRadius: BorderRadius.circular(20), border: Border.all(color: widget.borderColor)),
+      decoration: BoxDecoration(
+        color: widget.cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: widget.borderColor),
+      ),
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -531,16 +688,30 @@ class _LiveTrackingCardState extends State<LiveTrackingCard> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.local_shipping_outlined, size: 18, color: widget.mutedColor),
+                    Icon(
+                      Icons.local_shipping_outlined,
+                      size: 18,
+                      color: widget.mutedColor,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         widget.folioRemision,
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: widget.textColor),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: widget.textColor,
+                        ),
                       ),
                     ),
                     if (ruta != null)
-                      Text(ruta.estatus, style: TextStyle(fontSize: 12.5, color: widget.mutedColor)),
+                      Text(
+                        ruta.estatus,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: widget.mutedColor,
+                        ),
+                      ),
                   ],
                 ),
                 if (widget.conductorId != null || widget.volumen != null) ...[
@@ -549,10 +720,14 @@ class _LiveTrackingCardState extends State<LiveTrackingCard> {
                     padding: const EdgeInsets.only(left: 26),
                     child: Text(
                       [
-                        if (widget.conductorId != null) 'Conductor #${widget.conductorId}',
+                        if (widget.conductorId != null)
+                          'Conductor #${widget.conductorId}',
                         if (widget.volumen != null) '${widget.volumen} m³',
                       ].join(' · '),
-                      style: TextStyle(fontSize: 12.5, color: widget.mutedColor),
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        color: widget.mutedColor,
+                      ),
                     ),
                   ),
                 ],
@@ -562,7 +737,10 @@ class _LiveTrackingCardState extends State<LiveTrackingCard> {
           if (_errorText != null && ruta == null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Text(_errorText!, style: TextStyle(fontSize: 13, color: widget.mutedColor)),
+              child: Text(
+                _errorText!,
+                style: TextStyle(fontSize: 13, color: widget.mutedColor),
+              ),
             )
           else if (ruta == null)
             const Padding(
@@ -582,10 +760,25 @@ class _LiveTrackingCardState extends State<LiveTrackingCard> {
               height: 220,
               child: GoogleMapsMapView(
                 initialCameraPosition: CameraPosition(
-                  target: LatLng(latitude: ruta.ultimaUbicacion!.latitud, longitude: ruta.ultimaUbicacion!.longitud),
+                  target: LatLng(
+                    latitude: ruta.ultimaUbicacion!.latitud,
+                    longitude: ruta.ultimaUbicacion!.longitud,
+                  ),
                   zoom: 15,
                 ),
-                initialMapColorScheme: widget.isDark ? MapColorScheme.dark : MapColorScheme.light,
+                initialMapColorScheme: widget.isDark
+                    ? MapColorScheme.dark
+                    : MapColorScheme.light,
+                // Read-only preview embedded in a scrolling ListView — a map
+                // that captures pan/zoom gestures fights the list's own
+                // vertical scroll for the gesture arena, causing a visible
+                // wobble whenever the drag direction reverses. It's just a
+                // live-position glance, not something meant to be explored
+                // in place, so its own gestures are disabled entirely.
+                initialScrollGesturesEnabled: false,
+                initialZoomGesturesEnabled: false,
+                initialRotateGesturesEnabled: false,
+                initialTiltGesturesEnabled: false,
                 onViewCreated: (controller) {
                   _mapController = controller;
                   _updateMapOverlays(ruta);

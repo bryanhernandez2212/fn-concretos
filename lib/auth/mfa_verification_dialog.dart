@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 import 'auth_service.dart';
 
-const _accentYellow = Color(0xFFFFCC00);
+const _accentYellow = AppColors.accent;
 
 /// Shows the TOTP-code prompt for accounts with MFA enabled. Returns
 /// whether the code was verified successfully.
-Future<bool> showMfaVerificationDialog(BuildContext context, String challengeToken) async {
+Future<bool> showMfaVerificationDialog(
+  BuildContext context,
+  String challengeToken, {
+  bool rememberSession = false,
+}) async {
   final codeController = TextEditingController();
   String? dialogError;
 
@@ -51,7 +56,11 @@ Future<bool> showMfaVerificationDialog(BuildContext context, String challengeTok
                 style: ElevatedButton.styleFrom(backgroundColor: _accentYellow, foregroundColor: Colors.black),
                 onPressed: () async {
                   try {
-                    await AuthService.verifyMfa(challengeToken, codeController.text.trim());
+                    await AuthService.verifyMfa(
+                      challengeToken,
+                      codeController.text.trim(),
+                      rememberSession: rememberSession,
+                    );
                     if (!context.mounted) return;
                     Navigator.of(context).pop(true);
                   } on AuthException catch (e) {

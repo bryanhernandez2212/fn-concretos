@@ -10,6 +10,25 @@ import 'mfa_verification_dialog.dart';
 import 'role_unavailable_screen.dart';
 import 'roles.dart';
 
+/// Field operators (see [rolesConAppMovil]) go to [HomeScreen] by role
+/// name — that pair of roles is hardcoded in this build regardless of
+/// permissions. Everyone else is routed by *permission*, not role name:
+/// whoever holds `pedidos.autorizar_credito` gets [DireccionHomeScreen],
+/// since the backend's roles-controller lets that permission move to a
+/// different or renamed role independently of this app. No mobile
+/// screens exist for anyone else yet, so they see [RoleUnavailableScreen].
+/// Shared by [LoginScreen] (after a fresh login) and [SplashScreen] (after
+/// silently restoring a persisted session).
+Widget destinationForSession() {
+  if (rolesConAppMovil.contains(AuthService.rol)) {
+    return const HomeScreen();
+  } else if (AuthService.permisos.contains(permisoAutorizarCredito)) {
+    return const DireccionHomeScreen();
+  } else {
+    return const RoleUnavailableScreen();
+  }
+}
+
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -20,6 +39,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool _obscureText = true;
   bool _submitting = false;
+  bool _rememberSession = false;
   String? _errorText;
   final _userController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -38,12 +58,20 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      await AuthService.login(_userController.text.trim(), _passwordController.text);
+      await AuthService.login(
+        _userController.text.trim(),
+        _passwordController.text,
+        rememberSession: _rememberSession,
+      );
       if (!mounted) return;
       _navigateAfterLogin();
       return;
     } on MfaRequiredException catch (e) {
-      final verified = await showMfaVerificationDialog(context, e.challengeToken);
+      final verified = await showMfaVerificationDialog(
+        context,
+        e.challengeToken,
+        rememberSession: _rememberSession,
+      );
       if (verified && mounted) {
         _navigateAfterLogin();
         return;
@@ -55,24 +83,9 @@ class _LoginScreenState extends State<LoginScreen> {
     if (mounted) setState(() => _submitting = false);
   }
 
-  /// Field operators (see [rolesConAppMovil]) go to [HomeScreen] by role
-  /// name — that pair of roles is hardcoded in this build regardless of
-  /// permissions. Everyone else is routed by *permission*, not role name:
-  /// whoever holds `pedidos.autorizar_credito` gets [DireccionHomeScreen],
-  /// since the backend's roles-controller lets that permission move to a
-  /// different or renamed role independently of this app. No mobile
-  /// screens exist for anyone else yet, so they see [RoleUnavailableScreen].
   void _navigateAfterLogin() {
-    final Widget destination;
-    if (rolesConAppMovil.contains(AuthService.rol)) {
-      destination = const HomeScreen();
-    } else if (AuthService.permisos.contains(permisoAutorizarCredito)) {
-      destination = const DireccionHomeScreen();
-    } else {
-      destination = const RoleUnavailableScreen();
-    }
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => destination),
+      MaterialPageRoute(builder: (context) => destinationForSession()),
     );
   }
 
@@ -270,15 +283,45 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                           ),
+                          const SizedBox(height: 12.0),
+                          InkWell(
+                            borderRadius: BorderRadius.circular(8.0),
+                            onTap: () => setState(() => _rememberSession = !_rememberSession),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4.0),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: Checkbox(
+                                      value: _rememberSession,
+                                      onChanged: (value) => setState(() => _rememberSession = value ?? false),
+                                      activeColor: primaryYellow,
+                                      checkColor: Colors.black,
+                                      side: const BorderSide(color: Colors.white54),
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10.0),
+                                  const Text(
+                                    'Recordar sesión',
+                                    style: TextStyle(color: Colors.white70, fontSize: 14.0, fontWeight: FontWeight.w500),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                           if (_errorText != null) ...[
-                            const SizedBox(height: 20.0),
+                            const SizedBox(height: 12.0),
                             Text(
                               _errorText!,
                               textAlign: TextAlign.center,
                               style: const TextStyle(color: Colors.redAccent, fontSize: 13.0, fontWeight: FontWeight.w600),
                             ),
                           ],
-                          const SizedBox(height: 40.0),
+                          const SizedBox(height: 28.0),
 
                           // Login Button
                           Container(

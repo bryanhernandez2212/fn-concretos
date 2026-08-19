@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../auth/auth_service.dart';
+import '../theme/app_colors.dart';
+import '../widgets/app_feedback.dart';
 import '../widgets/field_group.dart';
 import 'change_password_widgets.dart';
 
-const _accentYellow = Color(0xFFFFCC00);
+const _accentYellow = AppColors.accent;
 
 /// Authenticated change-password form, pushed from [ProfileScreen]'s
 /// "Cambiar contraseña" settings tile.
@@ -48,9 +50,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       await AuthService.changePassword(_currentPasswordController.text, _newPasswordController.text);
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Contraseña actualizada')),
-      );
+      AppSnack.success(context, 'Contraseña actualizada');
     } on AuthException catch (e) {
       setState(() => _errorText = e.message);
     } finally {
@@ -65,7 +65,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Cambiar contraseña'),
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : _accentYellow,
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         foregroundColor: isDark ? Colors.white : Colors.black,
         elevation: 0,
       ),

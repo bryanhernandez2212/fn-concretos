@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
+import '../widgets/app_feedback.dart';
 import '../widgets/field_group.dart';
 import 'dosificacion_widgets.dart';
 
-const _accentYellow = Color(0xFFFFCC00);
+const _accentYellow = AppColors.accent;
 
 /// Reports what was actually pumped/poured at the job site — cemento,
 /// arena, grava, agua, aditivo, acelerante — mirroring the `InformePesadora`
@@ -40,14 +42,10 @@ class _DosificacionScreenState extends State<DosificacionScreen> {
   void _submit() {
     final requeridos = [_cementoController, _arenaController, _gravaController, _aguaController];
     if (requeridos.any((c) => c.text.trim().isEmpty)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Captura al menos cemento, arena, grava y agua')),
-      );
+      AppSnack.error(context, 'Captura al menos cemento, arena, grava y agua');
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Reporte de dosificación registrado (demostración)')),
-    );
+    AppSnack.success(context, 'Reporte de dosificación registrado (demostración)');
     Navigator.of(context).pop();
   }
 
@@ -64,7 +62,7 @@ class _DosificacionScreenState extends State<DosificacionScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Dosificación · ${widget.remisionFolio}'),
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : _accentYellow,
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         foregroundColor: isDark ? Colors.white : Colors.black,
         elevation: 0,
       ),

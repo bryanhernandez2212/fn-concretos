@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 import '../widgets/info_pill.dart';
 import 'remision.dart';
 
-const _accentYellow = Color(0xFFFFCC00);
+const _accentYellow = AppColors.accent;
 
 /// Delivery summary card shared with `HistorialEntregasScreen` so past-day
 /// entregas render identically to today's.
@@ -106,10 +107,10 @@ class HitoChip extends StatelessWidget {
       color = Colors.grey;
       label = 'Programado';
     } else if (hito == HitoEntrega.entregado) {
-      color = const Color(0xFF4CAF50);
+      color = AppColors.success;
       label = hito.label;
     } else if (hito == HitoEntrega.conIncidencia) {
-      color = const Color(0xFFEF5350);
+      color = AppColors.error;
       label = hito.label;
     } else if (hito == HitoEntrega.cargandoPlanta) {
       color = Colors.grey;
