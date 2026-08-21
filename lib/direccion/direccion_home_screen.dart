@@ -5,12 +5,14 @@ import '../profile/profile_screen.dart';
 import '../theme/app_colors.dart';
 import '../widgets/bottom_nav_bar.dart';
 import 'autorizaciones_screen.dart';
+import 'rutas_activas_screen.dart';
 
 const _accentYellow = AppColors.accent;
 
-/// App shell for the Dirección role: just Autorizaciones + Perfil for now —
-/// vistas.md only scopes Dirección's mobile screens to pedido credit
-/// authorization, everything else in that role stays on desktop.
+/// App shell for the Dirección role: Autorizaciones, Rutas activas (a
+/// fleet-wide live map, not tied to any one pedido) and Perfil — vistas.md
+/// only scopes Dirección's mobile screens to pedido credit authorization,
+/// everything else in that role stays on desktop.
 class DireccionHomeScreen extends StatefulWidget {
   const DireccionHomeScreen({super.key});
 
@@ -22,7 +24,19 @@ class _DireccionHomeScreenState extends State<DireccionHomeScreen> {
   int _currentIndex = 0;
   bool _navCompact = false;
 
-  final List<Widget> _pages = const [AutorizacionesScreen(), ProfileScreen()];
+  /// [RutasActivasScreen] embeds a real Google Maps platform view — unlike
+  /// the other tabs, it's the one exception to "every tab stays mounted"
+  /// below: a platform view composites through the native view hierarchy,
+  /// not Flutter's own canvas, so fading it to opacity 0 while inactive
+  /// doesn't reliably hide it (it can keep rendering, or bleed through onto
+  /// whichever tab IS visible) the way it does for ordinary widgets.
+  static const _rutasTabIndex = 1;
+
+  final List<Widget> _pages = const [
+    AutorizacionesScreen(),
+    RutasActivasScreen(),
+    ProfileScreen(),
+  ];
 
   @override
   void initState() {
@@ -113,6 +127,13 @@ class _DireccionHomeScreenState extends State<DireccionHomeScreen> {
             fit: StackFit.expand,
             children: List.generate(_pages.length, (index) {
               final isActive = index == _currentIndex;
+              // Actually unmount the map tab while it's not selected (see
+              // `_rutasTabIndex` above) instead of just fading it out — this
+              // also stops it polling GPS every 15s for a map nobody's
+              // looking at.
+              final content = (index == _rutasTabIndex && !isActive)
+                  ? const SizedBox.shrink()
+                  : _pages[index];
               return IgnorePointer(
                 ignoring: !isActive,
                 child: AnimatedOpacity(
@@ -123,7 +144,7 @@ class _DireccionHomeScreenState extends State<DireccionHomeScreen> {
                     duration: const Duration(milliseconds: 260),
                     curve: Curves.easeOut,
                     scale: isActive ? 1.0 : 0.96,
-                    child: _pages[index],
+                    child: content,
                   ),
                 ),
               );
@@ -140,6 +161,11 @@ class _DireccionHomeScreenState extends State<DireccionHomeScreen> {
             icon: Icons.fact_check_outlined,
             selectedIcon: Icons.fact_check,
             label: 'Autorizaciones',
+          ),
+          NavItem(
+            icon: Icons.map_outlined,
+            selectedIcon: Icons.map,
+            label: 'Rutas',
           ),
           NavItem(
             icon: Icons.person_outline,

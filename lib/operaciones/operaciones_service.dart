@@ -41,6 +41,27 @@ class OperacionesService {
     return RutaRemision.fromJson(data as Map<String, dynamic>);
   }
 
+  /// Every remisión currently out of the plant and not yet finished, across
+  /// all pedidos — for Dirección's consolidated "todas las rutas" map.
+  /// `GET /remisiones` takes no filter at all here (both `pedidoId` and
+  /// `estatus` are optional per the OpenAPI schema, same as the unfiltered
+  /// fleet-wide [vehiculos] call below), so this fetches everything and
+  /// narrows client-side to the statuses that mean "on the road right now".
+  static Future<List<RemisionResumen>> remisionesEnRuta() async {
+    const enRuta = {
+      'salio_planta',
+      'en_camino',
+      'proximo_llegar',
+      'en_obra',
+      'descargando',
+    };
+    final data = await _get('/remisiones');
+    return (data as List<dynamic>)
+        .map((e) => RemisionResumen.fromJson(e as Map<String, dynamic>))
+        .where((r) => enRuta.contains(r.estatus))
+        .toList();
+  }
+
   /// `fecha` is `yyyy-MM-dd`. Plant-wide — not scoped to any one conductor —
   /// so callers must cross-reference [asignacionesPorPedido] to know which
   /// of these are actually theirs (see `deliveries/entregas_service.dart`).

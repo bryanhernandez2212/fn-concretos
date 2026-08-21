@@ -5,10 +5,12 @@ import '../operaciones/operaciones_service.dart';
 import '../operaciones/remision_tracking.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_feedback.dart';
+import '../widgets/contacto_card.dart';
 import '../widgets/evidencia_viewer_screen.dart';
 import '../widgets/field_group.dart';
 import 'delivery_detail_widgets.dart';
 import 'delivery_photo_screen.dart';
+import 'evidencia_fotos_screen.dart';
 import 'dosificacion_screen.dart';
 import 'prueba_concreto_screen.dart';
 import 'remision.dart';
@@ -88,18 +90,17 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   void _refrescarFirmas() {
     final remisionId = widget.remision.remisionId;
     if (remisionId == null || !mounted) return;
-    setState(
-      () => _firmasFuture = OperacionesService.firmasPorRemision(remisionId),
-    );
+    setState(() {
+      _firmasFuture = OperacionesService.firmasPorRemision(remisionId);
+    });
   }
 
   void _refrescarArchivos() {
     final remisionId = widget.remision.remisionId;
     if (remisionId == null || !mounted) return;
-    setState(
-      () =>
-          _archivosFuture = OperacionesService.archivosPorRemision(remisionId),
-    );
+    setState(() {
+      _archivosFuture = OperacionesService.archivosPorRemision(remisionId);
+    });
   }
 
   /// Re-fetches after returning from `RouteNavigationScreen` — that screen
@@ -115,19 +116,22 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     });
   }
 
-  /// True once the remisión has genuinely reached "en obra" or later
-  /// (descargando/entregado) — at that point re-starting turn-by-turn
-  /// navigation to a destination already reached doesn't make sense, so
-  /// "Iniciar ruta" hides. A blank/unrecognized `estatus` (nothing
-  /// registered yet, or `con_atraso`/`con_incidencia`) never hides it —
-  /// only a confirmed arrival does.
-  bool _yaLlegoAObra(RemisionResumen? detalle) {
+  /// Whether the remisión has genuinely reached [objetivo] or a later step
+  /// in [_secuenciaHitos]. A blank/unrecognized `estatus` (nothing
+  /// registered yet, or `con_atraso`/`con_incidencia`) never counts as
+  /// having reached it — only a confirmed, recognized hito does.
+  bool _hitoAlcanzado(RemisionResumen? detalle, HitoEntrega objetivo) {
     if (detalle == null) return false;
     final current = HitoEntrega.fromBackendValue(detalle.estatus);
     if (current == null) return false;
-    return _secuenciaHitos.indexOf(current) >=
-        _secuenciaHitos.indexOf(HitoEntrega.enObra);
+    return _secuenciaHitos.indexOf(current) >= _secuenciaHitos.indexOf(objetivo);
   }
+
+  /// True once the remisión has genuinely reached "en obra" or later
+  /// (descargando/entregado) — at that point re-starting turn-by-turn
+  /// navigation to a destination already reached doesn't make sense, so
+  /// "Iniciar ruta" hides.
+  bool _yaLlegoAObra(RemisionResumen? detalle) => _hitoAlcanzado(detalle, HitoEntrega.enObra);
 
   Future<void> _avanzarHito(HitoEntrega next) async {
     final remisionId = widget.remision.remisionId;
@@ -167,13 +171,21 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
           builder: (context, snapshot) {
             final detalle = _detalleOverride ?? snapshot.data;
             if (detalle == null || detalle.folioRemision.isEmpty) {
-              return Text(remision.folio);
+              return Text(
+                remision.folio,
+                style: const TextStyle(fontSize: 12),
+                overflow: TextOverflow.ellipsis,
+              );
             }
             // Pedido folio (what EntregasService built the list from) next
             // to the real folioRemision (only known once the Remisión
             // detail loads) — same "Programado" vs. real-data distinction
             // as the rest of this screen.
-            return Text('${remision.folio} · ${detalle.folioRemision}');
+            return Text(
+              '${remision.folio} · ${detalle.folioRemision}',
+              style: const TextStyle(fontSize: 16),
+              overflow: TextOverflow.ellipsis,
+            );
           },
         ),
         backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
@@ -209,6 +221,18 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                   );
                 },
               ),
+              if (remision.contactoNombre != null && remision.contactoNombre!.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                ContactoCard(
+                  nombre: remision.contactoNombre!,
+                  cargo: remision.contactoCargo,
+                  telefono: remision.telefono,
+                  cardColor: cardColor,
+                  borderColor: borderColor,
+                  textColor: textColor,
+                  mutedColor: mutedColor,
+                ),
+              ],
               const SizedBox(height: 24),
               FutureBuilder<RemisionResumen?>(
                 future: _detalleFuture,
@@ -449,106 +473,153 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                 padding: EdgeInsets.zero,
                 child: Column(
                   children: [
-                    if (remision.remisionId != null && puedeOperar) ...[
-                      FutureBuilder<List<FirmaResponse>>(
-                        future: _firmasFuture,
-                        builder: (context, snapshot) {
-                          final firma = _firmaMasReciente(snapshot.data);
-                          return ActionRow(
-                            icon: Icons.draw_outlined,
-                            label: 'Firma digital de entrega',
-                            textColor: textColor,
-                            mutedColor: mutedColor,
-                            statusLabel: firma != null ? 'Firmada' : null,
-                            statusColor: firma != null
-                                ? AppColors.success
-                                : null,
-                            onTap: () async {
-                              // Backend blocks re-firmar (409) since it would
-                              // double-count entregado volume on the pedido —
-                              // once firmada, tapping views the firma instead
-                              // of reopening SignatureScreen.
-                              if (firma != null) {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (context) => EvidenciaViewerScreen(
-                                      url: firma.firmaDigitalUrl,
-                                      label: 'Firma digital',
-                                    ),
-                                    fullscreenDialog: true,
-                                  ),
-                                );
-                                return;
-                              }
-                              final firmada = await Navigator.of(context)
-                                  .push<bool>(
-                                    MaterialPageRoute(
-                                      builder: (context) => SignatureScreen(
-                                        remisionId: remision.remisionId!,
-                                        remisionFolio: remision.folio,
-                                      ),
-                                    ),
-                                  );
-                              if (firmada == true) _refrescarFirmas();
-                            },
-                          );
-                        },
-                      ),
-                      Divider(height: 1, color: borderColor),
-                    ],
-                    if (remision.remisionId != null && puedeOperar) ...[
-                      FutureBuilder<List<ArchivoResponse>>(
-                        future: _archivosFuture,
-                        builder: (context, snapshot) {
-                          // GET /remisiones/{id}/archivos returns every
-                          // archivo attached to the remisión regardless of
-                          // type — e.g. it can also include the remisión's own
-                          // PDF waybill generated by planta/producción, which
-                          // isn't a photo and has no real image to render.
-                          // Only count/show what this screen itself uploads.
-                          final archivos =
-                              (snapshot.data ?? const <ArchivoResponse>[])
-                                  .where(
-                                    (a) => a.tipoArchivo == 'foto_evidencia',
-                                  )
-                                  .toList();
-                          return Column(
-                            children: [
-                              ActionRow(
-                                icon: Icons.photo_camera_outlined,
-                                label: 'Foto / evidencia de entrega',
-                                textColor: textColor,
-                                mutedColor: mutedColor,
-                                statusLabel: archivos.isNotEmpty
-                                    ? (archivos.length == 1
-                                          ? '1 foto'
-                                          : '${archivos.length} fotos')
-                                    : null,
-                                statusColor: archivos.isNotEmpty
-                                    ? AppColors.success
-                                    : null,
-                                onTap: () async {
-                                  final guardado = await Navigator.of(context)
-                                      .push<bool>(
+                    FutureBuilder<RemisionResumen?>(
+                      future: _detalleFuture,
+                      builder: (context, snapshot) {
+                        final detalle = _detalleOverride ?? snapshot.data;
+                        // Without a Remisión or the permission to operate on
+                        // it, these rows have nothing to do at all, so they
+                        // stay hidden. Once that's satisfied, they stay
+                        // visible but disabled until the truck has actually
+                        // started unloading at the obra — showing them
+                        // enabled earlier would let a driver sign off on a
+                        // delivery that hasn't happened yet.
+                        if (remision.remisionId == null || !puedeOperar) {
+                          return const SizedBox.shrink();
+                        }
+                        final habilitado = _hitoAlcanzado(detalle, HitoEntrega.descargando);
+                        return Column(
+                          children: [
+                            FutureBuilder<List<FirmaResponse>>(
+                              future: _firmasFuture,
+                              builder: (context, snapshot) {
+                                final firma = _firmaMasReciente(snapshot.data);
+                                return ActionRow(
+                                  icon: Icons.draw_outlined,
+                                  label: 'Firma digital de entrega',
+                                  textColor: textColor,
+                                  mutedColor: mutedColor,
+                                  enabled: habilitado,
+                                  statusLabel: firma != null ? 'Firmada' : null,
+                                  statusColor: firma != null
+                                      ? AppColors.success
+                                      : null,
+                                  onTap: () async {
+                                    // Backend blocks re-firmar (409) since it
+                                    // would double-count entregado volume on
+                                    // the pedido — once firmada, tapping
+                                    // views the firma instead of reopening
+                                    // SignatureScreen.
+                                    if (firma != null) {
+                                      Navigator.of(context).push(
                                         MaterialPageRoute(
-                                          builder: (context) =>
-                                              DeliveryPhotoScreen(
-                                                remisionId:
-                                                    remision.remisionId!,
-                                                remisionFolio: remision.folio,
-                                                archivosExistentes: archivos,
-                                              ),
+                                          builder: (context) => EvidenciaViewerScreen(
+                                            url: firma.firmaDigitalUrl,
+                                            label: 'Firma digital',
+                                          ),
+                                          fullscreenDialog: true,
                                         ),
                                       );
-                                  if (guardado == true) _refrescarArchivos();
-                                },
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                      Divider(height: 1, color: borderColor),
-                    ],
+                                      return;
+                                    }
+                                    final firmada = await Navigator.of(context)
+                                        .push<bool>(
+                                          MaterialPageRoute(
+                                            builder: (context) => SignatureScreen(
+                                              remisionId: remision.remisionId!,
+                                              remisionFolio: remision.folio,
+                                            ),
+                                          ),
+                                        );
+                                    if (firmada == true) _refrescarFirmas();
+                                  },
+                                );
+                              },
+                            ),
+                            Divider(height: 1, color: borderColor),
+                            FutureBuilder<List<ArchivoResponse>>(
+                              future: _archivosFuture,
+                              builder: (context, snapshot) {
+                                // GET /remisiones/{id}/archivos returns every
+                                // archivo attached to the remisión regardless
+                                // of type — e.g. it can also include the
+                                // remisión's own PDF waybill generated by
+                                // planta/producción, which isn't a photo and
+                                // has no real image to render. Only
+                                // count/show what this screen itself uploads.
+                                final archivos =
+                                    (snapshot.data ?? const <ArchivoResponse>[])
+                                        .where(
+                                          (a) => a.tipoArchivo == 'foto_evidencia',
+                                        )
+                                        .toList();
+                                return ActionRow(
+                                  icon: Icons.photo_camera_outlined,
+                                  label: 'Foto / evidencia de entrega',
+                                  textColor: textColor,
+                                  mutedColor: mutedColor,
+                                  enabled: habilitado,
+                                  statusLabel: archivos.isNotEmpty
+                                      ? (archivos.length == 1
+                                            ? '1 foto'
+                                            : '${archivos.length} fotos')
+                                      : null,
+                                  statusColor: archivos.isNotEmpty
+                                      ? AppColors.success
+                                      : null,
+                                  onTap: () async {
+                                    // Once evidencia exists, this row is
+                                    // view-only — mirrors the firma pattern
+                                    // (tapping views instead of reopening the
+                                    // capture screen), since the backend has
+                                    // no concept of "replacing" a saved photo.
+                                    if (archivos.isNotEmpty) {
+                                      if (archivos.length == 1) {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                EvidenciaViewerScreen(
+                                                  url: archivos.first
+                                                      .archivoUrl,
+                                                  label: 'Evidencia de entrega',
+                                                ),
+                                            fullscreenDialog: true,
+                                          ),
+                                        );
+                                      } else {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                EvidenciaFotosScreen(
+                                                  remisionFolio: remision.folio,
+                                                  archivos: archivos,
+                                                ),
+                                          ),
+                                        );
+                                      }
+                                      return;
+                                    }
+                                    final guardado = await Navigator.of(context)
+                                        .push<bool>(
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                DeliveryPhotoScreen(
+                                                  remisionId:
+                                                      remision.remisionId!,
+                                                  remisionFolio: remision.folio,
+                                                ),
+                                          ),
+                                        );
+                                    if (guardado == true) _refrescarArchivos();
+                                  },
+                                );
+                              },
+                            ),
+                            Divider(height: 1, color: borderColor),
+                          ],
+                        );
+                      },
+                    ),
                     if (AuthService.rol == 'Operador de Bomba') ...[
                       Divider(height: 1, color: borderColor),
                       ActionRow(

@@ -98,17 +98,30 @@ class SummaryCard extends StatelessWidget {
             textColor: textColor,
             mutedColor: mutedColor,
           ),
-          if (remision.volumenAcumuladoPedido != null) ...[
-            const SizedBox(height: 8),
-            DetailLine(
-              icon: Icons.water_drop_outlined,
-              text:
-                  'm³ solicitados: ${remision.volumenAcumuladoPedido} / ${remision.volumenM3} m³ entregados'
-                  '${remision.volumenPendientePedido != null && remision.volumenPendientePedido! > 0 ? ' · ${remision.volumenPendientePedido} m³ pendiente' : ''}',
-              textColor: textColor,
-              mutedColor: mutedColor,
-            ),
-          ],
+          const SizedBox(height: 8),
+          DetailLine(
+            icon: Icons.water_drop_outlined,
+            text: 'Pedido total: ${remision.volumenPedidoTotal} m³',
+            textColor: textColor,
+            mutedColor: mutedColor,
+          ),
+          const SizedBox(height: 8),
+          //metros entregados 
+          DetailLine(
+            icon: Icons.check_circle_outline,
+            text: 'm³ entregados ${remision.volumenPedidoEntregado} m³',
+            textColor: textColor,
+            mutedColor: mutedColor,
+          ),
+          const SizedBox(height: 8),
+          //metros pendientes
+          DetailLine(
+            icon: Icons.access_time_outlined,
+            text: 'm³ pendientes ${remision.volumenPedidoPendiente} m³',
+            textColor: textColor,
+            mutedColor: mutedColor,
+          ),
+          
         ],
       ),
     );
@@ -234,8 +247,14 @@ class HitoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final current = this.current;
-    final isDone = current != null && hito.index < current.index;
-    final isCurrent = current != null && hito.index == current.index;
+    // `entregado` is the last step in the sequence, so it never has a "next"
+    // step to make it look done relative to — once reached, it IS the
+    // completed state, not still "in progress", so it renders as done
+    // (green, checked) rather than current (yellow).
+    final isDone = current != null &&
+        (hito.index < current.index ||
+            (hito == current && hito == HitoEntrega.entregado));
+    final isCurrent = current != null && hito.index == current.index && !isDone;
     final circleColor = isDone
         ? AppColors.success
         : isCurrent
@@ -301,6 +320,12 @@ class ActionRow extends StatelessWidget {
   final String? statusLabel;
   final Color? statusColor;
 
+  /// When false, the row stays visible (so the driver knows the action
+  /// exists and roughly when it'll unlock) but doesn't respond to taps and
+  /// renders dimmed — icon/text/chevron all fall back to [mutedColor]
+  /// instead of their normal accent/text colors.
+  final bool enabled;
+
   const ActionRow({
     super.key,
     required this.icon,
@@ -310,6 +335,7 @@ class ActionRow extends StatelessWidget {
     required this.onTap,
     this.statusLabel,
     this.statusColor,
+    this.enabled = true,
   });
 
   @override
@@ -317,12 +343,12 @@ class ActionRow extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
+        onTap: enabled ? onTap : null,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           child: Row(
             children: [
-              Icon(icon, size: 20, color: _accentYellow),
+              Icon(icon, size: 20, color: enabled ? _accentYellow : mutedColor),
               const SizedBox(width: 14),
               Expanded(
                 child: Text(
@@ -330,7 +356,7 @@ class ActionRow extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 14.5,
                     fontWeight: FontWeight.w600,
-                    color: textColor,
+                    color: enabled ? textColor : mutedColor,
                   ),
                 ),
               ),

@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../auth/auth_service.dart';
-import '../operaciones/evidencia.dart';
 import '../operaciones/operaciones_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_feedback.dart';
-import 'delivery_detail_widgets.dart';
 import 'delivery_photo_widgets.dart';
 
 const _accentYellow = AppColors.accent;
@@ -19,21 +17,19 @@ const _accentYellow = AppColors.accent;
 /// `PUT` to storage), then `POST /remisiones/{id}/archivos` with the
 /// resulting `publicUrl`. Requires [permisoOperarRemisiones].
 ///
-/// [archivosExistentes] are shown read-only at the top (tappable, full
-/// screen view) — the row that opens this screen from
-/// `DeliveryDetailScreen` no longer shows an inline thumbnail preview of
-/// its own, so this is the only place they're visible, same idea as
-/// tapping "Firma digital de entrega" to view an existing firma.
+/// Only reachable from `DeliveryDetailScreen` while no evidencia photo
+/// exists yet for the remisión — once one does, that row opens a read-only
+/// viewer instead (same idea as firma: the backend has no concept of
+/// "replacing" an already-saved photo, so this screen never needs to show
+/// existing ones alongside new picks).
 class DeliveryPhotoScreen extends StatefulWidget {
   final int remisionId;
   final String remisionFolio;
-  final List<ArchivoResponse> archivosExistentes;
 
   const DeliveryPhotoScreen({
     super.key,
     required this.remisionId,
     required this.remisionFolio,
-    this.archivosExistentes = const [],
   });
 
   @override
@@ -139,15 +135,6 @@ class _DeliveryPhotoScreenState extends State<DeliveryPhotoScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
         children: [
-          if (widget.archivosExistentes.isNotEmpty) ...[
-            Text(
-              'Ya guardadas',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: mutedColor, letterSpacing: 0.3),
-            ),
-            const SizedBox(height: 10),
-            EvidenciaThumbnailStrip(archivos: widget.archivosExistentes, borderColor: borderColor),
-            const SizedBox(height: 8),
-          ],
           Text(
             'Adjunta fotos de la descarga como evidencia de entrega',
             style: TextStyle(fontSize: 13.5, color: mutedColor),

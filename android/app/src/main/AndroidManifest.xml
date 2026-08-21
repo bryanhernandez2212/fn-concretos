@@ -18,6 +18,9 @@
          declared permission. Requested at runtime by image_picker itself
          when the driver taps "Tomar foto" — no manual toggle. -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Required by local_auth for the Face ID/Touch ID-equivalent
+         biometric quick-login prompt (see lib/auth/biometric_service.dart). -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <application
         android:label="FN Concretos"
         android:name="${applicationName}"

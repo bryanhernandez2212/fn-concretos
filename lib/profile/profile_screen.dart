@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../administracion/administracion_service.dart';
@@ -5,6 +6,7 @@ import '../administracion/empleado.dart';
 import '../deliveries/delivery_photo_widgets.dart';
 import '../main.dart';
 import '../auth/auth_service.dart';
+import '../auth/biometric_service.dart';
 import '../auth/login_screen.dart';
 import '../operaciones/operaciones_service.dart';
 import '../theme/app_colors.dart';
@@ -46,10 +48,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _subiendoFoto = false;
   final _picker = ImagePicker();
 
+  bool _biometriaDisponible = false;
+  bool _cambiandoBiometria = false;
+
   @override
   void initState() {
     super.initState();
     _cargarEmpleado();
+    _verificarBiometria();
+  }
+
+  Future<void> _verificarBiometria() async {
+    final disponible = await BiometricService.disponible();
+    if (mounted) setState(() => _biometriaDisponible = disponible);
+  }
+
+  Future<void> _cambiarBiometria(bool activar) async {
+    setState(() => _cambiandoBiometria = true);
+    try {
+      if (activar) {
+        final etiqueta = Platform.isIOS ? 'Face ID' : 'tu biometría';
+        final autenticado = await BiometricService.autenticar('Confirma tu identidad para activar $etiqueta');
+        if (!autenticado) {
+          if (mounted) AppSnack.error(context, 'No se pudo verificar tu identidad');
+          return;
+        }
+        await AuthService.habilitarBiometria();
+      } else {
+        await AuthService.deshabilitarBiometria();
+      }
+      if (mounted) setState(() {});
+    } on AuthException catch (e) {
+      if (mounted) AppSnack.error(context, e.message);
+    } finally {
+      if (mounted) setState(() => _cambiandoBiometria = false);
+    }
   }
 
   Future<void> _cargarEmpleado() async {
@@ -89,7 +122,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final nombreArchivo = 'perfil_${empleado.id}_${DateTime.now().millisecondsSinceEpoch}.$extension';
 
       final presigned = await AdministracionService.presignedUploadUrl(
-        carpeta: 'empleado-fotos-perfil',
+        carpeta: 'empleados-fotos',
         nombreArchivo: nombreArchivo,
         contentType: contentType,
       );
@@ -364,6 +397,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
         // Seguridad
         SettingsGroup(
           children: [
+            if (_biometriaDisponible)
+              SettingsTile(
+                icon: Icons.face_retouching_natural,
+                iconColor: _accentYellow,
+                title: Platform.isIOS ? 'Inicio rápido con Face ID' : 'Inicio rápido con biometría',
+                trailing: _cambiandoBiometria
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Switch(
+                        value: AuthService.biometricHabilitado,
+                        onChanged: _cambiarBiometria,
+                      ),
+              ),
             SettingsTile(
               icon: Icons.lock_outline,
               iconColor: _accentYellow,

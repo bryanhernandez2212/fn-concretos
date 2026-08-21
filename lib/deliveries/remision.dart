@@ -49,16 +49,15 @@ class Remision {
   /// specific to show yet.
   final double volumenM3;
 
-  /// The pedido's total requested volume, always known (from
-  /// `Pedido.volumenSolicitadoM3`) regardless of whether a Remisión exists.
+  /// The pedido's own solicitado/entregado/pendiente totals — straight from
+  /// `Pedido.volumenSolicitadoM3`/`volumenEntregadoM3`/`volumenPendienteM3`,
+  /// always known regardless of whether a Remisión exists. Deliberately not
+  /// sourced from `RemisionResumen.metrosAcumuladosPedido`/
+  /// `metrosPendientesPedido` (a remisión-derived echo of the same pedido
+  /// totals) — the pedido's own fields are simpler and always available.
   final double volumenPedidoTotal;
-
-  /// The pedido's running delivered/pending totals as of this remisión
-  /// (`RemisionResumen.metrosAcumuladosPedido`/`metrosPendientesPedido`) —
-  /// null until a Remisión exists, since only the backend's remisión record
-  /// tracks this.
-  final double? volumenAcumuladoPedido;
-  final double? volumenPendientePedido;
+  final double volumenPedidoEntregado;
+  final double volumenPedidoPendiente;
 
   /// Null until a real Remisión (with its own hito state machine) exists
   /// for this delivery — today's production programming alone doesn't have
@@ -85,6 +84,15 @@ class Remision {
   final int clienteId;
   final int obraId;
 
+  /// From `ComercialService.contactoParaEntrega` — the specific person
+  /// resolved from the obra↔cliente pairing (not a generic cliente-level
+  /// phone; a cliente has none of its own) that `DeliveryDetailScreen`'s
+  /// `ContactoCard` shows, same idea as `direccion/PedidoDetailScreen`'s.
+  /// Null means no contacto is assigned for this obra+cliente pairing.
+  final String? contactoNombre;
+  final String? contactoCargo;
+  final String? telefono;
+
   const Remision({
     required this.folio,
     required this.cliente,
@@ -94,8 +102,8 @@ class Remision {
     required this.tipoConcreto,
     required this.volumenM3,
     required this.volumenPedidoTotal,
-    this.volumenAcumuladoPedido,
-    this.volumenPendientePedido,
+    required this.volumenPedidoEntregado,
+    required this.volumenPedidoPendiente,
     required this.hitoActual,
     required this.remisionId,
     required this.destinoLat,
@@ -103,5 +111,8 @@ class Remision {
     required this.pedidoId,
     required this.clienteId,
     required this.obraId,
+    required this.contactoNombre,
+    required this.contactoCargo,
+    required this.telefono,
   });
 }

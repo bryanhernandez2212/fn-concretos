@@ -46,6 +46,37 @@ class ComercialService {
     return EstadoCuenta.fromJson(data as Map<String, dynamic>);
   }
 
+  static Future<List<ObraCliente>> clientesPorObra(int obraId) async {
+    final data = await _get('/obras/$obraId/clientes');
+    return (data as List<dynamic>).map((e) => ObraCliente.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  static Future<List<ClienteContacto>> contactosCliente(int clienteId) async {
+    final data = await _get('/clientes/$clienteId/contactos');
+    return (data as List<dynamic>).map((e) => ClienteContacto.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  /// Resolves the specific person to contact for delivering [clienteId]'s
+  /// pedido at [obraId] — cross-references the obra↔cliente association
+  /// (which one, if any, has a contacto assigned for this specific pairing,
+  /// since an obra can have more than one cliente tied to it) with that
+  /// cliente's contact directory (which has the actual `telefono`). Returns
+  /// null if no contacto is assigned for this pairing, or the referenced
+  /// contacto no longer exists in the directory.
+  static Future<ClienteContacto?> contactoParaEntrega({
+    required int obraId,
+    required int clienteId,
+  }) async {
+    final asociaciones = await clientesPorObra(obraId);
+    final propia = asociaciones.where((a) => a.clienteId == clienteId);
+    final contactoId = propia.isEmpty ? null : propia.first.contactoId;
+    if (contactoId == null) return null;
+
+    final contactos = await contactosCliente(clienteId);
+    final match = contactos.where((c) => c.id == contactoId);
+    return match.isEmpty ? null : match.first;
+  }
+
   /// `resultado` is `'aprobado'` or `'rechazado'`; `motivo` is required by
   /// the backend when rechazando.
   static Future<void> autorizarPago(int pedidoId, {required String resultado, String? motivo}) {

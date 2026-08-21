@@ -37,6 +37,7 @@ class AuthService {
   static const _baseUrl = 'https://fnconcretos.app/sandbox/auth';
   static const _storage = FlutterSecureStorage();
   static const _refreshTokenKey = 'fn_concretos_refresh_token';
+  static const _biometricEnabledKey = 'fn_concretos_biometric_enabled';
 
   static String? accessToken;
   static String? refreshToken;
@@ -67,6 +68,13 @@ class AuthService {
   /// every subsequent [_setTokens] call, including background renewals from
   /// [_ensureFreshToken], so the choice sticks for the whole session.
   static bool _rememberSession = false;
+
+  /// Whether Face ID/Touch ID quick login (see `auth/biometric_service.dart`
+  /// and `auth/biometric_lock_screen.dart`) is turned on for this device.
+  /// Only meaningful alongside a persisted refresh token — [restoreSession]
+  /// is what loads this from storage, and only after successfully resuming
+  /// a session, since there'd be nothing for it to gate otherwise.
+  static bool biometricHabilitado = false;
 
   static bool get isLoggedIn => accessToken != null;
 
@@ -124,12 +132,33 @@ class AuthService {
       final data = await _post('/auth/refresh', {'refreshToken': storedRefreshToken});
       await _setTokens(data);
       await _fetchMe();
+      biometricHabilitado = await _storage.read(key: _biometricEnabledKey) == 'true';
       return true;
     } catch (_) {
       _clearSession();
       await _storage.delete(key: _refreshTokenKey);
+      await _storage.delete(key: _biometricEnabledKey);
       return false;
     }
+  }
+
+  /// Turns on Face ID/Touch ID quick login. Requires an active session with
+  /// a refresh token — implicitly also turns on persistent "remember
+  /// session" storage (there'd be nothing for biometrics to unlock on next
+  /// launch otherwise), even if the original login didn't check "Recordar
+  /// sesión".
+  static Future<void> habilitarBiometria() async {
+    final token = refreshToken;
+    if (token == null) throw AuthException('No hay una sesión activa para vincular');
+    _rememberSession = true;
+    await _storage.write(key: _refreshTokenKey, value: token);
+    await _storage.write(key: _biometricEnabledKey, value: 'true');
+    biometricHabilitado = true;
+  }
+
+  static Future<void> deshabilitarBiometria() async {
+    await _storage.write(key: _biometricEnabledKey, value: 'false');
+    biometricHabilitado = false;
   }
 
   /// Generates a TOTP secret for the current session; the user scans
@@ -176,6 +205,7 @@ class AuthService {
     _clearSession();
     try {
       await _storage.delete(key: _refreshTokenKey);
+      await _storage.delete(key: _biometricEnabledKey);
     } catch (_) {
       // Best-effort: the in-memory session is already cleared above.
     }
@@ -206,6 +236,7 @@ class AuthService {
     idEmpleado = null;
     mfaHabilitado = false;
     _rememberSession = false;
+    biometricHabilitado = false;
   }
 
   static Future<void> _setTokens(Map<String, dynamic> data) async {

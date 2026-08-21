@@ -4,6 +4,7 @@ import '../operaciones/operaciones_service.dart';
 import '../operaciones/remision_tracking.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_feedback.dart';
+import '../widgets/contacto_card.dart';
 import 'comercial_service.dart';
 import 'pedido.dart';
 import 'pedido_detail_widgets.dart';
@@ -27,7 +28,7 @@ class PedidoDetailScreen extends StatefulWidget {
 }
 
 class _PedidoDetailScreenState extends State<PedidoDetailScreen> {
-  late Future<(Cliente, EstadoCuenta)> _future;
+  late Future<(Cliente, EstadoCuenta, ClienteContacto?)> _future;
   late Future<List<RemisionResumen>> _remisionesFuture;
   bool _submitting = false;
 
@@ -38,12 +39,16 @@ class _PedidoDetailScreenState extends State<PedidoDetailScreen> {
     _remisionesFuture = OperacionesService.remisionesPorPedido(widget.pedido.id);
   }
 
-  Future<(Cliente, EstadoCuenta)> _load() async {
+  Future<(Cliente, EstadoCuenta, ClienteContacto?)> _load() async {
     final results = await Future.wait([
       ComercialService.obtenerCliente(widget.pedido.clienteId),
       ComercialService.estadoCuenta(widget.pedido.clienteId),
+      ComercialService.contactoParaEntrega(
+        obraId: widget.pedido.obraId,
+        clienteId: widget.pedido.clienteId,
+      ),
     ]);
-    return (results[0] as Cliente, results[1] as EstadoCuenta);
+    return (results[0] as Cliente, results[1] as EstadoCuenta, results[2] as ClienteContacto?);
   }
 
   Future<void> _autorizarPago(String resultado, {String? motivo}) async {
@@ -149,7 +154,7 @@ class _PedidoDetailScreenState extends State<PedidoDetailScreen> {
         foregroundColor: isDark ? Colors.white : Colors.black,
         elevation: 0,
       ),
-      body: FutureBuilder<(Cliente, EstadoCuenta)>(
+      body: FutureBuilder<(Cliente, EstadoCuenta, ClienteContacto?)>(
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
@@ -168,12 +173,24 @@ class _PedidoDetailScreenState extends State<PedidoDetailScreen> {
             );
           }
 
-          final (cliente, estadoCuenta) = snapshot.data!;
+          final (cliente, estadoCuenta, contacto) = snapshot.data!;
 
           return ListView(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
             children: [
               SummaryCard(pedido: pedido, cardColor: cardColor, borderColor: borderColor, textColor: textColor, mutedColor: mutedColor),
+              if (contacto != null) ...[
+                const SizedBox(height: 16),
+                ContactoCard(
+                  nombre: contacto.nombre,
+                  cargo: contacto.cargo,
+                  telefono: contacto.telefono,
+                  cardColor: cardColor,
+                  borderColor: borderColor,
+                  textColor: textColor,
+                  mutedColor: mutedColor,
+                ),
+              ],
               const SizedBox(height: 20),
               EstadoCuentaCard(
                 cliente: cliente,

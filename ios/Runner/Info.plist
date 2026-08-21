@@ -47,6 +47,11 @@
 	<string>FN Concretos usa la cámara para capturar fotos de evidencia de entrega.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>FN Concretos accede a tus fotos para adjuntar evidencia de entrega.</string>
+	<!-- Required by local_auth for the Face ID quick-login option (see
+	     lib/auth/biometric_service.dart) — without this, Face ID silently
+	     fails with a dialog saying the app hasn't been updated to use it. -->
+	<key>NSFaceIDUsageDescription</key>
+	<string>FN Concretos usa Face ID para iniciar sesión rápidamente sin escribir tu contraseña cada vez.</string>
 	<!-- Required since iOS 14 for `flutter run`/hot-reload to discover the
 	     Dart VM Service over the local network (mDNS/Bonjour) — without
 	     these, the app runs fine on-device but the host tooling never finds

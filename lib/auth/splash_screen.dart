@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'auth_service.dart';
+import 'biometric_lock_screen.dart';
 import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -47,7 +48,14 @@ class _SplashScreenState extends State<SplashScreen> {
     _navigated = true;
     final restored = await _restoreSessionFuture;
     if (!mounted) return;
-    final destination = restored ? destinationForSession() : const LoginScreen();
+    final Widget destination;
+    if (!restored) {
+      destination = const LoginScreen();
+    } else if (AuthService.biometricHabilitado) {
+      destination = const BiometricLockScreen();
+    } else {
+      destination = destinationForSession();
+    }
     Navigator.of(
       context,
     ).pushReplacement(MaterialPageRoute(builder: (context) => destination));

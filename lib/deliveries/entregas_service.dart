@@ -8,13 +8,21 @@ import 'remision.dart';
 ///
 /// 1. `operaciones`'s `programacion-produccion` — the whole plant's
 ///    production schedule for a date (not scoped to any one conductor).
-/// 2. `operaciones`'s `asignaciones` — who's actually assigned to each of
-///    those pedidos, used to keep only this conductor's own deliveries.
-/// 3. `comercial`'s `pedidos`/`obras` — the pedido and job-site details
-///    (including the obra's lat/lng for the map/navigation).
+/// 2. `operaciones`'s `remisiones` — which conductor a pedido actually
+///    belongs to lives on its Remisión's `conductorId`, used to keep only
+///    this conductor's own deliveries. Deliberately *not* `/asignaciones`
+///    (see `OperacionesService.asignacionesPorPedido`) — that endpoint
+///    answers a different question and can come back empty for a pedido
+///    that already has a remisión with a conductor on it, silently hiding
+///    an otherwise-ready delivery.
+/// 3. `comercial`'s `pedidos`/`obras`/`contactoParaEntrega` — the pedido and
+///    job-site details (including the obra's lat/lng for the map/navigation,
+///    and the specific contacto resolved for this obra+cliente pairing for
+///    the detail screen's WhatsApp button).
 ///
-/// These programación records predate any Remisión, so the resulting
-/// [Remision]s all have `hitoActual: null`.
+/// A pedido programmed for today with no Remisión yet has no way to know
+/// which conductor it belongs to, so it's skipped until planta/producción
+/// creates one — this app never creates a Remisión itself (see vistas.md).
 class EntregasService {
   /// [fecha] defaults to today; pass a past date to build the same list for
   /// that day instead (see `HistorialEntregasScreen`).
@@ -28,20 +36,17 @@ class EntregasService {
 
     final entregas = <Remision>[];
     for (final item in programacion) {
-      final asignaciones = await OperacionesService.asignacionesPorPedido(item.pedidoId);
-      final esMia = asignaciones.any((a) => a.conductorId == idEmpleado);
-      if (!esMia) continue;
+      final remisiones = await OperacionesService.remisionesPorPedido(item.pedidoId);
+      final propia = remisiones.where((r) => r.conductorId == idEmpleado);
+      if (propia.isEmpty) continue;
+      final remisionPropia = propia.first;
 
       final pedido = await ComercialService.obtenerPedido(item.pedidoId);
       final obra = await ComercialService.obtenerObra(pedido.obraId);
-
-      // If planta/producción already generated a Remisión for this pedido,
-      // grab its id so RouteNavigationScreen can post real GPS pings to it.
-      // The app never creates one itself (see vistas.md) — no Remisión yet
-      // just means no GPS posting yet.
-      final remisiones = await OperacionesService.remisionesPorPedido(pedido.id);
-      final propia = remisiones.where((r) => r.conductorId == idEmpleado);
-      final remisionPropia = propia.isEmpty ? null : propia.first;
+      final contacto = await ComercialService.contactoParaEntrega(
+        obraId: pedido.obraId,
+        clienteId: pedido.clienteId,
+      );
 
       entregas.add(Remision(
         folio: pedido.folio,
@@ -50,19 +55,22 @@ class EntregasService {
         direccion: obra.direccion,
         horaProgramada: item.horaArranque,
         tipoConcreto: pedido.tipoServicio,
-        // This remisión's own volume once one exists — not the pedido's
-        // total, since a pedido can be split across several remisiones.
-        volumenM3: remisionPropia?.metrosCargados ?? remisionPropia?.metrosSolicitados ?? pedido.volumenSolicitadoM3,
+        // This remisión's own volume — not the pedido's total, since a
+        // pedido can be split across several remisiones.
+        volumenM3: remisionPropia.metrosCargados ?? remisionPropia.metrosSolicitados ?? pedido.volumenSolicitadoM3,
         volumenPedidoTotal: pedido.volumenSolicitadoM3,
-        volumenAcumuladoPedido: remisionPropia?.metrosAcumuladosPedido,
-        volumenPendientePedido: remisionPropia?.metrosPendientesPedido,
-        hitoActual: null,
-        remisionId: remisionPropia?.id,
+        volumenPedidoEntregado: pedido.volumenEntregadoM3,
+        volumenPedidoPendiente: pedido.volumenPendienteM3,
+        hitoActual: HitoEntrega.fromBackendValue(remisionPropia.estatus),
+        remisionId: remisionPropia.id,
         destinoLat: obra.latitud,
         destinoLng: obra.longitud,
         pedidoId: pedido.id,
         clienteId: pedido.clienteId,
         obraId: pedido.obraId,
+        contactoNombre: contacto?.nombre,
+        contactoCargo: contacto?.cargo,
+        telefono: contacto?.telefono,
       ));
     }
     return entregas;

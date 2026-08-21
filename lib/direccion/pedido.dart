@@ -61,7 +61,6 @@ class Pedido {
     );
   }
 }
-
 /// The backend documents `id`/`clienteId`/`obraId` as `int64` but doesn't
 /// mark them required, and some Spring/Jackson setups serialize `Long`
 /// fields as JSON strings to dodge JS's 53-bit safe-integer limit — either
@@ -77,7 +76,10 @@ int _parseInt(dynamic value, {int fallback = 0}) {
 int? _parseIntOrNull(dynamic value) => value == null ? null : _parseInt(value);
 
 /// Mirrors `ClienteResponse` — only the credit-relevant fields Dirección
-/// needs when judging a pedido.
+/// needs when judging a pedido. A cliente has no phone/contact info of its
+/// own — that lives on its named contacts (see [ClienteContacto]), since a
+/// cliente can have several (e.g. one per obra, or one per role like
+/// "Compras" vs. "Residente de obra").
 class Cliente {
   final int id;
   final String nombre;
@@ -100,6 +102,54 @@ class Cliente {
       limiteCredito: (json['limiteCredito'] as num?)?.toDouble() ?? 0,
       diasCredito: json['diasCredito'] as int? ?? 0,
       estatus: json['estatus'] as String? ?? '',
+    );
+  }
+}
+
+/// Mirrors one row of `GET /obras/{obraId}/clientes` — a cliente↔obra
+/// association. A single obra can have more than one cliente tied to it
+/// (shared job sites), so this must be filtered by `clienteId` to find the
+/// pairing relevant to a specific pedido. `contactoId` is which of that
+/// cliente's [ClienteContacto]s is the one to reach for deliveries at this
+/// specific obra — null means no contacto was assigned for this pairing.
+class ObraCliente {
+  final int clienteId;
+  final int? contactoId;
+
+  const ObraCliente({required this.clienteId, required this.contactoId});
+
+  factory ObraCliente.fromJson(Map<String, dynamic> json) {
+    return ObraCliente(
+      clienteId: _parseInt(json['clienteId']),
+      contactoId: _parseIntOrNull(json['contactoId']),
+    );
+  }
+}
+
+/// Mirrors one row of `GET /clientes/{clienteId}/contactos` — a named
+/// person at the cliente (e.g. "Ing. Federico Solorzano, Residente de obra
+/// (turno matutino)"). `telefono` is nullable — not every contacto has one
+/// on file, in which case there's simply no WhatsApp button to show for
+/// them.
+class ClienteContacto {
+  final int id;
+  final String nombre;
+  final String? telefono;
+  final String? cargo;
+
+  const ClienteContacto({
+    required this.id,
+    required this.nombre,
+    required this.telefono,
+    required this.cargo,
+  });
+
+  factory ClienteContacto.fromJson(Map<String, dynamic> json) {
+    return ClienteContacto(
+      id: _parseInt(json['id']),
+      nombre: json['nombre'] as String? ?? '',
+      telefono: json['telefono'] as String?,
+      cargo: json['cargo'] as String?,
     );
   }
 }
