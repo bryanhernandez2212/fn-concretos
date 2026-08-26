@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../auth/auth_service.dart';
 import '../direccion/comercial_service.dart';
 import '../operaciones/operaciones_service.dart';
@@ -37,9 +39,15 @@ class EntregasService {
     final entregas = <Remision>[];
     for (final item in programacion) {
       final remisiones = await OperacionesService.remisionesPorPedido(item.pedidoId);
-      final propia = remisiones.where((r) => r.conductorId == idEmpleado);
-      if (propia.isEmpty) continue;
-      final remisionPropia = propia.first;
+      final propias = remisiones.where((r) => r.conductorId == idEmpleado).toList();
+      if (propias.isEmpty) {
+        debugPrint(
+          'EntregasService: pedido ${item.pedidoId} programado hoy pero sin remisión '
+          'para conductorId=$idEmpleado (remisiones encontradas: '
+          '${remisiones.map((r) => 'id=${r.id} conductorId=${r.conductorId}').toList()})',
+        );
+        continue;
+      }
 
       final pedido = await ComercialService.obtenerPedido(item.pedidoId);
       final obra = await ComercialService.obtenerObra(pedido.obraId);
@@ -48,30 +56,39 @@ class EntregasService {
         clienteId: pedido.clienteId,
       );
 
-      entregas.add(Remision(
-        folio: pedido.folio,
-        cliente: pedido.clienteNombre,
-        obra: obra.nombre,
-        direccion: obra.direccion,
-        horaProgramada: item.horaArranque,
-        tipoConcreto: pedido.tipoServicio,
-        // This remisión's own volume — not the pedido's total, since a
-        // pedido can be split across several remisiones.
-        volumenM3: remisionPropia.metrosCargados ?? remisionPropia.metrosSolicitados ?? pedido.volumenSolicitadoM3,
-        volumenPedidoTotal: pedido.volumenSolicitadoM3,
-        volumenPedidoEntregado: pedido.volumenEntregadoM3,
-        volumenPedidoPendiente: pedido.volumenPendienteM3,
-        hitoActual: HitoEntrega.fromBackendValue(remisionPropia.estatus),
-        remisionId: remisionPropia.id,
-        destinoLat: obra.latitud,
-        destinoLng: obra.longitud,
-        pedidoId: pedido.id,
-        clienteId: pedido.clienteId,
-        obraId: pedido.obraId,
-        contactoNombre: contacto?.nombre,
-        contactoCargo: contacto?.cargo,
-        telefono: contacto?.telefono,
-      ));
+      // The same conductor can have more than one remisión on the same
+      // pedido — e.g. the olla can't carry the whole volume in one trip, so
+      // they make several. Each is its own delivery run (own hito, own
+      // horaCarga/horaEntrega), so each gets its own `Remision` entry rather
+      // than collapsing to just one — otherwise an already-entregada trip
+      // could shadow a still-active one for the same pedido (or vice versa)
+      // depending on array order, hiding whichever didn't get picked.
+      for (final remisionPropia in propias) {
+        entregas.add(Remision(
+          folio: pedido.folio,
+          cliente: pedido.clienteNombre,
+          obra: obra.nombre,
+          direccion: obra.direccion,
+          horaProgramada: item.horaArranque,
+          tipoConcreto: pedido.tipoServicio,
+          // This remisión's own volume — not the pedido's total, since a
+          // pedido can be split across several remisiones.
+          volumenM3: remisionPropia.metrosCargados ?? remisionPropia.metrosSolicitados ?? pedido.volumenSolicitadoM3,
+          volumenPedidoTotal: pedido.volumenSolicitadoM3,
+          volumenPedidoEntregado: pedido.volumenEntregadoM3,
+          volumenPedidoPendiente: pedido.volumenPendienteM3,
+          hitoActual: HitoEntrega.fromBackendValue(remisionPropia.estatus),
+          remisionId: remisionPropia.id,
+          destinoLat: obra.latitud,
+          destinoLng: obra.longitud,
+          pedidoId: pedido.id,
+          clienteId: pedido.clienteId,
+          obraId: pedido.obraId,
+          contactoNombre: contacto?.nombre,
+          contactoCargo: contacto?.cargo,
+          telefono: contacto?.telefono,
+        ));
+      }
     }
     return entregas;
   }
