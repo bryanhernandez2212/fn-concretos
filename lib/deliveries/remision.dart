@@ -5,7 +5,7 @@
 /// late — that's a computed status, not a hito, so it deliberately has no
 /// member here; see [HitoEntrega.fromBackendValue].
 enum HitoEntrega {
-  cargandoPlanta('cargando_planta', 'Cargando en planta'),
+  cargandoPlanta('cargando_planta', 'Cargó en planta'),
   salioPlanta('salio_planta', 'Salió de planta'),
   enCamino('en_camino', 'En camino'),
   proximoLlegar('proximo_llegar', 'Próximo a llegar'),
@@ -20,10 +20,17 @@ enum HitoEntrega {
 
   const HitoEntrega(this.backendValue, this.label);
 
-  /// Parses a raw `estatus` string from the backend. Returns `null` for
-  /// anything that isn't one of the 8 known hito values — notably
-  /// `con_atraso`, which is a computed status override, not a hito.
+  /// Parses a raw `estatus` string from the backend. A blank value, or the
+  /// literal `programado` (confirmed from the real sandbox — the backend's
+  /// placeholder status before any hito PATCH), means the Remisión exists
+  /// but no hito has ever been PATCHed yet — since a Remisión only gets
+  /// created once the truck is being loaded, that's already [cargandoPlanta]
+  /// in reality, not "nothing has happened", so it resolves to that rather
+  /// than `null`. Returns `null` for anything else that isn't one of the 8
+  /// known hito values — notably `con_atraso`, which is a computed status
+  /// override, not a hito.
   static HitoEntrega? fromBackendValue(String value) {
+    if (value.isEmpty || value == 'programado') return HitoEntrega.cargandoPlanta;
     for (final hito in HitoEntrega.values) {
       if (hito.backendValue == value) return hito;
     }

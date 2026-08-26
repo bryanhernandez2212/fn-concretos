@@ -247,19 +247,14 @@ class HitoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final current = this.current;
-    // `entregado` is the last step in the sequence, so it never has a "next"
-    // step to make it look done relative to — once reached, it IS the
-    // completed state, not still "in progress", so it renders as done
-    // (green, checked) rather than current (yellow).
-    final isDone = current != null &&
-        (hito.index < current.index ||
-            (hito == current && hito == HitoEntrega.entregado));
-    final isCurrent = current != null && hito.index == current.index && !isDone;
-    final circleColor = isDone
-        ? AppColors.success
-        : isCurrent
-        ? _accentYellow
-        : mutedColor.withValues(alpha: 0.3);
+    // Each hito is a server-stamped instant (`avanzarHito` records a `hora*`
+    // the moment it's PATCHed), not a duration — so reaching it, including
+    // being the most recently reached one, already means it happened. There's
+    // no separate "in progress" state to show for the current hito: it's
+    // done (green, checked) the same as every earlier one.
+    final isDone = current != null && hito.index <= current.index;
+    final isCurrent = current != null && hito.index == current.index;
+    final circleColor = isDone ? AppColors.success : mutedColor.withValues(alpha: 0.3);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -273,7 +268,7 @@ class HitoRow extends StatelessWidget {
                 height: 22,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isDone || isCurrent ? circleColor : Colors.transparent,
+                  color: isDone ? circleColor : Colors.transparent,
                   border: Border.all(color: circleColor, width: 2),
                 ),
                 child: isDone

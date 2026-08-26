@@ -92,8 +92,7 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
     if (permission == geo.LocationPermission.denied) {
       permission = await geo.Geolocator.requestPermission();
     }
-    final granted =
-        permission == geo.LocationPermission.always || permission == geo.LocationPermission.whileInUse;
+    final granted = permission == geo.LocationPermission.always || permission == geo.LocationPermission.whileInUse;
     if (!granted) {
       if (mounted) setState(() => _errorText = 'Se necesita el permiso de ubicación para navegar.');
       return;
@@ -178,49 +177,113 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
     } catch (_) {}
   }
 
-  void _finish() => Navigator.of(context).pop();
+  /// Whether leaving right now would cut off an in-progress route — used to
+  /// gate the exit confirmation. Once arrived there's nothing left to
+  /// interrupt, so "Ruta terminada" exits immediately.
+  bool get _wouldInterruptRoute => _guidanceRunning && !_arrived;
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          if (_errorText == null)
-            Positioned.fill(
-              child: GoogleMapsNavigationView(
-                onViewCreated: (controller) => _viewController = controller,
-                initialNavigationUIEnabledPreference: NavigationUIEnabledPreference.automatic,
-                initialForceNightMode: NavigationForceNightMode.forceNight,
-                initialNavigationHeaderStylingOptions: _navigationHeaderStyle,
-                initialPadding: EdgeInsets.only(
-                  bottom: 96 + MediaQuery.of(context).padding.bottom,
-                ),
-              ),
-            )
-          else
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  _errorText!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white70, fontSize: 15),
-                ),
-              ),
-            ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: RouteNavBackButton(onTap: _finish),
+  Future<void> _finish() async {
+    if (_wouldInterruptRoute) {
+      final salir = await _confirmarSalida();
+      if (salir != true) return;
+    }
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  /// The hito/GPS progress already sent to the backend up to this point is
+  /// never at risk here — it was persisted server-side the moment each call
+  /// succeeded. This dialog is only about the *in-progress* guidance
+  /// session (turn-by-turn, live tracking) that leaving now would cut short.
+  Future<bool?> _confirmarSalida() {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        icon: Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(shape: BoxShape.circle, color: _accentYellow.withValues(alpha: 0.15)),
+          child: const Icon(Icons.warning_amber_rounded, color: _accentYellow, size: 28),
+        ),
+        title: const Text(
+          '¿Salir de la navegación?',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 17),
+        ),
+        content: const Text(
+          'Se detendrá la guía de navegación en curso. El progreso de la entrega ya registrado no se perderá.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white70, fontSize: 13.5),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
             ),
           ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: RouteNavBottomBar(arrived: _arrived, onFinish: _finish),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _accentYellow,
+              foregroundColor: Colors.black,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Salir', style: TextStyle(fontWeight: FontWeight.w700)),
           ),
         ],
       ),
     );
   }
-}
 
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: !_wouldInterruptRoute,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) _finish();
+      },
+      child: Scaffold(
+        body: Stack(
+          children: [
+            if (_errorText == null)
+              Positioned.fill(
+                child: GoogleMapsNavigationView(
+                  onViewCreated: (controller) => _viewController = controller,
+                  initialNavigationUIEnabledPreference: NavigationUIEnabledPreference.automatic,
+                  initialForceNightMode: NavigationForceNightMode.forceNight,
+                  initialNavigationHeaderStylingOptions: _navigationHeaderStyle,
+                  initialPadding: EdgeInsets.only(bottom: 96 + MediaQuery.of(context).padding.bottom),
+                ),
+              )
+            else
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    _errorText!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white70, fontSize: 15),
+                  ),
+                ),
+              ),
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: RouteNavBackButton(onTap: _finish),
+              ),
+            ),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: RouteNavBottomBar(arrived: _arrived, onFinish: _finish),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

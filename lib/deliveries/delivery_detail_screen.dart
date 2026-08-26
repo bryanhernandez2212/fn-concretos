@@ -133,6 +133,16 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   /// "Iniciar ruta" hides.
   bool _yaLlegoAObra(RemisionResumen? detalle) => _hitoAlcanzado(detalle, HitoEntrega.enObra);
 
+  /// "Iniciar ruta" only makes sense once the truck is actually being
+  /// loaded — while the pedido is merely "programado" there's no `horaCarga`
+  /// yet, so there's nothing to navigate to/from. Gating on `horaCarga`
+  /// directly (rather than the derived hito) matches what "cargando en
+  /// planta" actually means on the backend, since a blank `estatus` also
+  /// resolves to `cargandoPlanta` (see `HitoEntrega.fromBackendValue`) even
+  /// before `horaCarga` is set.
+  bool _puedeIniciarRuta(RemisionResumen? detalle) =>
+      detalle != null && detalle.horaCarga != null && !_yaLlegoAObra(detalle);
+
   Future<void> _avanzarHito(HitoEntrega next) async {
     final remisionId = widget.remision.remisionId;
     if (remisionId == null || _avanzando) return;
@@ -238,7 +248,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                 future: _detalleFuture,
                 builder: (context, snapshot) {
                   final detalle = _detalleOverride ?? snapshot.data;
-                  if (_yaLlegoAObra(detalle)) return const SizedBox.shrink();
+                  if (!_puedeIniciarRuta(detalle)) return const SizedBox.shrink();
 
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -325,22 +335,19 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                     if (detalle == null) return const SizedBox.shrink();
 
                     final horarios = <(String, DateTime?)>[
-                      ('Carga en planta', detalle.horaCarga),
+                      ('Cargó en planta', detalle.horaCarga),
                       ('Salida de planta', detalle.horaSalida),
                       ('Llegada a obra', detalle.horaLlegadaObra),
                       ('Entrega', detalle.horaEntrega),
                     ].where((h) => h.$2 != null).toList();
 
-                    // A blank estatus means the remisión exists (it has an id,
-                    // maybe even horaCarga) but no hito has ever been PATCHed
-                    // yet — treat that as "before the first step", not as an
-                    // unrecognized status, so the driver can still advance from
-                    // the beginning instead of seeing a dead end.
-                    final sinIniciar = detalle.estatus.isEmpty;
-                    final current = sinIniciar
-                        ? null
-                        : HitoEntrega.fromBackendValue(detalle.estatus);
-                    if (!sinIniciar && current == null) {
+                    // A blank estatus resolves to `cargandoPlanta` (see
+                    // `HitoEntrega.fromBackendValue`) — null here only means
+                    // a genuinely unrecognized status (`con_atraso`, etc).
+                    final current = HitoEntrega.fromBackendValue(
+                      detalle.estatus,
+                    );
+                    if (current == null) {
                       debugPrint(
                         'DeliveryDetailScreen: unrecognized estatus="${detalle.estatus}"',
                       );
@@ -379,9 +386,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                     }
 
                     final isFinal = current == HitoEntrega.entregado;
-                    final currentIndex = sinIniciar
-                        ? -1
-                        : _secuenciaHitos.indexOf(current!);
+                    final currentIndex = _secuenciaHitos.indexOf(current);
 
                     return Column(
                       children: [
