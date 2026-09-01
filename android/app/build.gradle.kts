@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.my_flutter_app"
+    namespace = "com.fnconcretos.app"
     // flutter_secure_storage requires compileSdk 37; flutter.compileSdkVersion
     // (36) is backward compatible with this bump per Flutter's own guidance.
     compileSdk = 37
@@ -24,8 +24,10 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.my_flutter_app"
+        // Matches the package name the backend team registered in Firebase
+        // for OneSignal push (see lib/notifications/onesignal_service.dart)
+        // — must stay in sync with that Firebase Android app registration.
+        applicationId = "com.fnconcretos.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

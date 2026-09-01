@@ -4,6 +4,7 @@ import '../profile/mfa_screen.dart';
 import '../profile/profile_screen.dart';
 import '../theme/app_colors.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../widgets/notification_bell_button.dart';
 import 'autorizaciones_screen.dart';
 import 'rutas_activas_screen.dart';
 
@@ -111,45 +112,62 @@ class _DireccionHomeScreenState extends State<DireccionHomeScreen> {
       extendBody: true,
       body: SafeArea(
         bottom: false,
-        child: NotificationListener<ScrollNotification>(
-          onNotification: (notification) {
-            if (notification is ScrollUpdateNotification) {
-              final delta = notification.scrollDelta ?? 0;
-              if (delta < 0 && !_navCompact) {
-                setState(() => _navCompact = true);
-              } else if (delta > 0 && _navCompact) {
-                setState(() => _navCompact = false);
-              }
-            }
-            return false;
-          },
-          child: Stack(
-            fit: StackFit.expand,
-            children: List.generate(_pages.length, (index) {
-              final isActive = index == _currentIndex;
-              // Actually unmount the map tab while it's not selected (see
-              // `_rutasTabIndex` above) instead of just fading it out — this
-              // also stops it polling GPS every 15s for a map nobody's
-              // looking at.
-              final content = (index == _rutasTabIndex && !isActive)
-                  ? const SizedBox.shrink()
-                  : _pages[index];
-              return IgnorePointer(
-                ignoring: !isActive,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 260),
-                  curve: Curves.easeOut,
-                  opacity: isActive ? 1.0 : 0.0,
-                  child: AnimatedScale(
-                    duration: const Duration(milliseconds: 260),
-                    curve: Curves.easeOut,
-                    scale: isActive ? 1.0 : 0.96,
-                    child: content,
-                  ),
+        child: Column(
+          children: [
+            // A dedicated row for the bell rather than floating it over the
+            // tabs below (which would collide with each tab's own header).
+            // Hidden on the Rutas tab: RutasActivasScreen already has its own
+            // Scaffold/AppBar with top-right actions (fullscreen toggle, "ver
+            // todas") — reserving space above it here would just be a
+            // redundant second bar eating into the map's "pantalla completa".
+            if (_currentIndex != _rutasTabIndex)
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
+                child: Align(alignment: Alignment.centerRight, child: NotificationBellButton()),
+              ),
+            Expanded(
+              child: NotificationListener<ScrollNotification>(
+                onNotification: (notification) {
+                  if (notification is ScrollUpdateNotification) {
+                    final delta = notification.scrollDelta ?? 0;
+                    if (delta < 0 && !_navCompact) {
+                      setState(() => _navCompact = true);
+                    } else if (delta > 0 && _navCompact) {
+                      setState(() => _navCompact = false);
+                    }
+                  }
+                  return false;
+                },
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: List.generate(_pages.length, (index) {
+                    final isActive = index == _currentIndex;
+                    // Actually unmount the map tab while it's not selected
+                    // (see `_rutasTabIndex` above) instead of just fading it
+                    // out — this also stops it polling GPS every 15s for a
+                    // map nobody's looking at.
+                    final content = (index == _rutasTabIndex && !isActive)
+                        ? const SizedBox.shrink()
+                        : _pages[index];
+                    return IgnorePointer(
+                      ignoring: !isActive,
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 260),
+                        curve: Curves.easeOut,
+                        opacity: isActive ? 1.0 : 0.0,
+                        child: AnimatedScale(
+                          duration: const Duration(milliseconds: 260),
+                          curve: Curves.easeOut,
+                          scale: isActive ? 1.0 : 0.96,
+                          child: content,
+                        ),
+                      ),
+                    );
+                  }),
                 ),
-              );
-            }),
-          ),
+              ),
+            ),
+          ],
         ),
       ),
       bottomNavigationBar: BottomNavBar(

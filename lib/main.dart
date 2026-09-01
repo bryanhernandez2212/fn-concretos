@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'auth/splash_screen.dart';
+import 'notifications/onesignal_service.dart';
 
 final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.dark);
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await OneSignalService.initialize();
   runApp(const MyApp());
 }
 

@@ -6,6 +6,7 @@ import '../operaciones/operaciones_service.dart';
 import '../operaciones/remision_tracking.dart';
 import '../theme/app_colors.dart';
 import 'pedido.dart';
+import 'vehicle_marker_icon.dart';
 
 const _accentYellow = AppColors.accent;
 const _green = AppColors.success;
@@ -612,6 +613,20 @@ class _LiveTrackingCardState extends State<LiveTrackingCard> {
   GoogleMapViewController? _mapController;
   Timer? _timer;
 
+  /// Heading for the marker icon, degrees clockwise from north. Kept across
+  /// polls rather than recomputed from scratch each time, since a poll with
+  /// fewer than two `historial` points (e.g. right after the truck stops
+  /// briefly) shouldn't snap the icon back to facing north.
+  double _rotation = 0;
+
+  /// Live marker/polyline, updated in place (`updateMarkers`/
+  /// `updatePolylines`) rather than cleared and re-added every poll — that's
+  /// what lets [glideMarkerTo] slide the truck smoothly between GPS pings
+  /// instead of it snapping to the new position every 15s.
+  Marker? _marker;
+  Polyline? _polyline;
+  Timer? _glide;
+
   @override
   void initState() {
     super.initState();
@@ -622,6 +637,7 @@ class _LiveTrackingCardState extends State<LiveTrackingCard> {
   @override
   void dispose() {
     _timer?.cancel();
+    _glide?.cancel();
     super.dispose();
   }
 
@@ -649,21 +665,63 @@ class _LiveTrackingCardState extends State<LiveTrackingCard> {
       latitude: ultima.latitud,
       longitude: ultima.longitud,
     );
-    await controller.clearMarkers();
-    await controller.addMarkers([MarkerOptions(position: posicion)]);
-
     if (ruta.historial.length > 1) {
-      await controller.clearPolylines();
-      await controller.addPolylines([
-        PolylineOptions(
-          points: ruta.historial
-              .map((p) => LatLng(latitude: p.latitud, longitude: p.longitud))
-              .toList(),
-          strokeColor: _accentYellow,
-        ),
-      ]);
+      _rotation = bearingBetween(
+        ruta.historial[ruta.historial.length - 2],
+        ruta.historial[ruta.historial.length - 1],
+      );
     }
 
+    final marcadorPrevio = _marker;
+    if (marcadorPrevio == null) {
+      final nuevos = await controller.addMarkers([
+        MarkerOptions(
+          position: posicion,
+          icon: await VehicleMarkerIcon.forColor(_accentYellow),
+          anchor: VehicleMarkerIcon.anchor,
+          rotation: _rotation,
+        ),
+      ]);
+      if (nuevos.isNotEmpty && nuevos.first != null) _marker = nuevos.first;
+    } else {
+      _glide?.cancel();
+      _glide = glideMarkerTo(
+        controller,
+        marcadorPrevio,
+        toPosition: posicion,
+        toRotation: _rotation,
+        duration: const Duration(seconds: 15),
+        onUpdate: (updated) => _marker = updated,
+      );
+    }
+
+    if (ruta.historial.length > 1) {
+      final puntos = ruta.historial
+          .map((p) => LatLng(latitude: p.latitud, longitude: p.longitud))
+          .toList();
+      final polilineaPrevia = _polyline;
+      if (polilineaPrevia == null) {
+        final nuevas = await controller.addPolylines([
+          PolylineOptions(points: puntos, strokeColor: _accentYellow),
+        ]);
+        if (nuevas.isNotEmpty && nuevas.first != null) {
+          _polyline = nuevas.first;
+        }
+      } else {
+        final actualizadas = await controller.updatePolylines([
+          polilineaPrevia.copyWith(
+            options: polilineaPrevia.options.copyWith(points: puntos),
+          ),
+        ]);
+        if (actualizadas.isNotEmpty && actualizadas.first != null) {
+          _polyline = actualizadas.first;
+        }
+      }
+    }
+
+    // Recenters every poll — this preview has its own gestures disabled (see
+    // the `GoogleMapsMapView` below), so there's no user pan/zoom for this
+    // to fight, unlike `RutasActivasScreen`'s fully-interactive map.
     await controller.animateCamera(CameraUpdate.newLatLng(posicion));
   }
 
@@ -711,6 +769,25 @@ class _LiveTrackingCardState extends State<LiveTrackingCard> {
                           fontSize: 12.5,
                           color: widget.mutedColor,
                         ),
+                      ),
+                    if (ruta?.ultimaUbicacion != null)
+                      IconButton(
+                        tooltip: 'Ver en pantalla completa',
+                        visualDensity: VisualDensity.compact,
+                        icon: Icon(Icons.fullscreen, color: widget.mutedColor),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => LiveTrackingFullscreenScreen(
+                                remisionId: widget.remisionId,
+                                folioRemision: widget.folioRemision,
+                                conductorId: widget.conductorId,
+                                volumen: widget.volumen,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                   ],
                 ),
@@ -786,6 +863,230 @@ class _LiveTrackingCardState extends State<LiveTrackingCard> {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Full-screen, fully interactive version of one [LiveTrackingCard]'s map —
+/// opened via its "Ver en pantalla completa" button. Runs its own poll/marker
+/// logic rather than sharing `_LiveTrackingCardState`'s: the embedded card's
+/// `GoogleMapsMapView` is a distinct native platform view from this one, so
+/// each needs its own `GoogleMapViewController` and overlay updates anyway.
+class LiveTrackingFullscreenScreen extends StatefulWidget {
+  final int remisionId;
+  final String folioRemision;
+  final int? conductorId;
+  final double? volumen;
+
+  const LiveTrackingFullscreenScreen({
+    super.key,
+    required this.remisionId,
+    required this.folioRemision,
+    required this.conductorId,
+    required this.volumen,
+  });
+
+  @override
+  State<LiveTrackingFullscreenScreen> createState() =>
+      _LiveTrackingFullscreenScreenState();
+}
+
+class _LiveTrackingFullscreenScreenState
+    extends State<LiveTrackingFullscreenScreen> {
+  static const _terminales = {'entregado', 'con_incidencia'};
+
+  RutaRemision? _ruta;
+  String? _errorText;
+  GoogleMapViewController? _mapController;
+  Timer? _timer;
+  double _rotation = 0;
+
+  /// Live marker/polyline, updated in place (`updateMarkers`/
+  /// `updatePolylines`) rather than cleared and re-added every poll — that's
+  /// what lets [glideMarkerTo] slide the truck smoothly between GPS pings
+  /// instead of it snapping to the new position every 15s.
+  Marker? _marker;
+  Polyline? _polyline;
+  Timer? _glide;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+    _timer = Timer.periodic(const Duration(seconds: 15), (_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _glide?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load() async {
+    try {
+      final ruta = await OperacionesService.rutaRemision(widget.remisionId);
+      if (!mounted) return;
+      setState(() {
+        _ruta = ruta;
+        _errorText = null;
+      });
+      await _updateMapOverlays(ruta);
+      if (_terminales.contains(ruta.estatus)) _timer?.cancel();
+    } on AuthException catch (e) {
+      if (mounted) setState(() => _errorText = e.message);
+    }
+  }
+
+  Future<void> _updateMapOverlays(
+    RutaRemision ruta, {
+    bool moverCamara = false,
+  }) async {
+    final controller = _mapController;
+    final ultima = ruta.ultimaUbicacion;
+    if (controller == null || ultima == null) return;
+
+    final posicion = LatLng(
+      latitude: ultima.latitud,
+      longitude: ultima.longitud,
+    );
+    if (ruta.historial.length > 1) {
+      _rotation = bearingBetween(
+        ruta.historial[ruta.historial.length - 2],
+        ruta.historial[ruta.historial.length - 1],
+      );
+    }
+
+    final marcadorPrevio = _marker;
+    if (marcadorPrevio == null) {
+      final nuevos = await controller.addMarkers([
+        MarkerOptions(
+          position: posicion,
+          icon: await VehicleMarkerIcon.forColor(_accentYellow),
+          anchor: VehicleMarkerIcon.anchor,
+          rotation: _rotation,
+        ),
+      ]);
+      if (nuevos.isNotEmpty && nuevos.first != null) _marker = nuevos.first;
+    } else {
+      _glide?.cancel();
+      _glide = glideMarkerTo(
+        controller,
+        marcadorPrevio,
+        toPosition: posicion,
+        toRotation: _rotation,
+        duration: const Duration(seconds: 15),
+        onUpdate: (updated) => _marker = updated,
+      );
+    }
+
+    if (ruta.historial.length > 1) {
+      final puntos = ruta.historial
+          .map((p) => LatLng(latitude: p.latitud, longitude: p.longitud))
+          .toList();
+      final polilineaPrevia = _polyline;
+      if (polilineaPrevia == null) {
+        final nuevas = await controller.addPolylines([
+          PolylineOptions(
+            points: puntos,
+            strokeColor: _accentYellow,
+            strokeWidth: 4,
+          ),
+        ]);
+        if (nuevas.isNotEmpty && nuevas.first != null) {
+          _polyline = nuevas.first;
+        }
+      } else {
+        final actualizadas = await controller.updatePolylines([
+          polilineaPrevia.copyWith(
+            options: polilineaPrevia.options.copyWith(points: puntos),
+          ),
+        ]);
+        if (actualizadas.isNotEmpty && actualizadas.first != null) {
+          _polyline = actualizadas.first;
+        }
+      }
+    }
+
+    // Only recenters on load/first fix — once open, the user is expected to
+    // pan/zoom freely (unlike the embedded card, gestures are enabled here),
+    // so re-centering on every 15s poll would fight that.
+    if (moverCamara) {
+      await controller.animateCamera(CameraUpdate.newLatLngZoom(posicion, 16));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ruta = _ruta;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(widget.folioRemision),
+            if (widget.conductorId != null || widget.volumen != null)
+              Text(
+                [
+                  if (widget.conductorId != null)
+                    'Conductor #${widget.conductorId}',
+                  if (widget.volumen != null) '${widget.volumen} m³',
+                ].join(' · '),
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.normal,
+                ),
+              ),
+          ],
+        ),
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        foregroundColor: isDark ? Colors.white : Colors.black,
+        elevation: 0,
+        actions: [
+          if (ruta?.ultimaUbicacion != null)
+            IconButton(
+              tooltip: 'Centrar',
+              icon: const Icon(Icons.my_location),
+              onPressed: () => _updateMapOverlays(ruta!, moverCamara: true),
+            ),
+        ],
+      ),
+      body: Builder(
+        builder: (context) {
+          if (_errorText != null && ruta == null) {
+            return Center(
+              child: Text(_errorText!, textAlign: TextAlign.center),
+            );
+          }
+          if (ruta == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (ruta.ultimaUbicacion == null) {
+            return const Center(
+              child: Text('Esperando la primera señal GPS de este viaje.'),
+            );
+          }
+          return GoogleMapsMapView(
+            initialCameraPosition: CameraPosition(
+              target: LatLng(
+                latitude: ruta.ultimaUbicacion!.latitud,
+                longitude: ruta.ultimaUbicacion!.longitud,
+              ),
+              zoom: 16,
+            ),
+            initialMapColorScheme: isDark
+                ? MapColorScheme.dark
+                : MapColorScheme.light,
+            onViewCreated: (controller) {
+              _mapController = controller;
+              _updateMapOverlays(ruta, moverCamara: true);
+            },
+          );
+        },
       ),
     );
   }

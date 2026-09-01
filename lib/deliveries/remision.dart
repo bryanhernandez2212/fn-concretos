@@ -122,4 +122,36 @@ class Remision {
     required this.contactoCargo,
     required this.telefono,
   });
+
+  /// Rebuilds with fresh pedido-level totals — used after firmar a remisión,
+  /// since the backend recalculates `volumenEntregadoM3`/`volumenPendienteM3`
+  /// server-side at that point (see `ComercialService`/`vistas.md`) but this
+  /// object was built once, back when "Mis entregas del día" first loaded.
+  Remision copyWith({
+    double? volumenPedidoEntregado,
+    double? volumenPedidoPendiente,
+  }) {
+    return Remision(
+      folio: folio,
+      cliente: cliente,
+      obra: obra,
+      direccion: direccion,
+      horaProgramada: horaProgramada,
+      tipoConcreto: tipoConcreto,
+      volumenM3: volumenM3,
+      volumenPedidoTotal: volumenPedidoTotal,
+      volumenPedidoEntregado: volumenPedidoEntregado ?? this.volumenPedidoEntregado,
+      volumenPedidoPendiente: volumenPedidoPendiente ?? this.volumenPedidoPendiente,
+      hitoActual: hitoActual,
+      remisionId: remisionId,
+      destinoLat: destinoLat,
+      destinoLng: destinoLng,
+      pedidoId: pedidoId,
+      clienteId: clienteId,
+      obraId: obraId,
+      contactoNombre: contactoNombre,
+      contactoCargo: contactoCargo,
+      telefono: telefono,
+    );
+  }
 }

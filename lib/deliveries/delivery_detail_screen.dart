@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../auth/auth_service.dart';
+import '../direccion/comercial_service.dart';
 import '../operaciones/evidencia.dart';
 import '../operaciones/operaciones_service.dart';
 import '../operaciones/remision_tracking.dart';
@@ -66,6 +67,16 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   RemisionResumen? _detalleOverride;
   bool _avanzando = false;
 
+  /// `widget.remision`'s pedido-level totals (solicitado/entregado/pendiente)
+  /// are a snapshot from whenever "Mis entregas del día" first loaded — once
+  /// this remisión gets firmada, the backend recalculates them server-side
+  /// (see `SummaryCard`'s "Pedido total"/"m³ entregados"/"m³ pendientes"), so
+  /// this holds a refreshed copy rather than showing stale numbers until the
+  /// driver backs out and re-enters the list.
+  Remision? _remisionOverride;
+
+  Remision get _remision => _remisionOverride ?? widget.remision;
+
   /// Whether the remisión has been firmada — `RemisionResponse` has no
   /// boolean flag for it, so this is derived from whether `GET
   /// /remisiones/{id}/firma` comes back non-empty.
@@ -93,6 +104,25 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     setState(() {
       _firmasFuture = OperacionesService.firmasPorRemision(remisionId);
     });
+  }
+
+  /// Pulls the pedido's just-recalculated entregado/pendiente after firmar
+  /// (see `_remisionOverride`). Best-effort: if this fails the driver still
+  /// sees the pre-firma numbers, which is a stale display, not a broken
+  /// action — the firma itself already succeeded.
+  Future<void> _refrescarPedido() async {
+    try {
+      final pedido = await ComercialService.obtenerPedido(_remision.pedidoId);
+      if (!mounted) return;
+      setState(() {
+        _remisionOverride = _remision.copyWith(
+          volumenPedidoEntregado: pedido.volumenEntregadoM3,
+          volumenPedidoPendiente: pedido.volumenPendienteM3,
+        );
+      });
+    } on AuthException {
+      // Ignored — see doc comment above.
+    }
   }
 
   void _refrescarArchivos() {
@@ -163,7 +193,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final remision = widget.remision;
+    final remision = _remision;
     final textColor = isDark ? Colors.white : Colors.black87;
     final mutedColor = (isDark ? Colors.white : Colors.black).withValues(
       alpha: 0.55,
@@ -536,7 +566,10 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                                             ),
                                           ),
                                         );
-                                    if (firmada == true) _refrescarFirmas();
+                                    if (firmada == true) {
+                                      _refrescarFirmas();
+                                      _refrescarPedido();
+                                    }
                                   },
                                 );
                               },

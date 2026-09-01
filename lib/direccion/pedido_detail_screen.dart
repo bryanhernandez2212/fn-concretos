@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../auth/auth_service.dart';
 import '../operaciones/operaciones_service.dart';
@@ -32,11 +34,39 @@ class _PedidoDetailScreenState extends State<PedidoDetailScreen> {
   late Future<List<RemisionResumen>> _remisionesFuture;
   bool _submitting = false;
 
+  /// `widget.pedido` is a snapshot from whenever this screen was opened —
+  /// `volumenEntregadoM3`/`volumenPendienteM3`/`estatusGeneral` change
+  /// server-side as remisiones get firmadas (possibly from a different
+  /// conductor's device, so nothing local triggers a refetch), so this is
+  /// kept current by [_pedidoTimer] the same way "Ubicación en vivo" polls
+  /// each remisión's ruta below.
+  Pedido? _pedidoOverride;
+  Pedido get _pedido => _pedidoOverride ?? widget.pedido;
+  Timer? _pedidoTimer;
+
   @override
   void initState() {
     super.initState();
     _future = _load();
     _remisionesFuture = OperacionesService.remisionesPorPedido(widget.pedido.id);
+    _pedidoTimer = Timer.periodic(const Duration(seconds: 15), (_) => _refrescarPedido());
+  }
+
+  @override
+  void dispose() {
+    _pedidoTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _refrescarPedido() async {
+    try {
+      final pedido = await ComercialService.obtenerPedido(widget.pedido.id);
+      if (!mounted) return;
+      setState(() => _pedidoOverride = pedido);
+    } on AuthException {
+      // Best-effort background refresh — a failed poll just tries again in
+      // 15s, no need to surface an error for it.
+    }
   }
 
   Future<(Cliente, EstadoCuenta, ClienteContacto?)> _load() async {
@@ -139,7 +169,7 @@ class _PedidoDetailScreenState extends State<PedidoDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final pedido = widget.pedido;
+    final pedido = _pedido;
     final textColor = isDark ? Colors.white : Colors.black87;
     final mutedColor = (isDark ? Colors.white : Colors.black).withValues(alpha: 0.55);
     final cardColor = isDark ? const Color(0xFF141414) : Colors.white;

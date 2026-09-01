@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import '../notifications/onesignal_service.dart';
 
 class AuthException implements Exception {
   final String message;
@@ -61,6 +62,14 @@ class AuthService {
   /// (see `deliveries/entregas_service.dart`), on the assumption that both
   /// services share the same employee id space.
   static int? idEmpleado;
+
+  /// The auth-service *account* id (`/auth/me`'s `id`) — distinct from
+  /// [idEmpleado] (the employee record). This is what `notificacion-controller`'s
+  /// `NotificacionCreateRequest.usuarioId` refers to, so it's what gets
+  /// passed to `OneSignal.login()` in `OneSignalService.syncSession` —
+  /// passing [idEmpleado] there instead would register the wrong external
+  /// id and backend notifications would never find this device.
+  static int? usuarioId;
 
   /// Whether the current session's refresh token should be persisted to
   /// secure storage (i.e. whether the "Recordar sesión" checkbox was on at
@@ -209,6 +218,11 @@ class AuthService {
     } catch (_) {
       // Best-effort: the in-memory session is already cleared above.
     }
+    try {
+      await OneSignalService.clearSession();
+    } catch (_) {
+      // Best-effort — see above.
+    }
 
     if (token == null || refresh == null) return;
     try {
@@ -234,6 +248,7 @@ class AuthService {
     correo = null;
     permisos = const [];
     idEmpleado = null;
+    usuarioId = null;
     mfaHabilitado = false;
     _rememberSession = false;
     biometricHabilitado = false;
@@ -286,7 +301,13 @@ class AuthService {
     correo = data['correo'] as String?;
     permisos = (data['permisos'] as List<dynamic>?)?.cast<String>() ?? const [];
     idEmpleado = data['idEmpleado'] as int?;
+    usuarioId = data['id'] as int?;
     mfaHabilitado = data['mfaHabilitado'] as bool? ?? false;
+
+    // Best-effort: a OneSignal hiccup shouldn't block login/session-restore.
+    try {
+      await OneSignalService.syncSession(usuarioId: usuarioId, rol: rol, permisos: permisos);
+    } catch (_) {}
   }
 
   static Future<Map<String, dynamic>> _get(String path, {bool auth = false}) async {
