@@ -5,6 +5,7 @@ import '../auth/auth_service.dart';
 import '../operaciones/operaciones_service.dart';
 import '../operaciones/remision_tracking.dart';
 import '../theme/app_colors.dart';
+import '../widgets/notification_bell_button.dart';
 import 'vehicle_marker_icon.dart';
 
 const _accentYellow = AppColors.accent;
@@ -291,6 +292,7 @@ class _RutasActivasScreenState extends State<RutasActivasScreen> {
         foregroundColor: isDark ? Colors.white : Colors.black,
         elevation: 0,
         actions: [
+          const Padding(padding: EdgeInsets.symmetric(horizontal: 4), child: NotificationBellButton()),
           if (_remisiones.isNotEmpty)
             IconButton(
               tooltip: _pantallaCompleta

@@ -1,5 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../asesor_comercial/asesor_comercial_home_screen.dart';
+import '../asesor_comercial/asesor_comercial_service.dart';
 import '../direccion/comercial_service.dart';
 import '../direccion/direccion_home_screen.dart';
 import '../home/home_screen.dart';
@@ -14,7 +16,8 @@ import 'roles.dart';
 /// name — that pair of roles is hardcoded in this build regardless of
 /// permissions. Everyone else is routed by *permission*, not role name:
 /// whoever holds `pedidos.autorizar_credito` gets [DireccionHomeScreen],
-/// since the backend's roles-controller lets that permission move to a
+/// and whoever holds `agenda.administrar` gets [AsesorComercialHomeScreen] —
+/// since the backend's roles-controller lets a permission move to a
 /// different or renamed role independently of this app. No mobile
 /// screens exist for anyone else yet, so they see [RoleUnavailableScreen].
 /// Shared by [LoginScreen] (after a fresh login) and [SplashScreen] (after
@@ -24,6 +27,8 @@ Widget destinationForSession() {
     return const HomeScreen();
   } else if (AuthService.permisos.contains(permisoAutorizarCredito)) {
     return const DireccionHomeScreen();
+  } else if (AuthService.permisos.contains(permisoAdministrarAgenda)) {
+    return const AsesorComercialHomeScreen();
   } else {
     return const RoleUnavailableScreen();
   }

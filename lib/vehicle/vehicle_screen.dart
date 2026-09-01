@@ -3,6 +3,7 @@ import '../operaciones/operaciones_service.dart';
 import '../operaciones/vehiculo.dart';
 import '../theme/app_colors.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../widgets/notification_bell_button.dart';
 import 'vehicle.dart';
 import 'vehicle_documents_screen.dart';
 import 'vehicle_pendientes_screen.dart';
@@ -121,6 +122,7 @@ class _VehicleScreenState extends State<VehicleScreen> {
                     ],
                   ),
                 ),
+                const NotificationBellButton(),
               ],
             ),
             const SizedBox(height: 20),

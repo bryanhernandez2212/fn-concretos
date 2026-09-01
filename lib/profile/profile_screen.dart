@@ -13,6 +13,7 @@ import '../theme/app_colors.dart';
 import '../widgets/app_feedback.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/evidencia_viewer_screen.dart';
+import '../widgets/notification_bell_button.dart';
 import 'change_password_screen.dart';
 import 'mfa_screen.dart';
 import 'profile_widgets.dart';
@@ -290,6 +291,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                 ),
+                const NotificationBellButton(),
               ],
             ),
           ),

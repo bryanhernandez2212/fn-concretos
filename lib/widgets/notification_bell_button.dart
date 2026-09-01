@@ -4,10 +4,13 @@ import '../notifications/notificaciones_screen.dart';
 import '../notifications/notificaciones_service.dart';
 import '../theme/app_colors.dart';
 
-/// Floating bell + unread-count badge, shared by `HomeScreen` and
-/// `DireccionHomeScreen` — both shells have no per-tab AppBar (each tab
-/// draws its own header inline), so this is placed as a `Positioned`
-/// overlay in their `Stack` rather than duplicated into every tab screen.
+/// Bell + unread-count badge, shared across every tab screen in `HomeScreen`,
+/// `DireccionHomeScreen`, and `AsesorComercialHomeScreen`. None of those
+/// shells has a per-tab AppBar (each tab draws its own header inline), so
+/// this is embedded as the trailing widget of each tab's own header row
+/// (or an `AppBar` action, for `RutasActivasScreen`) rather than reserved
+/// as a separate row above the tabs — keeps every tab's content starting
+/// at the same height instead of leaving dead space just for the bell.
 /// Polls the unread count every 15s, same cadence as this app's other
 /// "someone else's device might have changed this" polling (live tracking,
 /// pedido totals) — a new notification is exactly that kind of change.

@@ -3,6 +3,7 @@ import '../auth/auth_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_feedback.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../widgets/notification_bell_button.dart';
 import 'delivery_detail_screen.dart';
 import 'deliveries_widgets.dart';
 import 'entregas_service.dart';
@@ -157,6 +158,7 @@ class _DeliveriesScreenState extends State<DeliveriesScreen> {
                       ],
                     ),
                   ),
+                  const NotificationBellButton(),
                   IconButton(
                     tooltip: 'Historial de entregas',
                     icon: Icon(Icons.history, color: mutedColor),

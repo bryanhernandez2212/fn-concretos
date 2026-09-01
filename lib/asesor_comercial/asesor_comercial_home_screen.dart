@@ -1,23 +1,31 @@
 import 'package:flutter/material.dart';
 import '../profile/profile_screen.dart';
-import '../deliveries/deliveries_screen.dart';
-import '../vehicle/vehicle_screen.dart';
 import '../widgets/bottom_nav_bar.dart';
+import 'agenda_screen.dart';
+import 'cotizaciones_screen.dart';
+import 'visitas_screen.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+/// App shell for the Asesor Comercial role: Agenda, Visitas, Cotizaciones
+/// and Perfil. No MFA nudge here (unlike `DireccionHomeScreen`) — this role
+/// has no documented backend MFA requirement. No tab embeds a native
+/// platform view, so — also unlike `DireccionHomeScreen` — every tab just
+/// stays mounted and cross-fades, no unmount-while-inactive exception
+/// needed.
+class AsesorComercialHomeScreen extends StatefulWidget {
+  const AsesorComercialHomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<AsesorComercialHomeScreen> createState() => _AsesorComercialHomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _AsesorComercialHomeScreenState extends State<AsesorComercialHomeScreen> {
   int _currentIndex = 0;
   bool _navCompact = false;
 
   final List<Widget> _pages = const [
-    DeliveriesScreen(),
-    VehicleScreen(),
+    AgendaScreen(),
+    VisitasScreen(),
+    CotizacionesScreen(),
     ProfileScreen(),
   ];
 
@@ -70,27 +78,12 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: BottomNavBar(
         currentIndex: _currentIndex,
         compact: _navCompact,
-        onTap: (int index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
+        onTap: (int index) => setState(() => _currentIndex = index),
         items: const [
-          NavItem(
-            icon: Icons.local_shipping_outlined,
-            selectedIcon: Icons.local_shipping,
-            label: 'Entregas',
-          ),
-          NavItem(
-            icon: Icons.build_outlined,
-            selectedIcon: Icons.build,
-            label: 'Vehículo',
-          ),
-          NavItem(
-            icon: Icons.person_outline,
-            selectedIcon: Icons.person,
-            label: 'Perfil',
-          ),
+          NavItem(icon: Icons.calendar_month_outlined, selectedIcon: Icons.calendar_month, label: 'Agenda'),
+          NavItem(icon: Icons.place_outlined, selectedIcon: Icons.place, label: 'Visitas'),
+          NavItem(icon: Icons.receipt_long_outlined, selectedIcon: Icons.receipt_long, label: 'Cotizaciones'),
+          NavItem(icon: Icons.person_outline, selectedIcon: Icons.person, label: 'Perfil'),
         ],
       ),
     );

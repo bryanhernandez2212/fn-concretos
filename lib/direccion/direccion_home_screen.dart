@@ -4,7 +4,6 @@ import '../profile/mfa_screen.dart';
 import '../profile/profile_screen.dart';
 import '../theme/app_colors.dart';
 import '../widgets/bottom_nav_bar.dart';
-import '../widgets/notification_bell_button.dart';
 import 'autorizaciones_screen.dart';
 import 'rutas_activas_screen.dart';
 
@@ -114,17 +113,6 @@ class _DireccionHomeScreenState extends State<DireccionHomeScreen> {
         bottom: false,
         child: Column(
           children: [
-            // A dedicated row for the bell rather than floating it over the
-            // tabs below (which would collide with each tab's own header).
-            // Hidden on the Rutas tab: RutasActivasScreen already has its own
-            // Scaffold/AppBar with top-right actions (fullscreen toggle, "ver
-            // todas") — reserving space above it here would just be a
-            // redundant second bar eating into the map's "pantalla completa".
-            if (_currentIndex != _rutasTabIndex)
-              const Padding(
-                padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: Align(alignment: Alignment.centerRight, child: NotificationBellButton()),
-              ),
             Expanded(
               child: NotificationListener<ScrollNotification>(
                 onNotification: (notification) {

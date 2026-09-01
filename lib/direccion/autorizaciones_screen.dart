@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../auth/auth_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../widgets/notification_bell_button.dart';
 import 'autorizaciones_widgets.dart';
 import 'comercial_service.dart';
 import 'pedido.dart';
@@ -89,6 +90,7 @@ class _AutorizacionesScreenState extends State<AutorizacionesScreen> {
                     ],
                   ),
                 ),
+                const NotificationBellButton(),
               ],
             ),
             const SizedBox(height: 24),
