@@ -6,6 +6,8 @@ import '../operaciones/operaciones_service.dart';
 import '../operaciones/remision_tracking.dart';
 import '../theme/app_colors.dart';
 import '../widgets/notification_bell_button.dart';
+import 'comercial_service.dart';
+import 'route_eta.dart';
 import 'vehicle_marker_icon.dart';
 
 const _accentYellow = AppColors.accent;
@@ -61,6 +63,17 @@ class _RutasActivasScreenState extends State<RutasActivasScreen> {
   final Map<int, Marker> _markers = {};
   final Map<int, Polyline> _polylines = {};
   final Map<int, Timer> _glides = {};
+
+  /// Destino (obra lat/lng) and ETA tracker per remisión id, resolved once
+  /// each (not on every 15s poll) via `pedidoId` → `obtenerPedido` →
+  /// `obtenerObra` — `RemisionResumen` doesn't come with a destino already
+  /// attached the way `deliveries/remision.dart`'s driver-facing model does.
+  /// `_resolviendoDestino` guards against kicking off that two-call chain
+  /// again for a remisión whose resolve is already in flight.
+  final Map<int, LatLng> _destinos = {};
+  final Map<int, RouteEtaTracker> _etaTrackers = {};
+  final Map<int, double> _velocidades = {};
+  final Set<int> _resolviendoDestino = {};
 
   /// Hides the truck list panel so the map fills the whole screen below the
   /// AppBar — the map itself never leaves the widget tree when this toggles
@@ -141,8 +154,25 @@ class _RutasActivasScreenState extends State<RutasActivasScreen> {
             ruta!.historial[ruta.historial.length - 2],
             ruta.historial[ruta.historial.length - 1],
           );
+          final velocidad = speedKmhBetween(
+            ruta.historial[ruta.historial.length - 2],
+            ruta.historial[ruta.historial.length - 1],
+          );
+          if (velocidad != null) _velocidades[remision.id] = velocidad;
         }
         final rotacion = _rotaciones[remision.id] ?? 0;
+
+        if (!_destinos.containsKey(remision.id) && !_resolviendoDestino.contains(remision.id)) {
+          unawaited(_resolverDestino(remision));
+        }
+        final tracker = _etaTrackers[remision.id];
+        if (tracker != null) {
+          unawaited(
+            tracker.actualizar(posicion).then((actualizado) {
+              if (actualizado && mounted) setState(() {});
+            }),
+          );
+        }
 
         final marcadorPrevio = _markers[remision.id];
         if (marcadorPrevio == null) {
@@ -214,6 +244,9 @@ class _RutasActivasScreenState extends State<RutasActivasScreen> {
         if (marcador != null) await controller.removeMarkers([marcador]);
         final polilinea = _polylines.remove(id);
         if (polilinea != null) await controller.removePolylines([polilinea]);
+        _destinos.remove(id);
+        _etaTrackers.remove(id);
+        _velocidades.remove(id);
       }
 
       if (posiciones.isNotEmpty && !_camaraAjustada) {
@@ -227,6 +260,29 @@ class _RutasActivasScreenState extends State<RutasActivasScreen> {
     } catch (_) {
       // Best-effort overlay refresh — a transient platform-view hiccup here
       // shouldn't crash the 15s poll loop.
+    }
+  }
+
+  /// Resolves [remision]'s destino (obra lat/lng) once via `pedidoId` →
+  /// `obtenerPedido` → `obtenerObra`, then creates its `RouteEtaTracker`.
+  /// Guarded by `_resolviendoDestino` at the call site so this doesn't fire
+  /// again every poll while a previous resolve is still in flight; a failed
+  /// or missing `pedidoId` just means that truck's row never gets an ETA.
+  Future<void> _resolverDestino(RemisionResumen remision) async {
+    final pedidoId = remision.pedidoId;
+    if (pedidoId == null) return;
+    _resolviendoDestino.add(remision.id);
+    try {
+      final pedido = await ComercialService.obtenerPedido(pedidoId);
+      final obra = await ComercialService.obtenerObra(pedido.obraId);
+      if (!mounted) return;
+      final destino = LatLng(latitude: obra.latitud, longitude: obra.longitud);
+      _destinos[remision.id] = destino;
+      _etaTrackers[remision.id] = RouteEtaTracker(destino: destino);
+    } catch (_) {
+      // Best-effort — see doc comment above.
+    } finally {
+      _resolviendoDestino.remove(remision.id);
     }
   }
 
@@ -426,6 +482,8 @@ class _RutasActivasScreenState extends State<RutasActivasScreen> {
                       final remision = _remisiones[index];
                       final ruta = _rutas[remision.id];
                       final tieneUbicacion = ruta?.ultimaUbicacion != null;
+                      final velocidad = _velocidades[remision.id];
+                      final eta = _etaTrackers[remision.id];
                       return Material(
                         color: cardColor,
                         borderRadius: BorderRadius.circular(16),
@@ -478,6 +536,33 @@ class _RutasActivasScreenState extends State<RutasActivasScreen> {
                                           color: mutedColor,
                                         ),
                                       ),
+                                      if (velocidad != null || eta?.duracionRestanteSegundos != null) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          [
+                                            if (velocidad != null) '${velocidad.round()} km/h',
+                                            if (eta?.duracionRestanteSegundos != null)
+                                              'Llega en ${formatEta(eta!.duracionRestanteSegundos!)}',
+                                          ].join(' · '),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: _routeColors[index % _routeColors.length],
+                                          ),
+                                        ),
+                                      ],
+                                      if (eta?.progreso != null) ...[
+                                        const SizedBox(height: 6),
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(3),
+                                          child: LinearProgressIndicator(
+                                            value: eta!.progreso,
+                                            minHeight: 4,
+                                            backgroundColor: borderColor,
+                                            valueColor: AlwaysStoppedAnimation(_routeColors[index % _routeColors.length]),
+                                          ),
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ),

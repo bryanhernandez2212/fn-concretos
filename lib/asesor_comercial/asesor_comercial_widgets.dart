@@ -1,18 +1,15 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../widgets/info_pill.dart';
-import 'agenda_actividad.dart';
 import 'cotizacion.dart';
 import 'visita.dart';
 
-/// Color for a status pill shared across Agenda/Visitas/Cotizaciones —
-/// covers every `estatus` string this role's entities can carry
-/// (`asignada`/`visitada`, `pendiente`/`completada`/`cancelada`,
-/// `negociacion`/`listo`/`convertida`/`cancelada`).
+/// Color for a status pill shared across Visitas/Cotizaciones — covers
+/// every `estatus` string this role's entities can carry
+/// (`asignada`/`visitada`, `negociacion`/`listo`/`convertida`/`cancelada`).
 Color estatusColor(String estatus) {
   switch (estatus) {
     case 'visitada':
-    case 'completada':
     case 'convertida':
       return AppColors.success;
     case 'cancelada':
@@ -30,10 +27,6 @@ String estatusLabel(String estatus) {
       return 'Asignada';
     case 'visitada':
       return 'Visitada';
-    case 'pendiente':
-      return 'Pendiente';
-    case 'completada':
-      return 'Completada';
     case 'cancelada':
       return 'Cancelada';
     case 'negociacion':
@@ -193,86 +186,6 @@ class VisitaCard extends StatelessWidget {
                   ],
                 ],
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-IconData iconoParaActividad(TipoActividad tipo) {
-  switch (tipo) {
-    case TipoActividad.llamada:
-      return Icons.call_outlined;
-    case TipoActividad.whatsapp:
-      return Icons.chat_outlined;
-    case TipoActividad.seguimiento:
-      return Icons.follow_the_signs_outlined;
-    case TipoActividad.cotizacion:
-      return Icons.receipt_long_outlined;
-    case TipoActividad.visita:
-      return Icons.place_outlined;
-    case TipoActividad.recordatorio:
-      return Icons.notifications_outlined;
-  }
-}
-
-class ActividadCard extends StatelessWidget {
-  final AgendaActividad actividad;
-  final Color cardColor;
-  final Color borderColor;
-  final Color textColor;
-  final Color mutedColor;
-  final VoidCallback onTap;
-
-  const ActividadCard({
-    super.key,
-    required this.actividad,
-    required this.cardColor,
-    required this.borderColor,
-    required this.textColor,
-    required this.mutedColor,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final horaLabel = actividad.fechaHora.length >= 16 ? actividad.fechaHora.substring(11, 16) : actividad.fechaHora;
-    return Material(
-      color: cardColor,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), border: Border.all(color: borderColor)),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.accent.withValues(alpha: 0.18)),
-                child: Icon(iconoParaActividad(actividad.tipoActividad), size: 18, color: AppColors.accent),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(actividad.tipoActividad.label, style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: textColor)),
-                    if (actividad.clienteNombre != null) ...[
-                      const SizedBox(height: 2),
-                      Text(actividad.clienteNombre!, style: TextStyle(fontSize: 12.5, color: mutedColor)),
-                    ],
-                    const SizedBox(height: 6),
-                    InfoPill(icon: Icons.schedule, text: horaLabel, mutedColor: mutedColor, textColor: textColor),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              EstatusChip(estatus: actividad.estatus),
             ],
           ),
         ),

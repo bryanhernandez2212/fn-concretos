@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../auth/auth_service.dart';
+import '../direccion/pedido.dart';
 import '../theme/app_colors.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/field_group.dart';
+import '../widgets/header_icon_button.dart';
 import '../widgets/notification_bell_button.dart';
 import 'asesor_comercial_service.dart';
 import 'asesor_comercial_widgets.dart';
+import 'cliente_picker_screen.dart';
+import 'obra_form_screen.dart';
+import 'obra_picker_screen.dart';
 import 'visita.dart';
 import 'visita_detail_screen.dart';
+import 'visita_form_screen.dart';
 
 const _accentYellow = AppColors.accent;
 
@@ -69,7 +75,10 @@ class _VisitasScreenState extends State<VisitasScreen> {
       context: context,
       initialDate: _fecha,
       firstDate: _primeraFecha,
-      lastDate: _hoy,
+      // Visitas can now be scheduled ahead ("Programar visita"), so this
+      // has to reach forward too, not just browse history — same 90-day
+      // window `VisitaFormScreen`'s own date picker allows.
+      lastDate: _hoy.add(const Duration(days: 90)),
       locale: const Locale('es'),
       builder: (context, child) {
         final base = Theme.of(context);
@@ -81,6 +90,104 @@ class _VisitasScreenState extends State<VisitasScreen> {
     );
     if (picked == null) return;
     _seleccionar(picked);
+  }
+
+  /// Single "+" entry point for both actions below — two adjacent
+  /// icon-only buttons ("Registrar visita" vs "Agregar obra") read as one
+  /// ambiguous blob at a glance, especially to a non-technical field
+  /// advisor; a labeled action sheet makes the choice legible instead of
+  /// relying on tooltip text nobody long-presses to see.
+  void _mostrarOpciones() {
+    final textColor = AppColors.text(context);
+    final mutedColor = AppColors.mutedText(context);
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.surfaceAlt(context),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.event_available_outlined, color: _accentYellow),
+              title: Text('Registrar visita', style: TextStyle(color: textColor, fontWeight: FontWeight.w700)),
+              subtitle: Text('Para un cliente y obra que ya existen', style: TextStyle(color: mutedColor, fontSize: 12.5)),
+              onTap: () {
+                Navigator.pop(context);
+                _registrarVisita();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.add_location_alt_outlined, color: _accentYellow),
+              title: Text('Agregar obra', style: TextStyle(color: textColor, fontWeight: FontWeight.w700)),
+              subtitle: Text('Da de alta un cliente y/u obra nuevos', style: TextStyle(color: mutedColor, fontSize: 12.5)),
+              onTap: () {
+                Navigator.pop(context);
+                _agregarObra();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// "Agregar obra" — deliberately independent of any Visita: advisors go
+  /// out and register clientes/obras on their own, they don't necessarily
+  /// have a Visita already scheduled with a `clienteId` to hang this off
+  /// of. Picks or creates the cliente first (`ClientePickerScreen`, since
+  /// `POST /obras` requires a `clientePrincipalId`), then opens
+  /// `ObraFormScreen` for that cliente.
+  Future<void> _agregarObra() async {
+    final cliente = await Navigator.of(context).push<Cliente>(
+      MaterialPageRoute(builder: (context) => const ClientePickerScreen()),
+    );
+    if (cliente == null || !mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ObraFormScreen(clienteId: cliente.id, clienteNombre: cliente.nombre),
+      ),
+    );
+    // ObraFormScreen chains into VisitaFormScreen on its own, so a Visita
+    // may well exist now even though this method never sees it directly.
+    _refresh();
+  }
+
+  /// "Registrar visita" — for a repeat visit to a cliente/obra already in
+  /// the system, so the advisor doesn't have to go through obra
+  /// registration again just to log another visita there. Picks the
+  /// cliente (`ClientePickerScreen`, shared with `_agregarObra`) then the
+  /// obra (`ObraPickerScreen`); that screen's own "Registrar obra nueva"
+  /// falls through to `ObraFormScreen` and handles the whole rest of the
+  /// flow itself (it already chains into `VisitaFormScreen`), popping back
+  /// here with `null` — so only an *existing* obra pick needs this method
+  /// to open `VisitaFormScreen` itself.
+  Future<void> _registrarVisita() async {
+    final cliente = await Navigator.of(context).push<Cliente>(
+      MaterialPageRoute(builder: (context) => const ClientePickerScreen()),
+    );
+    if (cliente == null || !mounted) return;
+    final obra = await Navigator.of(context).push<Obra>(
+      MaterialPageRoute(
+        builder: (context) => ObraPickerScreen(clienteId: cliente.id, clienteNombre: cliente.nombre),
+      ),
+    );
+    if (!mounted) return;
+    if (obra == null) {
+      _refresh();
+      return;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => VisitaFormScreen(
+          clienteId: cliente.id,
+          clienteNombre: cliente.nombre,
+          obraId: obra.id,
+          obraNombre: obra.nombre,
+        ),
+      ),
+    );
+    _refresh();
   }
 
   @override
@@ -114,6 +221,12 @@ class _VisitasScreenState extends State<VisitasScreen> {
                   ],
                 ),
               ),
+              HeaderIconButton(
+                icon: Icons.add_circle_outline,
+                tooltip: 'Registrar visita u obra',
+                onPressed: _mostrarOpciones,
+              ),
+              const SizedBox(width: 8),
               const NotificationBellButton(),
             ],
           ),

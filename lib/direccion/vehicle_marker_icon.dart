@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart' as geo;
 import 'package:google_navigation_flutter/google_navigation_flutter.dart';
 
 import '../operaciones/remision_tracking.dart';
@@ -113,6 +114,22 @@ double bearingBetween(GpsPing from, GpsPing to) {
       math.sin(lat1) * math.cos(lat2) * math.cos(dLon);
   final bearingRad = math.atan2(y, x);
   return (bearingRad * 180 / math.pi + 360) % 360;
+}
+
+/// Speed in km/h derived from two consecutive position reports plus their
+/// timestamps — like [bearingBetween], nothing in `GpsPing`/
+/// `RutaRemisionResponse` reports speed directly, so both are computed
+/// client-side from the same two points. Null if either timestamp is
+/// missing/unparseable or they're not far enough apart in time to give a
+/// meaningful reading.
+double? speedKmhBetween(GpsPing from, GpsPing to) {
+  final t1 = DateTime.tryParse(from.timestampCaptura ?? '');
+  final t2 = DateTime.tryParse(to.timestampCaptura ?? '');
+  if (t1 == null || t2 == null) return null;
+  final segundos = t2.difference(t1).inSeconds;
+  if (segundos <= 0) return null;
+  final metros = geo.Geolocator.distanceBetween(from.latitud, from.longitud, to.latitud, to.longitud);
+  return (metros / segundos) * 3.6;
 }
 
 /// Slides [marker] from its current position/rotation to [toPosition]/

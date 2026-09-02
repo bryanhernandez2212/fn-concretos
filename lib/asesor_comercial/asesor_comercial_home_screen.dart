@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import '../profile/profile_screen.dart';
 import '../widgets/bottom_nav_bar.dart';
-import 'agenda_screen.dart';
 import 'cotizaciones_screen.dart';
 import 'visitas_screen.dart';
 
-/// App shell for the Asesor Comercial role: Agenda, Visitas, Cotizaciones
-/// and Perfil. No MFA nudge here (unlike `DireccionHomeScreen`) — this role
-/// has no documented backend MFA requirement. No tab embeds a native
+/// App shell for the Asesor Comercial role: Visitas, Cotizaciones and
+/// Perfil. There used to be a fourth "Agenda" tab, dropped since there was
+/// nothing to do there — no screen ever created an `AgendaActividad`, the
+/// tab only ever listed/marked existing ones (and nothing populated it
+/// either), so it was a dead end rather than a useful view; `Visita`
+/// scheduling now covers the "what am I doing today/next" need this role
+/// actually has. No MFA nudge here (unlike `DireccionHomeScreen`) — this
+/// role has no documented backend MFA requirement. No tab embeds a native
 /// platform view, so — also unlike `DireccionHomeScreen` — every tab just
 /// stays mounted and cross-fades, no unmount-while-inactive exception
 /// needed.
@@ -23,7 +27,6 @@ class _AsesorComercialHomeScreenState extends State<AsesorComercialHomeScreen> {
   bool _navCompact = false;
 
   final List<Widget> _pages = const [
-    AgendaScreen(),
     VisitasScreen(),
     CotizacionesScreen(),
     ProfileScreen(),
@@ -80,7 +83,6 @@ class _AsesorComercialHomeScreenState extends State<AsesorComercialHomeScreen> {
         compact: _navCompact,
         onTap: (int index) => setState(() => _currentIndex = index),
         items: const [
-          NavItem(icon: Icons.calendar_month_outlined, selectedIcon: Icons.calendar_month, label: 'Agenda'),
           NavItem(icon: Icons.place_outlined, selectedIcon: Icons.place, label: 'Visitas'),
           NavItem(icon: Icons.receipt_long_outlined, selectedIcon: Icons.receipt_long, label: 'Cotizaciones'),
           NavItem(icon: Icons.person_outline, selectedIcon: Icons.person, label: 'Perfil'),

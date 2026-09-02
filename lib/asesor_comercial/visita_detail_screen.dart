@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:google_navigation_flutter/google_navigation_flutter.dart';
+import '../direccion/comercial_service.dart';
+import '../direccion/pedido.dart';
 import '../theme/app_colors.dart';
 import '../widgets/contacto_card.dart';
 import '../widgets/evidencia_viewer_screen.dart';
 import '../widgets/field_group.dart';
 import 'asesor_comercial_widgets.dart';
 import 'cotizacion_form_screen.dart';
+import 'obra_location_view_screen.dart';
 import 'solicitud_diseno_screen.dart';
 import 'visita.dart';
 import 'visita_checkin_screen.dart';
@@ -13,7 +17,10 @@ import 'visita_checkin_screen.dart';
 /// `comercial-service`, so this screen works off the [Visita] passed in from
 /// the list and the fresh copy [VisitaCheckinScreen] returns after check-in
 /// — never re-fetches. Always pops with `true` so `VisitasScreen` refreshes
-/// (cheap even when nothing changed).
+/// (cheap even when nothing changed). `Visita` itself carries no dirección —
+/// only `obraNombre`, not the obra's address — so this screen makes its own
+/// best-effort `ComercialService.obtenerObra` call for that, plus the
+/// coordinates the embedded map thumbnail needs.
 class VisitaDetailScreen extends StatefulWidget {
   final Visita visita;
 
@@ -25,11 +32,34 @@ class VisitaDetailScreen extends StatefulWidget {
 
 class _VisitaDetailScreenState extends State<VisitaDetailScreen> {
   late Visita _visita;
+  Obra? _obra;
 
   @override
   void initState() {
     super.initState();
     _visita = widget.visita;
+    _cargarObra();
+  }
+
+  Future<void> _cargarObra() async {
+    final obraId = _visita.obraId;
+    if (obraId == null) return;
+    try {
+      final obra = await ComercialService.obtenerObra(obraId);
+      if (mounted) setState(() => _obra = obra);
+    } catch (_) {
+      // Best-effort — the rest of the screen already works off the Visita
+      // alone, so a failed lookup just means no dirección/"Cómo llegar" for
+      // this visit, not a broken screen.
+    }
+  }
+
+  void _verUbicacion() {
+    final obra = _obra;
+    if (obra == null) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => ObraLocationViewScreen(obra: obra)),
+    );
   }
 
   Future<void> _registrarCheckin() async {
@@ -70,6 +100,7 @@ class _VisitaDetailScreenState extends State<VisitaDetailScreen> {
     final mutedColor = AppColors.mutedText(context);
     final cardColor = AppColors.card(context);
     final borderColor = AppColors.border(context, alpha: 0.10);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
@@ -116,6 +147,68 @@ class _VisitaDetailScreenState extends State<VisitaDetailScreen> {
               ],
             ),
           ),
+          if (_obra != null) ...[
+            const SizedBox(height: 16),
+            InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: _verUbicacion,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: borderColor),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // A static map "thumbnail" — gestures disabled since
+                    // it's embedded in this scrolling ListView (same reason
+                    // `pedido_detail_widgets.dart`'s LiveTrackingCard
+                    // disables them), tapping opens the interactive
+                    // fullscreen view instead. Read-only; no marker drag,
+                    // unlike `ObraLocationPickerScreen`.
+                    SizedBox(
+                      height: 140,
+                      child: IgnorePointer(
+                        child: GoogleMapsMapView(
+                          initialCameraPosition: CameraPosition(
+                            target: LatLng(latitude: _obra!.latitud, longitude: _obra!.longitud),
+                            zoom: 15,
+                          ),
+                          initialMapColorScheme: isDark ? MapColorScheme.dark : MapColorScheme.light,
+                          initialScrollGesturesEnabled: false,
+                          initialZoomGesturesEnabled: false,
+                          initialRotateGesturesEnabled: false,
+                          initialTiltGesturesEnabled: false,
+                          onViewCreated: (controller) {
+                            controller.addMarkers([
+                              MarkerOptions(position: LatLng(latitude: _obra!.latitud, longitude: _obra!.longitud)),
+                            ]);
+                          },
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
+                        children: [
+                          Icon(Icons.location_on_outlined, size: 18, color: mutedColor),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _direccionCompleta(_obra!),
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: textColor),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
           if (_visita.contactoNombre != null) ...[
             const SizedBox(height: 16),
             ContactoCard(
@@ -197,4 +290,14 @@ class _VisitaDetailScreenState extends State<VisitaDetailScreen> {
       ),
     );
   }
+}
+
+/// Joins whatever address pieces [obra] actually has (`direccion` is
+/// required by `ObraFormScreen` now, but `colonia`/`ciudad` stay optional),
+/// falling back to the raw coordinates if even `direccion` came back empty
+/// — an obra registered before this app started requiring dirección text.
+String _direccionCompleta(Obra obra) {
+  final partes = [obra.direccion, obra.colonia, obra.ciudad].where((p) => p != null && p.isNotEmpty);
+  if (partes.isEmpty) return '${obra.latitud.toStringAsFixed(5)}, ${obra.longitud.toStringAsFixed(5)}';
+  return partes.join(', ');
 }

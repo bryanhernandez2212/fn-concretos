@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../auth/auth_service.dart';
 import '../direccion/pedido.dart';
-import 'agenda_actividad.dart';
 import 'asesor.dart';
 import 'cotizacion.dart';
 import 'solicitud_diseno.dart';
@@ -12,15 +11,21 @@ import 'visita.dart';
 /// gate the Asesor Comercial screens — same reasoning as
 /// `comercial_service.dart`'s `permisoAutorizarCredito`: checked instead of
 /// `AuthService.rol` so access follows the backend's permission catalog
-/// rather than a hardcoded role name.
+/// rather than a hardcoded role name. `permisoAdministrarAgenda` is kept
+/// even though this app dropped its Agenda tab (there was nothing to do
+/// there — no screen ever created an `AgendaActividad`, only listed/marked
+/// existing ones) — `auth/login_screen.dart`'s `destinationForSession()`
+/// still routes on it to decide this role gets a mobile shell at all, since
+/// that's the backend's permission name for the role, not tied to any one
+/// screen inside it.
 const permisoAdministrarAgenda = 'agenda.administrar';
 const permisoAplicarDescuentoEspecial = 'cotizaciones.aplicar_descuento_especial';
 const permisoAdministrarPreciosCatalogo = 'catalogo.precios.administrar';
 
 /// Talks to the real fnconcretos `comercial` sandbox (same base URL as
 /// `direccion/comercial_service.dart`) for the Asesor Comercial role's own
-/// entities: asesores, visitas, agenda, cotizaciones, solicitudes de diseño.
-/// Reuses [AuthService.authHeaders] for the bearer token; this app has no
+/// entities: asesores, visitas, cotizaciones, solicitudes de diseño. Reuses
+/// [AuthService.authHeaders] for the bearer token; this app has no
 /// state-management package, so results are returned directly rather than
 /// cached anywhere.
 class AsesorComercialService {
@@ -43,50 +48,6 @@ class AsesorComercialService {
     return null;
   }
 
-  static Future<RutaDiaria> rutaDiaria({required int asesorId, required DateTime fecha}) async {
-    final data = await _get('/agenda/ruta-diaria?asesorId=$asesorId&fecha=${_fechaSolo(fecha)}');
-    return RutaDiaria.fromJson(data as Map<String, dynamic>);
-  }
-
-  /// Overdue pending activities, plant/advisor-wide — surfaced as a warning
-  /// banner on the Agenda tab.
-  static Future<List<AgendaActividad>> actividadesVencidas() async {
-    final data = await _get('/agenda/pendientes-vencidas');
-    return (data as List<dynamic>).map((e) => AgendaActividad.fromJson(e as Map<String, dynamic>)).toList();
-  }
-
-  /// Requires [permisoAdministrarAgenda].
-  static Future<AgendaActividad> crearActividad({
-    required int asesorId,
-    required DateTime fechaHora,
-    required TipoActividad tipoActividad,
-    int? clienteId,
-    int? obraId,
-    int? cotizacionId,
-    int? pedidoId,
-    int? minutosRecordatorio,
-    String? observaciones,
-  }) async {
-    final data = await _post('/agenda', {
-      'asesorId': asesorId,
-      'fechaHora': _fechaHoraIso(fechaHora),
-      'tipoActividad': tipoActividad.backendValue,
-      if (clienteId != null) 'clienteId': clienteId,
-      if (obraId != null) 'obraId': obraId,
-      if (cotizacionId != null) 'cotizacionId': cotizacionId,
-      if (pedidoId != null) 'pedidoId': pedidoId,
-      if (minutosRecordatorio != null) 'minutosRecordatorio': minutosRecordatorio,
-      if (observaciones != null && observaciones.isNotEmpty) 'observaciones': observaciones,
-    });
-    return AgendaActividad.fromJson(data as Map<String, dynamic>);
-  }
-
-  /// `estatus` is `'completada'` or `'cancelada'`. Requires
-  /// [permisoAdministrarAgenda].
-  static Future<void> actualizarEstatusActividad(int actividadId, {required String estatus}) {
-    return _patch('/agenda/$actividadId/estatus', {'estatus': estatus});
-  }
-
   static Future<List<Visita>> visitasDelDia({required int asesorId, required DateTime fecha}) async {
     final data = await _get('/visitas?asesorId=$asesorId&fecha=${_fechaSolo(fecha)}');
     return (data as List<dynamic>).map((e) => Visita.fromJson(e as Map<String, dynamic>)).toList();
@@ -95,6 +56,34 @@ class AsesorComercialService {
   static Future<ResumenVisitas> resumenVisitasDelDia({required int asesorId, required DateTime fecha}) async {
     final data = await _get('/visitas/resumen-dia?asesorId=$asesorId&fecha=${_fechaSolo(fecha)}');
     return ResumenVisitas.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// `POST /visitas` — "Asignar una visita a obra a un asesor". This app has
+  /// no other way to schedule a visita (`visitasDelDia` only ever lists ones
+  /// that already exist), so this backs `VisitaFormScreen`, reached right
+  /// after registering a new Obra — the advisor's next step is usually to
+  /// log the visita they're already standing at that site for.
+  static Future<Visita> crearVisita({
+    required int asesorId,
+    required int obraId,
+    required int clienteId,
+    required DateTime fechaVisita,
+    int? zonaId,
+    String? contactoNombre,
+    String? contactoTelefono,
+    double? volumenAproximado,
+  }) async {
+    final data = await _post('/visitas', {
+      'asesorId': asesorId,
+      'obraId': obraId,
+      'clienteId': clienteId,
+      'fechaVisita': _fechaSolo(fechaVisita),
+      if (zonaId != null) 'zonaId': zonaId,
+      if (contactoNombre != null && contactoNombre.isNotEmpty) 'contactoNombre': contactoNombre,
+      if (contactoTelefono != null && contactoTelefono.isNotEmpty) 'contactoTelefono': contactoTelefono,
+      if (volumenAproximado != null) 'volumenAproximado': volumenAproximado,
+    });
+    return Visita.fromJson(data as Map<String, dynamic>);
   }
 
   /// Registers a geolocated check-in for a visita. No permission requirement
@@ -245,11 +234,6 @@ class AsesorComercialService {
   static String _fechaSolo(DateTime d) {
     String two(int n) => n.toString().padLeft(2, '0');
     return '${d.year.toString().padLeft(4, '0')}-${two(d.month)}-${two(d.day)}';
-  }
-
-  static String _fechaHoraIso(DateTime d) {
-    String two(int n) => n.toString().padLeft(2, '0');
-    return '${_fechaSolo(d)}T${two(d.hour)}:${two(d.minute)}:${two(d.second)}';
   }
 
   static Future<dynamic> _get(String path) async {

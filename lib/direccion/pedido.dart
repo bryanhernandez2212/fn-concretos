@@ -196,6 +196,8 @@ class Obra {
   final String clientePrincipalNombre;
   final double latitud;
   final double longitud;
+  final String? ciudad;
+  final String? colonia;
 
   const Obra({
     required this.id,
@@ -204,6 +206,8 @@ class Obra {
     required this.clientePrincipalNombre,
     required this.latitud,
     required this.longitud,
+    this.ciudad,
+    this.colonia,
   });
 
   factory Obra.fromJson(Map<String, dynamic> json) {
@@ -214,6 +218,8 @@ class Obra {
       clientePrincipalNombre: json['clientePrincipalNombre'] as String? ?? '',
       latitud: (json['latitud'] as num?)?.toDouble() ?? 0,
       longitud: (json['longitud'] as num?)?.toDouble() ?? 0,
+      ciudad: json['ciudad'] as String?,
+      colonia: json['colonia'] as String?,
     );
   }
 }

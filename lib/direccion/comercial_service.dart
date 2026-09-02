@@ -36,8 +36,101 @@ class ComercialService {
     return Cliente.fromJson(data as Map<String, dynamic>);
   }
 
+  /// `GET /clientes` — searches by `tipo`/`estatus` plus free-text `q`
+  /// (matches against nombre/numeroCliente per cliente-controller's
+  /// description). Dirección's own screens never search clientes — they
+  /// only ever look one up by the id a Pedido already carries — so this
+  /// exists for Asesor Comercial's obra-registration flow, which needs to
+  /// pick an existing cliente instead of typing a raw id.
+  static Future<List<Cliente>> buscarClientes({String? q, String? tipo, String? estatus}) async {
+    final params = {
+      if (q != null && q.isNotEmpty) 'q': q,
+      if (tipo != null && tipo.isNotEmpty) 'tipo': tipo,
+      if (estatus != null && estatus.isNotEmpty) 'estatus': estatus,
+    };
+    final query = params.isEmpty ? '' : '?${Uri(queryParameters: params).query}';
+    final data = await _get('/clientes$query');
+    return (data as List<dynamic>).map((e) => Cliente.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  /// Registers a new cliente — same reasoning as [crearObra]: Asesor
+  /// Comercial's field flow can hit a cliente that isn't in the system yet
+  /// either, not just the obra.
+  static Future<Cliente> crearCliente({
+    required String nombre,
+    String? numeroCliente,
+    String? tipo,
+    String? rfc,
+    String? telefono,
+    bool? whatsappDisponible,
+    String? correo,
+    bool? requiereFacturaDefault,
+    int? asesorAsignadoId,
+    double? limiteCredito,
+    int? diasCredito,
+  }) async {
+    final data = await _post('/clientes', {
+      'nombre': nombre,
+      if (numeroCliente != null && numeroCliente.isNotEmpty) 'numeroCliente': numeroCliente,
+      if (tipo != null && tipo.isNotEmpty) 'tipo': tipo,
+      if (rfc != null && rfc.isNotEmpty) 'rfc': rfc,
+      if (telefono != null && telefono.isNotEmpty) 'telefono': telefono,
+      if (whatsappDisponible != null) 'whatsappDisponible': whatsappDisponible,
+      if (correo != null && correo.isNotEmpty) 'correo': correo,
+      if (requiereFacturaDefault != null) 'requiereFacturaDefault': requiereFacturaDefault,
+      if (asesorAsignadoId != null) 'asesorAsignadoId': asesorAsignadoId,
+      if (limiteCredito != null) 'limiteCredito': limiteCredito,
+      if (diasCredito != null) 'diasCredito': diasCredito,
+    });
+    return Cliente.fromJson(data as Map<String, dynamic>);
+  }
+
   static Future<Obra> obtenerObra(int id) async {
     final data = await _get('/obras/$id');
+    return Obra.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// `GET /obras` — searches by `nombre`/`ciudad`/`estatus` (per
+  /// obra-controller's own description, "Buscar obras por estatus, ciudad o
+  /// nombre"). Used by Asesor Comercial's "registrar visita" flow to find
+  /// an obra that's already in the system for a repeat visit, instead of
+  /// only ever being able to register a brand-new one.
+  static Future<List<Obra>> buscarObras({String? nombre, String? ciudad, String? estatus}) async {
+    final params = {
+      if (nombre != null && nombre.isNotEmpty) 'nombre': nombre,
+      if (ciudad != null && ciudad.isNotEmpty) 'ciudad': ciudad,
+      if (estatus != null && estatus.isNotEmpty) 'estatus': estatus,
+    };
+    final query = params.isEmpty ? '' : '?${Uri(queryParameters: params).query}';
+    final data = await _get('/obras$query');
+    return (data as List<dynamic>).map((e) => Obra.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  /// Registers a new Obra (job site) — needed before a cotización can be
+  /// created for a cliente whose site isn't in the system yet. Used by
+  /// Asesor Comercial's obra-registration flow (`ObraFormScreen`); kept
+  /// here rather than `asesor_comercial_service.dart` since it belongs to
+  /// this file's `obtenerObra`/`clientesPorObra` domain.
+  static Future<Obra> crearObra({
+    required String nombre,
+    required int clientePrincipalId,
+    String? direccion,
+    String? googleMapsLink,
+    double? latitud,
+    double? longitud,
+    String? ciudad,
+    String? colonia,
+  }) async {
+    final data = await _post('/obras', {
+      'nombre': nombre,
+      'clientePrincipalId': clientePrincipalId,
+      if (direccion != null && direccion.isNotEmpty) 'direccion': direccion,
+      if (googleMapsLink != null && googleMapsLink.isNotEmpty) 'googleMapsLink': googleMapsLink,
+      if (latitud != null) 'latitud': latitud,
+      if (longitud != null) 'longitud': longitud,
+      if (ciudad != null && ciudad.isNotEmpty) 'ciudad': ciudad,
+      if (colonia != null && colonia.isNotEmpty) 'colonia': colonia,
+    });
     return Obra.fromJson(data as Map<String, dynamic>);
   }
 
@@ -104,7 +197,7 @@ class ComercialService {
     return _handleResponse(response);
   }
 
-  static Future<void> _post(String path, Map<String, dynamic> body) async {
+  static Future<dynamic> _post(String path, Map<String, dynamic> body) async {
     final headers = await AuthService.authHeaders();
     final http.Response response;
     try {
@@ -116,7 +209,7 @@ class ComercialService {
     } catch (_) {
       throw AuthException('No se pudo conectar con el servidor');
     }
-    _handleResponse(response);
+    return _handleResponse(response);
   }
 
   static dynamic _handleResponse(http.Response response) {

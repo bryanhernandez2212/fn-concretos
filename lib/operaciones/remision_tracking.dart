@@ -9,6 +9,14 @@ class RemisionResumen {
   final String estatus;
   final int? conductorId;
 
+  /// The pedido this remisión belongs to — not previously mapped since
+  /// nothing needed it, but `RutasActivasScreen`'s fleet-wide view needs it
+  /// to resolve each truck's destino (obra lat/lng) for its ETA/progress
+  /// overlay, since unlike `deliveries/remision.dart`'s driver-facing
+  /// `Remision` model this one was never built with a destino already
+  /// resolved.
+  final int? pedidoId;
+
   /// Timestamps the backend stamps as the remisión reaches each hito (not
   /// sent by the client — `OperacionesService.avanzarHito` only sends the
   /// `evento`). Null until that hito has actually happened.
@@ -34,6 +42,7 @@ class RemisionResumen {
     required this.folioRemision,
     required this.estatus,
     required this.conductorId,
+    this.pedidoId,
     this.horaCarga,
     this.horaSalida,
     this.horaLlegadaObra,
@@ -50,6 +59,7 @@ class RemisionResumen {
       folioRemision: json['folioRemision'] as String? ?? '',
       estatus: json['estatus'] as String? ?? '',
       conductorId: json['conductorId'] == null ? null : _parseInt(json['conductorId']),
+      pedidoId: json['pedidoId'] == null ? null : _parseInt(json['pedidoId']),
       horaCarga: DateTime.tryParse(json['horaCarga'] as String? ?? ''),
       horaSalida: DateTime.tryParse(json['horaSalida'] as String? ?? ''),
       horaLlegadaObra: DateTime.tryParse(json['horaLlegadaObra'] as String? ?? ''),

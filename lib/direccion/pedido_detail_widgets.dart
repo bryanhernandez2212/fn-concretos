@@ -6,6 +6,7 @@ import '../operaciones/operaciones_service.dart';
 import '../operaciones/remision_tracking.dart';
 import '../theme/app_colors.dart';
 import 'pedido.dart';
+import 'route_eta.dart';
 import 'vehicle_marker_icon.dart';
 
 const _accentYellow = AppColors.accent;
@@ -471,6 +472,13 @@ class AutorizacionSection extends StatelessWidget {
 /// the pedido detail from loading.
 class LiveTrackingSection extends StatelessWidget {
   final Future<List<RemisionResumen>> remisionesFuture;
+
+  /// The pedido's obra — best-effort, may resolve to `null` (failed lookup)
+  /// without this section failing; it just means no ETA/progress bar on the
+  /// tracking cards below, same "best-effort, degrade gracefully" reasoning
+  /// as `remisionesFuture` having its own error path.
+  final Future<Obra?> obraFuture;
+
   final bool isDark;
   final Color cardColor;
   final Color borderColor;
@@ -480,6 +488,7 @@ class LiveTrackingSection extends StatelessWidget {
   const LiveTrackingSection({
     super.key,
     required this.remisionesFuture,
+    required this.obraFuture,
     required this.isDark,
     required this.cardColor,
     required this.borderColor,
@@ -520,6 +529,7 @@ class LiveTrackingSection extends StatelessWidget {
                 folioRemision: remision.folioRemision,
                 conductorId: remision.conductorId,
                 volumen: remision.metrosCargados ?? remision.metrosSolicitados,
+                obraFuture: obraFuture,
                 isDark: isDark,
                 cardColor: cardColor,
                 borderColor: borderColor,
@@ -582,6 +592,11 @@ class LiveTrackingCard extends StatefulWidget {
   /// `metrosSolicitados`) — not the pedido's total.
   final double? volumen;
 
+  /// Best-effort — see `LiveTrackingSection.obraFuture`. Feeds the ETA/
+  /// progress overlay's destino; `null` just means that overlay never
+  /// appears for this card.
+  final Future<Obra?> obraFuture;
+
   final bool isDark;
   final Color cardColor;
   final Color borderColor;
@@ -594,6 +609,7 @@ class LiveTrackingCard extends StatefulWidget {
     required this.folioRemision,
     required this.conductorId,
     required this.volumen,
+    required this.obraFuture,
     required this.isDark,
     required this.cardColor,
     required this.borderColor,
@@ -627,11 +643,22 @@ class _LiveTrackingCardState extends State<LiveTrackingCard> {
   Polyline? _polyline;
   Timer? _glide;
 
+  LatLng? _destino;
+  RouteEtaTracker? _eta;
+  double? _velocidadKmh;
+
   @override
   void initState() {
     super.initState();
     _load();
     _timer = Timer.periodic(const Duration(seconds: 15), (_) => _load());
+    widget.obraFuture.then((obra) {
+      if (!mounted || obra == null) return;
+      _destino = LatLng(latitude: obra.latitud, longitude: obra.longitud);
+      _eta = RouteEtaTracker(destino: _destino!);
+      final ultima = _ruta?.ultimaUbicacion;
+      if (ultima != null) _actualizarEta(LatLng(latitude: ultima.latitud, longitude: ultima.longitud));
+    });
   }
 
   @override
@@ -656,6 +683,16 @@ class _LiveTrackingCardState extends State<LiveTrackingCard> {
     }
   }
 
+  /// Throttled inside [RouteEtaTracker] itself (real routing calls are
+  /// billed), so this can be fired on every 15s poll without worrying about
+  /// over-calling Directions API — most calls here are no-ops.
+  Future<void> _actualizarEta(LatLng posicionActual) async {
+    final eta = _eta;
+    if (eta == null) return;
+    final actualizado = await eta.actualizar(posicionActual);
+    if (actualizado && mounted) setState(() {});
+  }
+
   Future<void> _updateMapOverlays(RutaRemision ruta) async {
     final controller = _mapController;
     final ultima = ruta.ultimaUbicacion;
@@ -670,7 +707,12 @@ class _LiveTrackingCardState extends State<LiveTrackingCard> {
         ruta.historial[ruta.historial.length - 2],
         ruta.historial[ruta.historial.length - 1],
       );
+      _velocidadKmh = speedKmhBetween(
+        ruta.historial[ruta.historial.length - 2],
+        ruta.historial[ruta.historial.length - 1],
+      );
     }
+    unawaited(_actualizarEta(posicion));
 
     final marcadorPrevio = _marker;
     if (marcadorPrevio == null) {
@@ -784,6 +826,7 @@ class _LiveTrackingCardState extends State<LiveTrackingCard> {
                                 folioRemision: widget.folioRemision,
                                 conductorId: widget.conductorId,
                                 volumen: widget.volumen,
+                                obraFuture: widget.obraFuture,
                               ),
                             ),
                           );
@@ -835,31 +878,46 @@ class _LiveTrackingCardState extends State<LiveTrackingCard> {
           else
             SizedBox(
               height: 220,
-              child: GoogleMapsMapView(
-                initialCameraPosition: CameraPosition(
-                  target: LatLng(
-                    latitude: ruta.ultimaUbicacion!.latitud,
-                    longitude: ruta.ultimaUbicacion!.longitud,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: GoogleMapsMapView(
+                      initialCameraPosition: CameraPosition(
+                        target: LatLng(
+                          latitude: ruta.ultimaUbicacion!.latitud,
+                          longitude: ruta.ultimaUbicacion!.longitud,
+                        ),
+                        zoom: 15,
+                      ),
+                      initialMapColorScheme: widget.isDark
+                          ? MapColorScheme.dark
+                          : MapColorScheme.light,
+                      // Read-only preview embedded in a scrolling ListView —
+                      // a map that captures pan/zoom gestures fights the
+                      // list's own vertical scroll for the gesture arena,
+                      // causing a visible wobble whenever the drag direction
+                      // reverses. It's just a live-position glance, not
+                      // something meant to be explored in place, so its own
+                      // gestures are disabled entirely.
+                      initialScrollGesturesEnabled: false,
+                      initialZoomGesturesEnabled: false,
+                      initialRotateGesturesEnabled: false,
+                      initialTiltGesturesEnabled: false,
+                      onViewCreated: (controller) {
+                        _mapController = controller;
+                        _updateMapOverlays(ruta);
+                      },
+                    ),
                   ),
-                  zoom: 15,
-                ),
-                initialMapColorScheme: widget.isDark
-                    ? MapColorScheme.dark
-                    : MapColorScheme.light,
-                // Read-only preview embedded in a scrolling ListView — a map
-                // that captures pan/zoom gestures fights the list's own
-                // vertical scroll for the gesture arena, causing a visible
-                // wobble whenever the drag direction reverses. It's just a
-                // live-position glance, not something meant to be explored
-                // in place, so its own gestures are disabled entirely.
-                initialScrollGesturesEnabled: false,
-                initialZoomGesturesEnabled: false,
-                initialRotateGesturesEnabled: false,
-                initialTiltGesturesEnabled: false,
-                onViewCreated: (controller) {
-                  _mapController = controller;
-                  _updateMapOverlays(ruta);
-                },
+                  if (_eta?.progreso != null)
+                    Positioned(top: 10, bottom: 10, right: 10, child: RouteProgressBar(progreso: _eta!.progreso!)),
+                  if (_velocidadKmh != null || _eta?.duracionRestanteSegundos != null)
+                    Positioned(
+                      left: 10,
+                      bottom: 10,
+                      child: SpeedEtaPill(velocidadKmh: _velocidadKmh, duracionRestanteSegundos: _eta?.duracionRestanteSegundos),
+                    ),
+                ],
               ),
             ),
         ],
@@ -879,12 +937,16 @@ class LiveTrackingFullscreenScreen extends StatefulWidget {
   final int? conductorId;
   final double? volumen;
 
+  /// Best-effort — see `LiveTrackingSection.obraFuture`.
+  final Future<Obra?> obraFuture;
+
   const LiveTrackingFullscreenScreen({
     super.key,
     required this.remisionId,
     required this.folioRemision,
     required this.conductorId,
     required this.volumen,
+    required this.obraFuture,
   });
 
   @override
@@ -910,11 +972,31 @@ class _LiveTrackingFullscreenScreenState
   Polyline? _polyline;
   Timer? _glide;
 
+  LatLng? _destino;
+  RouteEtaTracker? _eta;
+  double? _velocidadKmh;
+
   @override
   void initState() {
     super.initState();
     _load();
     _timer = Timer.periodic(const Duration(seconds: 15), (_) => _load());
+    widget.obraFuture.then((obra) {
+      if (!mounted || obra == null) return;
+      _destino = LatLng(latitude: obra.latitud, longitude: obra.longitud);
+      _eta = RouteEtaTracker(destino: _destino!);
+      final ultima = _ruta?.ultimaUbicacion;
+      if (ultima != null) _actualizarEta(LatLng(latitude: ultima.latitud, longitude: ultima.longitud));
+    });
+  }
+
+  /// Throttled inside [RouteEtaTracker] itself — see `_LiveTrackingCardState`'s
+  /// identical method.
+  Future<void> _actualizarEta(LatLng posicionActual) async {
+    final eta = _eta;
+    if (eta == null) return;
+    final actualizado = await eta.actualizar(posicionActual);
+    if (actualizado && mounted) setState(() {});
   }
 
   @override
@@ -956,7 +1038,12 @@ class _LiveTrackingFullscreenScreenState
         ruta.historial[ruta.historial.length - 2],
         ruta.historial[ruta.historial.length - 1],
       );
+      _velocidadKmh = speedKmhBetween(
+        ruta.historial[ruta.historial.length - 2],
+        ruta.historial[ruta.historial.length - 1],
+      );
     }
+    unawaited(_actualizarEta(posicion));
 
     final marcadorPrevio = _marker;
     if (marcadorPrevio == null) {
@@ -1070,23 +1157,117 @@ class _LiveTrackingFullscreenScreenState
               child: Text('Esperando la primera señal GPS de este viaje.'),
             );
           }
-          return GoogleMapsMapView(
-            initialCameraPosition: CameraPosition(
-              target: LatLng(
-                latitude: ruta.ultimaUbicacion!.latitud,
-                longitude: ruta.ultimaUbicacion!.longitud,
+          return Stack(
+            children: [
+              Positioned.fill(
+                child: GoogleMapsMapView(
+                  initialCameraPosition: CameraPosition(
+                    target: LatLng(
+                      latitude: ruta.ultimaUbicacion!.latitud,
+                      longitude: ruta.ultimaUbicacion!.longitud,
+                    ),
+                    zoom: 16,
+                  ),
+                  initialMapColorScheme: isDark
+                      ? MapColorScheme.dark
+                      : MapColorScheme.light,
+                  onViewCreated: (controller) {
+                    _mapController = controller;
+                    _updateMapOverlays(ruta, moverCamara: true);
+                  },
+                ),
               ),
-              zoom: 16,
-            ),
-            initialMapColorScheme: isDark
-                ? MapColorScheme.dark
-                : MapColorScheme.light,
-            onViewCreated: (controller) {
-              _mapController = controller;
-              _updateMapOverlays(ruta, moverCamara: true);
-            },
+              if (_eta?.progreso != null)
+                Positioned(
+                  top: 16,
+                  bottom: 16,
+                  right: 16,
+                  child: RouteProgressBar(progreso: _eta!.progreso!),
+                ),
+              if (_velocidadKmh != null || _eta?.duracionRestanteSegundos != null)
+                Positioned(
+                  left: 16,
+                  bottom: 16,
+                  child: SpeedEtaPill(velocidadKmh: _velocidadKmh, duracionRestanteSegundos: _eta?.duracionRestanteSegundos),
+                ),
+            ],
           );
         },
+      ),
+    );
+  }
+}
+
+/// Vertical route-progress bar overlaid on the right edge of a live-tracking
+/// map, DiDi-style — fills bottom-up as `progreso` (0.0-1.0, from
+/// `RouteEtaTracker`) grows. Purely a progress indicator, not a scrollbar or
+/// anything interactive.
+class RouteProgressBar extends StatelessWidget {
+  final double progreso;
+
+  const RouteProgressBar({super.key, required this.progreso});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 6,
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.25),
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: FractionallySizedBox(
+          heightFactor: progreso.clamp(0.0, 1.0),
+          child: Container(
+            decoration: BoxDecoration(color: _accentYellow, borderRadius: BorderRadius.circular(3)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Bottom-left "45 km/h · Llega en 12 min" pill overlaid on a live-tracking
+/// map. Renders nothing (`SizedBox.shrink`) if both values are still
+/// unknown, so callers can place it unconditionally without an extra null
+/// check at the call site.
+class SpeedEtaPill extends StatelessWidget {
+  final double? velocidadKmh;
+  final int? duracionRestanteSegundos;
+
+  const SpeedEtaPill({super.key, required this.velocidadKmh, required this.duracionRestanteSegundos});
+
+  @override
+  Widget build(BuildContext context) {
+    final velocidad = velocidadKmh;
+    final duracion = duracionRestanteSegundos;
+    if (velocidad == null && duracion == null) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(10)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (velocidad != null) ...[
+            const Icon(Icons.speed, size: 14, color: Colors.white),
+            const SizedBox(width: 4),
+            Text(
+              '${velocidad.round()} km/h',
+              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+            ),
+          ],
+          if (velocidad != null && duracion != null) const SizedBox(width: 10),
+          if (duracion != null) ...[
+            const Icon(Icons.schedule, size: 14, color: Colors.white),
+            const SizedBox(width: 4),
+            Text(
+              'Llega en ${formatEta(duracion)}',
+              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ],
       ),
     );
   }

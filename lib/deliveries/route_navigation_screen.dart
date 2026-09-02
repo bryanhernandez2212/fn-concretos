@@ -253,7 +253,26 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
             if (_errorText == null)
               Positioned.fill(
                 child: GoogleMapsNavigationView(
-                  onViewCreated: (controller) => _viewController = controller,
+                  onViewCreated: (controller) {
+                    _viewController = controller;
+                    // Set as soon as the view exists rather than waiting on
+                    // `_start()` to reach this point — `_start()` runs from
+                    // `initState`, before the platform view is guaranteed to
+                    // have attached, so a call placed only after
+                    // `startGuidance()` risked a silent no-op (`?.` on a
+                    // still-null `_viewController`) depending on exactly how
+                    // the awaits above interleaved with the widget's first
+                    // build. These are view-level settings, not tied to an
+                    // active guidance session, so there's no need to wait
+                    // for one anyway.
+                    controller.setSpeedometerEnabled(true);
+                    // Marked `@experimental` by the plugin itself (could
+                    // change/disappear in a future `google_navigation_flutter`
+                    // release) — accepted trade-off since it's literally the
+                    // feature being asked for and there's no non-experimental
+                    // equivalent in this SDK version.
+                    controller.setNavigationTripProgressBarEnabled(true);
+                  },
                   initialNavigationUIEnabledPreference: NavigationUIEnabledPreference.automatic,
                   initialForceNightMode: NavigationForceNightMode.forceNight,
                   initialNavigationHeaderStylingOptions: _navigationHeaderStyle,

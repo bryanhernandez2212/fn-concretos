@@ -32,6 +32,7 @@ class PedidoDetailScreen extends StatefulWidget {
 class _PedidoDetailScreenState extends State<PedidoDetailScreen> {
   late Future<(Cliente, EstadoCuenta, ClienteContacto?)> _future;
   late Future<List<RemisionResumen>> _remisionesFuture;
+  late Future<Obra?> _obraFuture;
   bool _submitting = false;
 
   /// `widget.pedido` is a snapshot from whenever this screen was opened —
@@ -49,7 +50,19 @@ class _PedidoDetailScreenState extends State<PedidoDetailScreen> {
     super.initState();
     _future = _load();
     _remisionesFuture = OperacionesService.remisionesPorPedido(widget.pedido.id);
+    _obraFuture = _cargarObra();
     _pedidoTimer = Timer.periodic(const Duration(seconds: 15), (_) => _refrescarPedido());
+  }
+
+  /// Best-effort, kept separate from [_future] so a failed obra lookup only
+  /// means "Ubicación en vivo" has no destino for its ETA/progress — not a
+  /// broken pedido-detail screen (same reasoning as `_remisionesFuture`).
+  Future<Obra?> _cargarObra() async {
+    try {
+      return await ComercialService.obtenerObra(widget.pedido.obraId);
+    } catch (_) {
+      return null;
+    }
   }
 
   @override
@@ -235,6 +248,7 @@ class _PedidoDetailScreenState extends State<PedidoDetailScreen> {
               const SizedBox(height: 12),
               LiveTrackingSection(
                 remisionesFuture: _remisionesFuture,
+                obraFuture: _obraFuture,
                 isDark: isDark,
                 cardColor: cardColor,
                 borderColor: borderColor,
