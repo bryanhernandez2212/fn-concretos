@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../auth/auth_service.dart';
 import 'evidencia.dart';
@@ -102,6 +103,7 @@ class OperacionesService {
   /// revenimiento, metrosCargados, etc).
   static Future<RemisionResumen> remisionDetalle(int id) async {
     final data = await _get('/remisiones/$id');
+    debugPrint('OperacionesService.remisionDetalle raw: ${jsonEncode(data)}'); // TEMP debug
     return RemisionResumen.fromJson(data as Map<String, dynamic>);
   }
 
@@ -117,6 +119,7 @@ class OperacionesService {
     final data = await _patch('/remisiones/$remisionId/hitos', {
       'evento': evento,
     });
+    debugPrint('OperacionesService.avanzarHito raw: ${jsonEncode(data)}'); // TEMP debug
     return RemisionResumen.fromJson(data as Map<String, dynamic>);
   }
 

@@ -157,21 +157,31 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     return _secuenciaHitos.indexOf(current) >= _secuenciaHitos.indexOf(objetivo);
   }
 
-  /// True once the remisión has genuinely reached "en obra" or later
-  /// (descargando/entregado) — at that point re-starting turn-by-turn
-  /// navigation to a destination already reached doesn't make sense, so
-  /// "Iniciar ruta" hides.
-  bool _yaLlegoAObra(RemisionResumen? detalle) => _hitoAlcanzado(detalle, HitoEntrega.enObra);
+  /// True only once the delivery is genuinely done: hito reached
+  /// "descargando" or "entregado" *and* both firma and evidencia are
+  /// already on file. Reaching "en obra" alone used to be enough to hide
+  /// "Iniciar ruta"/"Regresar a la ruta", but that's wrong — the driver may
+  /// still need the map for reference (or backed out of
+  /// `RouteNavigationScreen` before actually finishing) anywhere between
+  /// salida de planta and the truck being fully unloaded and signed for, so
+  /// the button has to stay reachable through all of that, not just until
+  /// arrival.
+  bool _entregaCompleta(RemisionResumen? detalle, List<FirmaResponse>? firmas, List<ArchivoResponse>? archivos) {
+    if (!_hitoAlcanzado(detalle, HitoEntrega.descargando)) return false;
+    final firmada = _firmaMasReciente(firmas) != null;
+    final tieneEvidencia = (archivos ?? const <ArchivoResponse>[]).any((a) => a.tipoArchivo == 'foto_evidencia');
+    return firmada && tieneEvidencia;
+  }
 
-  /// "Iniciar ruta" only makes sense once the truck is actually being
-  /// loaded — while the pedido is merely "programado" there's no `horaCarga`
-  /// yet, so there's nothing to navigate to/from. Gating on `horaCarga`
-  /// directly (rather than the derived hito) matches what "cargando en
-  /// planta" actually means on the backend, since a blank `estatus` also
-  /// resolves to `cargandoPlanta` (see `HitoEntrega.fromBackendValue`) even
-  /// before `horaCarga` is set.
-  bool _puedeIniciarRuta(RemisionResumen? detalle) =>
-      detalle != null && detalle.horaCarga != null && !_yaLlegoAObra(detalle);
+  /// "Iniciar ruta"/"Regresar a la ruta" only makes sense once the truck is
+  /// actually being loaded — while the pedido is merely "programado" there's
+  /// no `horaCarga` yet, so there's nothing to navigate to/from. Gating on
+  /// `horaCarga` directly (rather than the derived hito) matches what
+  /// "cargando en planta" actually means on the backend, since a blank
+  /// `estatus` also resolves to `cargandoPlanta` (see
+  /// `HitoEntrega.fromBackendValue`) even before `horaCarga` is set.
+  bool _puedeIniciarRuta(RemisionResumen? detalle, List<FirmaResponse>? firmas, List<ArchivoResponse>? archivos) =>
+      detalle != null && detalle.horaCarga != null && !_entregaCompleta(detalle, firmas, archivos);
 
   Future<void> _avanzarHito(HitoEntrega next) async {
     final remisionId = widget.remision.remisionId;
@@ -276,56 +286,76 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
               const SizedBox(height: 24),
               FutureBuilder<RemisionResumen?>(
                 future: _detalleFuture,
-                builder: (context, snapshot) {
-                  final detalle = _detalleOverride ?? snapshot.data;
-                  if (!_puedeIniciarRuta(detalle)) return const SizedBox.shrink();
+                builder: (context, detalleSnap) {
+                  final detalle = _detalleOverride ?? detalleSnap.data;
+                  return FutureBuilder<List<FirmaResponse>>(
+                    future: _firmasFuture,
+                    builder: (context, firmaSnap) {
+                      return FutureBuilder<List<ArchivoResponse>>(
+                        future: _archivosFuture,
+                        builder: (context, archivoSnap) {
+                          if (!_puedeIniciarRuta(detalle, firmaSnap.data, archivoSnap.data)) {
+                            return const SizedBox.shrink();
+                          }
+                          // Once the truck has already left planta at least
+                          // once (any hito past cargandoPlanta), this isn't
+                          // really "starting" a route anymore — the driver
+                          // is coming back to an in-progress delivery, e.g.
+                          // after backing out of RouteNavigationScreen
+                          // before arriving.
+                          final current = HitoEntrega.fromBackendValue(detalle!.estatus);
+                          final yaInicio = current != null && current != HitoEntrega.cargandoPlanta;
 
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Ubicación y ruta',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: textColor,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.of(context)
-                                .push(
-                                  MaterialPageRoute(
-                                    builder: (context) => RouteNavigationScreen(
-                                      remision: remision,
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Ubicación y ruta',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: textColor,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    Navigator.of(context)
+                                        .push(
+                                          MaterialPageRoute(
+                                            builder: (context) => RouteNavigationScreen(
+                                              remision: remision,
+                                            ),
+                                          ),
+                                        )
+                                        .then((_) => _refrescarDetalle());
+                                  },
+                                  icon: const Icon(
+                                    Icons.navigation,
+                                    color: Colors.black,
+                                  ),
+                                  label: Text(
+                                    yaInicio ? 'Regresar a la ruta' : 'Iniciar ruta',
+                                    style: const TextStyle(fontWeight: FontWeight.w700),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: _accentYellow,
+                                    foregroundColor: Colors.black,
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
                                     ),
                                   ),
-                                )
-                                .then((_) => _refrescarDetalle());
-                          },
-                          icon: const Icon(
-                            Icons.navigation,
-                            color: Colors.black,
-                          ),
-                          label: const Text(
-                            'Iniciar ruta',
-                            style: TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _accentYellow,
-                            foregroundColor: Colors.black,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
                   );
                 },
               ),

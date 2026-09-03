@@ -16,9 +16,35 @@ const permisoAutorizarLogistica = 'pedidos.autorizar_logistica';
 /// `/v3/api-docs`) — pedidos, autorizaciones, clientes. Reuses
 /// [AuthService.authHeaders] for the bearer token; this app has no
 /// state-management package, so results are returned directly rather than
-/// cached anywhere.
+/// cached anywhere — except the handful of per-id lookups below (`_cached`)
+/// that `PedidoDetailScreen` re-fetches on every visit even for a pedido
+/// already seen this session, since a fresh `Navigator.push` builds a brand
+/// new screen instance each time.
 class ComercialService {
   static const _baseUrl = 'https://fnconcretos.app/sandbox/comercial';
+
+  /// Short-lived in-memory cache for read-only per-id lookups
+  /// (cliente/obra/estado-cuenta/contacto) — reference-ish data that doesn't
+  /// need to be up-to-the-second fresh, unlike a Pedido's own totals (kept
+  /// live-polled, see `PedidoDetailScreen`) or the authorization queue
+  /// itself (`pedidosPendientesDePago`, deliberately *not* cached here,
+  /// since a stale read could hide/show a pedido someone else just
+  /// actioned). A plain static field, same "no state-management package"
+  /// pattern as `AuthService`'s session fields — not a general-purpose HTTP
+  /// cache, just enough to make repeat visits to the same pedido/cliente
+  /// within a short window feel instant instead of re-fetching from scratch.
+  static final Map<String, (dynamic, DateTime)> _cache = {};
+  static const _cacheTtl = Duration(seconds: 60);
+
+  static Future<T> _cached<T>(String key, Future<T> Function() fetch) async {
+    final entry = _cache[key];
+    if (entry != null && DateTime.now().isBefore(entry.$2.add(_cacheTtl))) {
+      return entry.$1 as T;
+    }
+    final value = await fetch();
+    _cache[key] = (value, DateTime.now());
+    return value;
+  }
 
   static Future<List<Pedido>> pedidosPendientesDePago() async {
     final data = await _get('/pedidos?estatusGeneral=pendiente_autorizacion_pago');
@@ -31,9 +57,11 @@ class ComercialService {
     return Pedido.fromJson(data as Map<String, dynamic>);
   }
 
-  static Future<Cliente> obtenerCliente(int id) async {
-    final data = await _get('/clientes/$id');
-    return Cliente.fromJson(data as Map<String, dynamic>);
+  static Future<Cliente> obtenerCliente(int id) {
+    return _cached('cliente:$id', () async {
+      final data = await _get('/clientes/$id');
+      return Cliente.fromJson(data as Map<String, dynamic>);
+    });
   }
 
   /// `GET /clientes` — searches by `tipo`/`estatus` plus free-text `q`
@@ -85,9 +113,11 @@ class ComercialService {
     return Cliente.fromJson(data as Map<String, dynamic>);
   }
 
-  static Future<Obra> obtenerObra(int id) async {
-    final data = await _get('/obras/$id');
-    return Obra.fromJson(data as Map<String, dynamic>);
+  static Future<Obra> obtenerObra(int id) {
+    return _cached('obra:$id', () async {
+      final data = await _get('/obras/$id');
+      return Obra.fromJson(data as Map<String, dynamic>);
+    });
   }
 
   /// `GET /obras` — searches by `nombre`/`ciudad`/`estatus` (per
@@ -134,19 +164,25 @@ class ComercialService {
     return Obra.fromJson(data as Map<String, dynamic>);
   }
 
-  static Future<EstadoCuenta> estadoCuenta(int clienteId) async {
-    final data = await _get('/clientes/$clienteId/estado-cuenta');
-    return EstadoCuenta.fromJson(data as Map<String, dynamic>);
+  static Future<EstadoCuenta> estadoCuenta(int clienteId) {
+    return _cached('estadoCuenta:$clienteId', () async {
+      final data = await _get('/clientes/$clienteId/estado-cuenta');
+      return EstadoCuenta.fromJson(data as Map<String, dynamic>);
+    });
   }
 
-  static Future<List<ObraCliente>> clientesPorObra(int obraId) async {
-    final data = await _get('/obras/$obraId/clientes');
-    return (data as List<dynamic>).map((e) => ObraCliente.fromJson(e as Map<String, dynamic>)).toList();
+  static Future<List<ObraCliente>> clientesPorObra(int obraId) {
+    return _cached('clientesPorObra:$obraId', () async {
+      final data = await _get('/obras/$obraId/clientes');
+      return (data as List<dynamic>).map((e) => ObraCliente.fromJson(e as Map<String, dynamic>)).toList();
+    });
   }
 
-  static Future<List<ClienteContacto>> contactosCliente(int clienteId) async {
-    final data = await _get('/clientes/$clienteId/contactos');
-    return (data as List<dynamic>).map((e) => ClienteContacto.fromJson(e as Map<String, dynamic>)).toList();
+  static Future<List<ClienteContacto>> contactosCliente(int clienteId) {
+    return _cached('contactosCliente:$clienteId', () async {
+      final data = await _get('/clientes/$clienteId/contactos');
+      return (data as List<dynamic>).map((e) => ClienteContacto.fromJson(e as Map<String, dynamic>)).toList();
+    });
   }
 
   /// Resolves the specific person to contact for delivering [clienteId]'s

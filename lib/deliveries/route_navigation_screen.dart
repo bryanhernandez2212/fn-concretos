@@ -139,6 +139,17 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
 
     await GoogleMapsNavigator.startGuidance();
     await _viewController?.followMyLocation(CameraPerspective.tilted);
+    // Re-applied here too (already set in onViewCreated) — confirmed by a
+    // real device screenshot that neither the speedometer nor the ETA
+    // footer show up once guidance is actually running, so something about
+    // starting a guidance session may reset view-level UI settings back to
+    // their defaults. `setNavigationFooterEnabled` is included explicitly
+    // despite the plugin docs saying it's on by default — that default
+    // clearly isn't holding either.
+    await _viewController?.setSpeedometerEnabled(true);
+    await _viewController?.setNavigationTripProgressBarEnabled(true);
+    await _viewController?.setNavigationFooterEnabled(true);
+    await _viewController?.setNavigationHeaderEnabled(true);
     if (mounted) setState(() => _guidanceRunning = true);
 
     // Only report position / hitos if planta/producción already generated a
