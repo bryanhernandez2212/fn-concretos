@@ -5,12 +5,6 @@ import '../config/api_config.dart';
 import '../operaciones/evidencia.dart' show PresignedUploadResponse;
 import 'empleado.dart';
 
-/// Talks to the real fnconcretos `administracion` sandbox (see its
-/// `/v3/api-docs`) — HR employee records. Backs `ProfileScreen`'s fuller
-/// profile data (nombreCompleto/puesto/área/teléfono) and the real,
-/// backend-synced `fotoPerfilUrl`, since `auth-service`'s `/auth/me` only
-/// has username/rol/correo/permisos. Reuses [AuthService.authHeaders] for
-/// the bearer token, same pattern as `ComercialService`/`OperacionesService`.
 class AdministracionService {
   static const _baseUrl = ApiConfig.administracion;
   static const _timeout = Duration(seconds: 20);

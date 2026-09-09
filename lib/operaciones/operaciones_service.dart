@@ -314,6 +314,18 @@ class OperacionesService {
         .toList();
   }
 
+  /// `GET /modelos-3d?tipoVehiculoId=` — the catalog entries for a vehicle
+  /// type, used as a fallback when a `VehiculoResumen` hasn't been assigned
+  /// its own `modelo3dId` yet (see `vehicle/vehiculo_service.dart`).
+  static Future<List<Modelo3dResumen>> modelosPorTipoVehiculo(
+    int tipoVehiculoId,
+  ) async {
+    final data = await _get('/modelos-3d?tipoVehiculoId=$tipoVehiculoId');
+    return (data as List<dynamic>)
+        .map((e) => Modelo3dResumen.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   /// Reports a pendiente (falla mecánica/llanta/mantenimiento/otro) on a
   /// vehicle. `fechaDeteccion` is stamped as today — this is reported at
   /// the moment it's noticed, not scheduled ahead. `evidenciaApertura` is

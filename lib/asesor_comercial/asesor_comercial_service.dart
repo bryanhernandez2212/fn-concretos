@@ -129,40 +129,102 @@ class AsesorComercialService {
     return Cotizacion.fromJson(data as Map<String, dynamic>);
   }
 
-  /// `porcentajeDescuento` should only be passed when the caller holds
-  /// [permisoAplicarDescuentoEspecial] — enforced by the caller (UI hides
-  /// the field otherwise), not by this method.
+  /// `porcentajeDescuento` can be sent by anyone up to the backend's own
+  /// limit per forma de pago — only exceeding that limit requires
+  /// [permisoAplicarDescuentoEspecial], enforced server-side (this method
+  /// doesn't gate on it). `CotizacionRequest` requires `clienteId` and
+  /// `plantaId`, plus at least one entry in `productos` — a
+  /// Cotizacion is no longer a single product/volumen/precio in this
+  /// backend's schema.
   static Future<Cotizacion> crearCotizacion({
     required int clienteId,
-    required double volumenM3,
-    required double precioUnitario,
+    required int plantaId,
+    required List<CotizacionItem> productos,
     int? obraId,
     int? contactoId,
-    int? plantaId,
     int? asesorId,
-    int? productoId,
     String? tipoServicio,
     DateTime? fechaSuministroEstimada,
     String? formaPago,
     bool? requiereFactura,
     double? porcentajeDescuento,
   }) async {
-    final data = await _post('/cotizaciones', {
+    final data = await _post('/cotizaciones', _cotizacionBody(
+      clienteId: clienteId,
+      plantaId: plantaId,
+      productos: productos,
+      obraId: obraId,
+      contactoId: contactoId,
+      asesorId: asesorId,
+      tipoServicio: tipoServicio,
+      fechaSuministroEstimada: fechaSuministroEstimada,
+      formaPago: formaPago,
+      requiereFactura: requiereFactura,
+      porcentajeDescuento: porcentajeDescuento,
+    ));
+    return Cotizacion.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// `PUT /cotizaciones/{id}` — "solo mientras no esté convertida a pedido".
+  /// Same `CotizacionRequest` body as [crearCotizacion]; the backend replaces
+  /// the whole cotización (including its `productos`), there's no partial
+  /// PATCH for this, same as `AdministracionService.actualizarFotoPerfil`.
+  static Future<Cotizacion> actualizarCotizacion(
+    int id, {
+    required int clienteId,
+    required int plantaId,
+    required List<CotizacionItem> productos,
+    int? obraId,
+    int? contactoId,
+    int? asesorId,
+    String? tipoServicio,
+    DateTime? fechaSuministroEstimada,
+    String? formaPago,
+    bool? requiereFactura,
+    double? porcentajeDescuento,
+  }) async {
+    final data = await _put('/cotizaciones/$id', _cotizacionBody(
+      clienteId: clienteId,
+      plantaId: plantaId,
+      productos: productos,
+      obraId: obraId,
+      contactoId: contactoId,
+      asesorId: asesorId,
+      tipoServicio: tipoServicio,
+      fechaSuministroEstimada: fechaSuministroEstimada,
+      formaPago: formaPago,
+      requiereFactura: requiereFactura,
+      porcentajeDescuento: porcentajeDescuento,
+    ));
+    return Cotizacion.fromJson(data as Map<String, dynamic>);
+  }
+
+  static Map<String, dynamic> _cotizacionBody({
+    required int clienteId,
+    required int plantaId,
+    required List<CotizacionItem> productos,
+    int? obraId,
+    int? contactoId,
+    int? asesorId,
+    String? tipoServicio,
+    DateTime? fechaSuministroEstimada,
+    String? formaPago,
+    bool? requiereFactura,
+    double? porcentajeDescuento,
+  }) {
+    return {
       'clienteId': clienteId,
-      'volumenM3': volumenM3,
-      'precioUnitario': precioUnitario,
+      'plantaId': plantaId,
+      'productos': productos.map((p) => p.toJson()).toList(),
       if (obraId != null) 'obraId': obraId,
       if (contactoId != null) 'contactoId': contactoId,
-      if (plantaId != null) 'plantaId': plantaId,
       if (asesorId != null) 'asesorId': asesorId,
-      if (productoId != null) 'productoId': productoId,
       if (tipoServicio != null) 'tipoServicio': tipoServicio,
       if (fechaSuministroEstimada != null) 'fechaSuministroEstimada': _fechaSolo(fechaSuministroEstimada),
       if (formaPago != null) 'formaPago': formaPago,
       if (requiereFactura != null) 'requiereFactura': requiereFactura,
       if (porcentajeDescuento != null) 'porcentajeDescuento': porcentajeDescuento,
-    });
-    return Cotizacion.fromJson(data as Map<String, dynamic>);
+    };
   }
 
   /// `estatus` is `'negociacion'`, `'listo'`, or `'cancelada'` — `'convertida'`
@@ -253,6 +315,21 @@ class AsesorComercialService {
     final http.Response response;
     try {
       response = await http.post(
+        Uri.parse('$_baseUrl$path'),
+        headers: {...headers, 'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+    } catch (_) {
+      throw AuthException('No se pudo conectar con el servidor');
+    }
+    return _handleResponse(response);
+  }
+
+  static Future<dynamic> _put(String path, Map<String, dynamic> body) async {
+    final headers = await AuthService.authHeaders();
+    final http.Response response;
+    try {
+      response = await http.put(
         Uri.parse('$_baseUrl$path'),
         headers: {...headers, 'Content-Type': 'application/json'},
         body: jsonEncode(body),

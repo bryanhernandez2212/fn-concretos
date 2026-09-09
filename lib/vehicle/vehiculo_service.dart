@@ -17,4 +17,22 @@ class VehiculoService {
     }
     return null;
   }
+
+  /// Resolves the `.glb` URL to render for [vehiculo] — prefers
+  /// `modelo3dUrl` already echoed onto the vehículo response, and only
+  /// falls back to `GET /modelos-3d?tipoVehiculoId=` (picking the first
+  /// `activo` catalog entry for that tipo) for a vehículo that hasn't had
+  /// a modelo3d assigned directly yet.
+  static Future<String?> modelo3dUrlPara(VehiculoResumen vehiculo) async {
+    final urlPropio = vehiculo.modelo3dUrl;
+    if (urlPropio != null && urlPropio.isNotEmpty) return urlPropio;
+
+    final tipoVehiculoId = vehiculo.tipoVehiculoId;
+    if (tipoVehiculoId == null) return null;
+    final modelos = await OperacionesService.modelosPorTipoVehiculo(tipoVehiculoId);
+    for (final modelo in modelos) {
+      if (modelo.activo) return modelo.url;
+    }
+    return null;
+  }
 }

@@ -89,6 +89,7 @@ class _VisitaDetailScreenState extends State<VisitaDetailScreen> {
           clienteNombre: _visita.clienteNombre ?? 'Cliente sin nombre',
           obraId: _visita.obraId,
           obraNombre: _visita.obraNombre,
+          obraPlantaId: _obra?.plantaId,
         ),
       ),
     );

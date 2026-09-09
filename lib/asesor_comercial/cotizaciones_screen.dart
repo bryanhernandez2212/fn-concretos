@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import '../auth/auth_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../widgets/header_icon_button.dart';
 import '../widgets/notification_bell_button.dart';
 import 'asesor_comercial_service.dart';
 import 'asesor_comercial_widgets.dart';
 import 'cotizacion.dart';
 import 'cotizacion_detail_screen.dart';
+import 'cotizacion_form_screen.dart';
 
 const _accentYellow = AppColors.accent;
 
@@ -14,8 +16,10 @@ const _filtros = <String?>[null, 'negociacion', 'listo', 'convertida', 'cancelad
 
 String _filtroLabel(String? estatus) => estatus == null ? 'Todas' : estatusLabel(estatus);
 
-/// "Cotizaciones" tab — no freestanding "create" entry point here;
-/// cotizaciones originate from a Visita (see `VisitaDetailScreen`).
+/// "Cotizaciones" tab. Most cotizaciones originate from a Visita (see
+/// `VisitaDetailScreen`), but the web app also allows creating one
+/// standalone — the "+" here opens `CotizacionFormScreen` with no
+/// cliente/obra prefilled, so it picks them itself.
 class CotizacionesScreen extends StatefulWidget {
   const CotizacionesScreen({super.key});
 
@@ -50,6 +54,13 @@ class _CotizacionesScreenState extends State<CotizacionesScreen> {
 
   void _refresh() => _seleccionarFiltro(_filtro);
 
+  Future<void> _nuevaCotizacion() async {
+    final creada = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (context) => const CotizacionFormScreen()),
+    );
+    if (creada == true) _refresh();
+  }
+
   @override
   Widget build(BuildContext context) {
     final textColor = AppColors.text(context);
@@ -81,6 +92,12 @@ class _CotizacionesScreenState extends State<CotizacionesScreen> {
                   ],
                 ),
               ),
+              HeaderIconButton(
+                icon: Icons.add_circle_outline,
+                tooltip: 'Nueva cotización',
+                onPressed: _nuevaCotizacion,
+              ),
+              const SizedBox(width: 8),
               const NotificationBellButton(),
             ],
           ),

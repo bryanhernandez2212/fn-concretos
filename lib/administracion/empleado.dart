@@ -1,9 +1,3 @@
-/// `administracion-service`'s employee record — `GET /empleados/{id}`. Keeps
-/// every field the response returns (not just the ones this app displays)
-/// so [toRequestJson] can round-trip a full `PUT /empleados/{id}` without
-/// wiping out fields this app doesn't otherwise touch (nss, curp, sueldo,
-/// etc.) — that endpoint replaces the whole record, there's no partial
-/// PATCH.
 class EmpleadoResponse {
   final int id;
   final int empresaId;

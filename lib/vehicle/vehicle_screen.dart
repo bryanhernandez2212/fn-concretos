@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:model_viewer_plus/model_viewer_plus.dart';
 import '../operaciones/operaciones_service.dart';
 import '../operaciones/vehiculo.dart';
 import '../theme/app_colors.dart';
@@ -50,6 +51,11 @@ class _VehicleScreenState extends State<VehicleScreen> {
             ? const <VehiculoPendienteResumen>[]
             : OperacionesService.pendientesVehiculo(vehiculo.id),
       );
+
+  late final Future<String?> _modelo3dUrlFuture = _vehiculoFuture.then(
+    (vehiculo) =>
+        vehiculo == null ? null : VehiculoService.modelo3dUrlPara(vehiculo),
+  );
 
   void _refrescarPendientes(int vehiculoId) {
     setState(() {
@@ -164,6 +170,39 @@ class _VehicleScreenState extends State<VehicleScreen> {
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            if (vehiculo != null)
+              FutureBuilder<String?>(
+                future: _modelo3dUrlFuture,
+                builder: (context, modeloSnapshot) {
+                  final modeloUrl = modeloSnapshot.data;
+                  // Best-effort: no modelo3d assigned to this vehículo/tipo
+                  // yet just means this card doesn't render, not an error —
+                  // same idiom as VisitaDetailScreen's obra lookup.
+                  if (modeloUrl == null || modeloUrl.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        height: 240,
+                        decoration: BoxDecoration(
+                          color: cardColor,
+                          border: Border.all(color: borderColor),
+                        ),
+                        child: ModelViewer(
+                          backgroundColor: Colors.transparent,
+                          src: modeloUrl,
+                          alt: 'Modelo 3D del vehículo',
+                          autoRotate: true,
+                          cameraControls: true,
+                        ),
                       ),
                     ),
                   );

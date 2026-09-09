@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../auth/auth_service.dart';
+import '../catalogo/catalogo_service.dart';
+import '../catalogo/producto.dart';
+import '../direccion/comercial_service.dart';
+import '../direccion/pedido.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_feedback.dart';
 import '../widgets/field_group.dart';
 import 'asesor_comercial_service.dart';
 import 'asesor_comercial_widgets.dart';
 import 'cotizacion.dart';
+import 'cotizacion_form_screen.dart';
 
 /// Detail + status actions for a Cotizacion. On success, "Convertir a
 /// pedido" shows the resulting folio and pops back to the list rather than
@@ -25,11 +30,54 @@ class CotizacionDetailScreen extends StatefulWidget {
 class _CotizacionDetailScreenState extends State<CotizacionDetailScreen> {
   late Cotizacion _cotizacion;
   bool _procesando = false;
+  List<Producto> _productos = const [];
+  List<ClienteContacto> _contactos = const [];
 
   @override
   void initState() {
     super.initState();
     _cotizacion = widget.cotizacion;
+    _cargarProductos();
+    _cargarContactos();
+  }
+
+  /// Best-effort — resolves `contactoId` to a nombre for display; a failed
+  /// lookup just shows the raw id instead of a name.
+  Future<void> _cargarContactos() async {
+    try {
+      final contactos = await ComercialService.contactosCliente(_cotizacion.clienteId);
+      if (mounted) setState(() => _contactos = contactos);
+    } catch (_) {
+      // Falls back to showing the raw contactoId below.
+    }
+  }
+
+  String? _nombreContacto(int? contactoId) {
+    if (contactoId == null) return null;
+    for (final c in _contactos) {
+      if (c.id == contactoId) return c.nombre;
+    }
+    return null;
+  }
+
+  /// Best-effort — resolves each partida's `productoId` to a nombre for
+  /// display; a failed catalog lookup just falls back to showing the
+  /// partida's tipoLinea/descripción instead, not a broken screen.
+  Future<void> _cargarProductos() async {
+    try {
+      final productos = await CatalogoService.productos();
+      if (mounted) setState(() => _productos = productos);
+    } catch (_) {
+      // Falls back to descripción/tipoLinea in _partidaRow.
+    }
+  }
+
+  String? _nombreProducto(int? productoId) {
+    if (productoId == null) return null;
+    for (final p in _productos) {
+      if (p.id == productoId) return p.nombre;
+    }
+    return null;
   }
 
   Future<void> _actualizarEstatus(String estatus) async {
@@ -62,6 +110,27 @@ class _CotizacionDetailScreenState extends State<CotizacionDetailScreen> {
       ),
     );
     if (confirmar == true) _actualizarEstatus('cancelada');
+  }
+
+  Future<void> _editar() async {
+    final guardado = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => CotizacionFormScreen(
+          clienteId: _cotizacion.clienteId,
+          clienteNombre: _cotizacion.clienteNombre,
+          obraId: _cotizacion.obraId,
+          obraNombre: _cotizacion.obraNombre,
+          cotizacion: _cotizacion,
+        ),
+      ),
+    );
+    if (guardado != true || !mounted) return;
+    try {
+      final actualizada = await AsesorComercialService.obtenerCotizacion(_cotizacion.id);
+      if (mounted) setState(() => _cotizacion = actualizada);
+    } catch (_) {
+      // Best-effort refresh — the edit itself already succeeded.
+    }
   }
 
   Future<void> _duplicar() async {
@@ -122,6 +191,10 @@ class _CotizacionDetailScreenState extends State<CotizacionDetailScreen> {
         foregroundColor: textColor,
         elevation: 0,
         leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.of(context).pop(true)),
+        actions: [
+          if (c.estatus != 'convertida')
+            IconButton(icon: const Icon(Icons.edit_outlined), tooltip: 'Editar cotización', onPressed: _procesando ? null : _editar),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
@@ -141,24 +214,50 @@ class _CotizacionDetailScreenState extends State<CotizacionDetailScreen> {
                     EstatusChip(estatus: c.estatus),
                   ],
                 ),
-                if (c.obraNombre != null) ...[
-                  const SizedBox(height: 6),
-                  Text(c.obraNombre!, style: TextStyle(fontSize: 13.5, color: mutedColor)),
-                ],
+                const SizedBox(height: 6),
+                Text(
+                  c.obraNombre ?? (c.obraId != null ? 'Obra #${c.obraId}' : 'Sin obra específica'),
+                  style: TextStyle(fontSize: 13.5, color: mutedColor),
+                ),
                 const Divider(height: 24),
-                _renglon('Volumen', '${c.volumenM3} m³', textColor, mutedColor),
-                _renglon('Precio unitario', '\$${c.precioUnitario.toStringAsFixed(2)}', textColor, mutedColor),
+                _renglon('Asesor encargado', c.asesorNombre.isEmpty ? 'Sin asignar' : c.asesorNombre, textColor, mutedColor),
+                _renglon(
+                  'Contacto',
+                  c.contactoId == null ? 'Sin contacto específico' : (_nombreContacto(c.contactoId) ?? 'Contacto #${c.contactoId}'),
+                  textColor,
+                  mutedColor,
+                ),
+                _renglon('Volumen total', '${c.volumenM3} m³', textColor, mutedColor),
                 if (c.porcentajeDescuento > 0)
-                  _renglon('Descuento', '${c.porcentajeDescuento}% (\$${c.precioUnitarioConDescuento.toStringAsFixed(2)})', textColor, mutedColor),
+                  _renglon('Descuento', '${c.porcentajeDescuento}% (\$${c.precioUnitarioConDescuento.toStringAsFixed(2)} c/u)', textColor, mutedColor),
                 _renglon('Monto total', '\$${c.montoTotal.toStringAsFixed(2)}', textColor, mutedColor),
-                if (c.tipoServicio != null) _renglon('Tipo de servicio', c.tipoServicio!, textColor, mutedColor),
-                if (c.formaPago != null) _renglon('Forma de pago', c.formaPago!, textColor, mutedColor),
+                if (c.tipoServicio != null) _renglon('Tipo de servicio', tipoServicioLabel(c.tipoServicio), textColor, mutedColor),
+                if (c.formaPago != null) _renglon('Forma de pago', formaPagoLabel(c.formaPago), textColor, mutedColor),
                 _renglon('Requiere factura', c.requiereFactura ? 'Sí' : 'No', textColor, mutedColor),
                 if (c.fechaSuministroEstimada != null)
                   _renglon('Suministro estimado', c.fechaSuministroEstimada!, textColor, mutedColor),
               ],
             ),
           ),
+          if (c.productos.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text('Partidas', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: textColor)),
+            const SizedBox(height: 8),
+            FieldGroup(
+              cardColor: cardColor,
+              borderColor: borderColor,
+              expand: true,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (var i = 0; i < c.productos.length; i++) ...[
+                    if (i > 0) const Divider(height: 24),
+                    _partidaRow(c.productos[i], textColor, mutedColor),
+                  ],
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           if (_procesando)
             const Center(child: CircularProgressIndicator())
@@ -232,6 +331,28 @@ class _CotizacionDetailScreenState extends State<CotizacionDetailScreen> {
           ],
         ],
       ),
+    );
+  }
+
+  Widget _partidaRow(CotizacionItem item, Color textColor, Color mutedColor) {
+    final nombreProducto = _nombreProducto(item.productoId);
+    final subtitulo = nombreProducto ?? item.descripcion;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          tipoLineaLabel(item.tipoLinea),
+          style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: textColor),
+        ),
+        if (subtitulo != null) ...[
+          const SizedBox(height: 2),
+          Text(subtitulo, style: TextStyle(fontSize: 12.5, color: mutedColor)),
+        ],
+        const SizedBox(height: 6),
+        if (item.volumenM3 != null) _renglon('Volumen', '${item.volumenM3} m³', textColor, mutedColor),
+        _renglon('Precio unitario', '\$${item.precioUnitario.toStringAsFixed(2)}', textColor, mutedColor),
+        if (item.precioTotal != null) _renglon('Precio total', '\$${item.precioTotal!.toStringAsFixed(2)}', textColor, mutedColor),
+      ],
     );
   }
 

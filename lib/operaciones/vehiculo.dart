@@ -20,6 +20,14 @@ class VehiculoResumen {
   final bool camaraInstalada;
   final DateTime? fechaUltimoServicio;
   final int? conductorAsignadoId;
+  final int? tipoVehiculoId;
+  // The backend resolves the assigned 3D model straight onto the vehículo
+  // response — `modelo3d-controller`'s own list/detail endpoints are for
+  // populating the admin-side selector when assigning one, not something
+  // this app calls for "mi vehículo" (see `vehiculo_service.dart`).
+  final int? modelo3dId;
+  final String? modelo3dNombre;
+  final String? modelo3dUrl;
 
   const VehiculoResumen({
     required this.id,
@@ -36,6 +44,10 @@ class VehiculoResumen {
     required this.camaraInstalada,
     required this.fechaUltimoServicio,
     required this.conductorAsignadoId,
+    required this.tipoVehiculoId,
+    required this.modelo3dId,
+    required this.modelo3dNombre,
+    required this.modelo3dUrl,
   });
 
   factory VehiculoResumen.fromJson(Map<String, dynamic> json) {
@@ -54,6 +66,45 @@ class VehiculoResumen {
       camaraInstalada: json['camaraInstalada'] as bool? ?? false,
       fechaUltimoServicio: DateTime.tryParse(json['fechaUltimoServicio'] as String? ?? ''),
       conductorAsignadoId: json['conductorAsignadoId'] as int?,
+      tipoVehiculoId: json['tipoVehiculoId'] as int?,
+      modelo3dId: json['modelo3dId'] as int?,
+      modelo3dNombre: json['modelo3dNombre'] as String?,
+      modelo3dUrl: json['modelo3dUrl'] as String?,
+    );
+  }
+}
+
+/// Mirrors `Modelo3dResponse` — the reusable-by-tipo catalog entry, fetched
+/// via `OperacionesService.modelosPorTipoVehiculo` only as a fallback for
+/// when a vehículo hasn't been assigned a `modelo3dId` of its own yet (see
+/// `vehiculo_service.dart`).
+class Modelo3dResumen {
+  final int id;
+  final String nombre;
+  final int? tipoVehiculoId;
+  final String url;
+  final String? descripcion;
+  final String estatus;
+
+  const Modelo3dResumen({
+    required this.id,
+    required this.nombre,
+    required this.tipoVehiculoId,
+    required this.url,
+    required this.descripcion,
+    required this.estatus,
+  });
+
+  bool get activo => estatus == 'activo';
+
+  factory Modelo3dResumen.fromJson(Map<String, dynamic> json) {
+    return Modelo3dResumen(
+      id: json['id'] as int,
+      nombre: json['nombre'] as String? ?? '',
+      tipoVehiculoId: json['tipoVehiculoId'] as int?,
+      url: json['url'] as String? ?? '',
+      descripcion: json['descripcion'] as String?,
+      estatus: json['estatus'] as String? ?? '',
     );
   }
 }
