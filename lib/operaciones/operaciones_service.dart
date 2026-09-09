@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../auth/auth_service.dart';
+import '../config/api_config.dart';
 import 'evidencia.dart';
 import 'produccion.dart';
 import 'remision_tracking.dart';
@@ -23,7 +24,7 @@ const permisoReportarPendienteVehiculo = 'vehiculos.reportar_pendiente';
 /// state-management package, so results are returned directly rather than
 /// cached anywhere.
 class OperacionesService {
-  static const _baseUrl = 'https://fnconcretos.app/sandbox/operaciones';
+  static const _baseUrl = ApiConfig.operaciones;
   // Requests had no timeout at all, so a flaky connection (common in the
   // field, e.g. uploading evidencia from a job site) could hang seemingly
   // forever with just a spinner instead of failing predictably so the

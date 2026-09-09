@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../auth/auth_service.dart';
+import '../config/api_config.dart';
 import 'pedido.dart';
 
 /// Granular permission names (as returned in `/auth/me`'s `permisos`) that
@@ -21,7 +22,7 @@ const permisoAutorizarLogistica = 'pedidos.autorizar_logistica';
 /// already seen this session, since a fresh `Navigator.push` builds a brand
 /// new screen instance each time.
 class ComercialService {
-  static const _baseUrl = 'https://fnconcretos.app/sandbox/comercial';
+  static const _baseUrl = ApiConfig.comercial;
 
   /// Short-lived in-memory cache for read-only per-id lookups
   /// (cliente/obra/estado-cuenta/contacto) — reference-ish data that doesn't

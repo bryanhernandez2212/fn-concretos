@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
+import '../config/api_config.dart';
 import '../notifications/onesignal_service.dart';
 
 class AuthException implements Exception {
@@ -35,7 +36,7 @@ class MfaEnrollment {
 /// existing `themeNotifier` pattern (see main.dart) rather than
 /// introducing one.
 class AuthService {
-  static const _baseUrl = 'https://fnconcretos.app/sandbox/auth';
+  static const _baseUrl = ApiConfig.auth;
   static const _storage = FlutterSecureStorage();
   static const _refreshTokenKey = 'fn_concretos_refresh_token';
   static const _biometricEnabledKey = 'fn_concretos_biometric_enabled';

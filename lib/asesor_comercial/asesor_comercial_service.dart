@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../auth/auth_service.dart';
+import '../config/api_config.dart';
 import '../direccion/pedido.dart';
 import 'asesor.dart';
 import 'cotizacion.dart';
@@ -29,7 +30,7 @@ const permisoAdministrarPreciosCatalogo = 'catalogo.precios.administrar';
 /// state-management package, so results are returned directly rather than
 /// cached anywhere.
 class AsesorComercialService {
-  static const _baseUrl = 'https://fnconcretos.app/sandbox/comercial';
+  static const _baseUrl = ApiConfig.comercial;
 
   /// Resolves the logged-in advisor's own `Asesor` row. There's no backend
   /// concept of "mi asesor" as a single call — `GET /asesores` is

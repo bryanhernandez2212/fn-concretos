@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../auth/auth_service.dart';
+import '../config/api_config.dart';
 import 'notificacion.dart';
 
 /// Talks to auth-service's real `notificacion-controller` (same sandbox as
@@ -9,7 +10,7 @@ import 'notificacion.dart';
 /// here: per its own docs it's for other microservices to call when an
 /// event happens for a user, not for the UI.
 class NotificacionesService {
-  static const _baseUrl = 'https://fnconcretos.app/sandbox/auth';
+  static const _baseUrl = ApiConfig.auth;
   static const _timeout = Duration(seconds: 20);
 
   /// [leida] filters to only read/unread notifications; omit for everything.

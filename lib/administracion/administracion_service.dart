@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../auth/auth_service.dart';
+import '../config/api_config.dart';
 import '../operaciones/evidencia.dart' show PresignedUploadResponse;
 import 'empleado.dart';
 
@@ -11,7 +12,7 @@ import 'empleado.dart';
 /// has username/rol/correo/permisos. Reuses [AuthService.authHeaders] for
 /// the bearer token, same pattern as `ComercialService`/`OperacionesService`.
 class AdministracionService {
-  static const _baseUrl = 'https://fnconcretos.app/sandbox/administracion';
+  static const _baseUrl = ApiConfig.administracion;
   static const _timeout = Duration(seconds: 20);
 
   static Future<EmpleadoResponse> obtenerEmpleado(int id) async {
