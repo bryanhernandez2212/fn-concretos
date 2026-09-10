@@ -36,6 +36,18 @@ enum HitoEntrega {
     }
     return null;
   }
+
+  /// "Out of plant, not yet finished" — same set `OperacionesService.remisionesEnRuta`
+  /// narrows to for `direccion/RutasActivasScreen`'s fleet-wide map, reused
+  /// here for `DeliveriesScreen`'s "En ruta" conteo so both sides of the app
+  /// agree on what counts as en ruta.
+  static const enRutaHitos = {
+    HitoEntrega.salioPlanta,
+    HitoEntrega.enCamino,
+    HitoEntrega.proximoLlegar,
+    HitoEntrega.enObra,
+    HitoEntrega.descargando,
+  };
 }
 
 /// A delivery run assigned to the driver's vehicle/shift, built from

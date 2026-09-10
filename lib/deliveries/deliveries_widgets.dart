@@ -5,6 +5,81 @@ import 'remision.dart';
 
 const _accentYellow = AppColors.accent;
 
+/// "Mis entregas del día"'s conteo-de-rutas summary — asignadas (every
+/// Remisión found for today, regardless of hito), en ruta (already out of
+/// planta per `HitoEntrega.enRutaHitos`), entregadas, and pendientes
+/// (everything else: not yet out of planta, or `conIncidencia`/`con_atraso`
+/// needing attention). [enRuta] + [entregadas] + [pendientes] always add up
+/// to [asignadas] by construction — see `DeliveriesScreen.build`.
+class RutasResumenCard extends StatelessWidget {
+  final int asignadas;
+  final int enRuta;
+  final int entregadas;
+  final int pendientes;
+  final Color cardColor;
+  final Color borderColor;
+  final Color textColor;
+  final Color mutedColor;
+
+  const RutasResumenCard({
+    super.key,
+    required this.asignadas,
+    required this.enRuta,
+    required this.entregadas,
+    required this.pendientes,
+    required this.cardColor,
+    required this.borderColor,
+    required this.textColor,
+    required this.mutedColor,
+  });
+
+  Widget _stat(String label, int value, Color color) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            '$value',
+            style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: color),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: mutedColor),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _divisor() => Container(width: 1, height: 30, color: borderColor);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 6),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        children: [
+          _stat('Asignadas', asignadas, textColor),
+          _divisor(),
+          _stat('En ruta', enRuta, _accentYellow),
+          _divisor(),
+          _stat('Entregadas', entregadas, AppColors.success),
+          _divisor(),
+          _stat('Pendientes', pendientes, AppColors.warning),
+        ],
+      ),
+    );
+  }
+}
+
 /// Delivery summary card shared with `HistorialEntregasScreen` so past-day
 /// entregas render identically to today's.
 class RemisionCard extends StatelessWidget {
