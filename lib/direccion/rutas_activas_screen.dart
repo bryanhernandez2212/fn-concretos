@@ -2,9 +2,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_navigation_flutter/google_navigation_flutter.dart';
 import '../auth/auth_service.dart';
+import '../deliveries/deliveries_widgets.dart';
+import '../deliveries/entregas_service.dart';
 import '../operaciones/operaciones_service.dart';
 import '../operaciones/remision_tracking.dart';
 import '../theme/app_colors.dart';
+import '../widgets/bottom_nav_bar.dart';
 import '../widgets/notification_bell_button.dart';
 import 'comercial_service.dart';
 import 'route_eta.dart';
@@ -40,6 +43,16 @@ class RutasActivasScreen extends StatefulWidget {
 class _RutasActivasScreenState extends State<RutasActivasScreen> {
   GoogleMapViewController? _mapController;
   Timer? _timer;
+
+  /// Fleet-wide asignadas/en ruta/entregadas/pendientes for today, shown as
+  /// a summary card above the map — Dirección's equivalent of the
+  /// conductor-facing `RutasResumenCard` on `DeliveriesScreen`, but
+  /// aggregated across every conductor instead of just the logged-in one.
+  /// Refreshed on its own slower timer (below), separate from [_timer]'s
+  /// 15s GPS poll, since it costs one call per pedido programado hoy rather
+  /// than the cheap unfiltered `/remisiones` the map itself polls.
+  ResumenEntregasDia? _resumen;
+  Timer? _resumenTimer;
 
   List<RemisionResumen> _remisiones = const [];
   final Map<int, RutaRemision> _rutas = {};
@@ -85,15 +98,33 @@ class _RutasActivasScreenState extends State<RutasActivasScreen> {
     super.initState();
     _cargar();
     _timer = Timer.periodic(const Duration(seconds: 15), (_) => _cargar());
+    _cargarResumen();
+    _resumenTimer = Timer.periodic(
+      const Duration(seconds: 60),
+      (_) => _cargarResumen(),
+    );
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _resumenTimer?.cancel();
     for (final glide in _glides.values) {
       glide.cancel();
     }
     super.dispose();
+  }
+
+  Future<void> _cargarResumen() async {
+    try {
+      final resumen = await EntregasService.resumenFlotaDelDia();
+      if (!mounted) return;
+      setState(() => _resumen = resumen);
+    } catch (_) {
+      // Best-effort, same as the map's own polling below — a failed refresh
+      // just leaves the last known counts (or nothing, on the very first
+      // load) rather than surfacing an error over the map.
+    }
   }
 
   Future<void> _cargar() async {
@@ -367,7 +398,35 @@ class _RutasActivasScreenState extends State<RutasActivasScreen> {
           ),
         ],
       ),
-      body: _buildBody(isDark, textColor, mutedColor, cardColor, borderColor),
+      body: Column(
+        children: [
+          // Hidden in pantalla completa along with the bottom truck-list
+          // panel (see `_buildBody`) so the map gets the full screen.
+          if (!_pantallaCompleta && _resumen != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+              child: RutasResumenCard(
+                asignadas: _resumen!.asignadas,
+                enRuta: _resumen!.enRuta,
+                entregadas: _resumen!.entregadas,
+                pendientes: _resumen!.pendientes,
+                cardColor: cardColor,
+                borderColor: borderColor,
+                textColor: textColor,
+                mutedColor: mutedColor,
+              ),
+            ),
+          Expanded(
+            child: _buildBody(
+              isDark,
+              textColor,
+              mutedColor,
+              cardColor,
+              borderColor,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -475,7 +534,17 @@ class _RutasActivasScreenState extends State<RutasActivasScreen> {
                 child: RefreshIndicator(
                   onRefresh: _cargar,
                   child: ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                    // The floating BottomNavBar overlays the bottom of this
+                    // panel (see DireccionHomeScreen's shared shell) — without
+                    // this, the last remisión ends up scrolled only as far as
+                    // the plain 24px padding, which sits right under the nav
+                    // bar's pill instead of clear of it.
+                    padding: EdgeInsets.fromLTRB(
+                      20,
+                      16,
+                      20,
+                      BottomNavBar.clearance(context) + 16,
+                    ),
                     itemCount: _remisiones.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 10),
                     itemBuilder: (context, index) {

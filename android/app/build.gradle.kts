@@ -49,6 +49,13 @@ dependencies {
     // Required by google_navigation_flutter's core library desugaring —
     // its native Navigation SDK dependency needs 2.1.5+.
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")
+    // NotificationCompat.ProgressStyle / Builder#setRequestPromotedOngoing
+    // (Android 16 "Live Update" notifications, see
+    // NavigationLiveUpdateManager.kt) landed in androidx.core 1.16 — safe
+    // to call unconditionally on this app's minSdk (24) since, like every
+    // other NotificationCompat API, it degrades to a plain notification on
+    // OS versions/devices that don't support promotion instead of crashing.
+    implementation("androidx.core:core-ktx:1.18.0")
 }
 
 flutter {

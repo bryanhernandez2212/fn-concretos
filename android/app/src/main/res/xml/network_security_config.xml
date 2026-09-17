@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     Scoped cleartext exception for `vehicle/VehicleScreen`'s 3D model
+     viewer only (model_viewer_plus). That plugin loads its WebView content
+     from a plain-HTTP server it spins up on 127.0.0.1 inside this app's own
+     process (see model_viewer_plus_mobile.dart's `_initProxy` — it serves
+     the model-viewer HTML/JS locally, then redirects `/model` to the real
+     R2 model URL, which stays HTTPS). Since API 28 Android blocks cleartext
+     traffic by default, without this the WebView fails to reach that local
+     server at all ("Página web no disponible" / ERR_CLEARTEXT_NOT_PERMITTED)
+     — iOS doesn't hit this because WKWebView exempts localhost from ATS by
+     default, which is why the model only failed to load on Android.
+     Deliberately scoped to just these two loopback hosts, not a blanket
+     `usesCleartextTraffic="true"`, so no other HTTP traffic in the app is
+     affected.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>

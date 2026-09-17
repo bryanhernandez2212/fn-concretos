@@ -12,6 +12,15 @@
          guidance running as a foreground service while navigating. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- Lets this app's own notification (NavigationLiveUpdateManager.kt,
+         not the Navigation SDK's own foreground-service one above) be
+         eligible for promotion to an Android 16 "Live Update" — the
+         persistent lock-screen/status-bar card. Declaring this alone isn't
+         enough: the user must also separately enable "Live updates" for
+         this app under system Settings, or the same notification just
+         posts normally instead. android.permission.POST_NOTIFICATIONS is
+         already pulled in transitively (see OneSignal's manifest merge). -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <!-- Needed by image_picker's camera capture on
          lib/deliveries/delivery_photo_screen.dart. Gallery picking uses
          Android's system Photo Picker on modern devices, which needs no
@@ -25,7 +34,8 @@
         android:label="FN Concretos"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher_round">
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:networkSecurityConfig="@xml/network_security_config">
         <activity
             android:name=".MainActivity"
             android:exported="true"

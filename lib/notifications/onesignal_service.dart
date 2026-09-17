@@ -39,10 +39,34 @@ class OneSignalService {
       await OneSignal.login(usuarioId.toString());
     }
     await OneSignal.User.addTags({'rol': rol ?? '', 'permisos': permisos.join(',')});
-    await OneSignal.Notifications.requestPermission(true);
   }
+
+  /// Prompts the OS push-permission dialog (a one-time system dialog on
+  /// iOS; the Android 13+ runtime permission on Android). Deliberately
+  /// **not** called from [syncSession] — `syncSession` also runs off
+  /// `AuthService.restoreSession()`, i.e. every app launch that silently
+  /// resumes a saved session from the splash screen, which is exactly the
+  /// "ask before showing anything of value" pattern to avoid. Only
+  /// `AuthService.login`/`verifyMfa` request it, since those already follow
+  /// an explicit user action (typing credentials / a TOTP code).
+  static Future<void> requestPushPermission() => OneSignal.Notifications.requestPermission(true);
 
   /// Call on logout so a shared/handed-down device stops receiving this
   /// employee's targeted notifications.
   static Future<void> clearSession() => OneSignal.logout();
+
+  /// Registers the handler for tapping a push notification — app closed,
+  /// backgrounded, or foregrounded. The backend doesn't send
+  /// `referenciaTipo`/`referenciaId` as OneSignal `data` yet (title/mensaje
+  /// only), so [onClick] will usually see both as null; [onClick] should
+  /// treat that as "nothing to deep-link to" the same way
+  /// `NotificacionesScreen` already does for the in-app list, rather than
+  /// guessing. Call once from `main()`, right after [initialize] and before
+  /// `runApp`, so a cold start via notification tap isn't missed.
+  static void registerClickListener(void Function(String? referenciaTipo, String? referenciaId) onClick) {
+    OneSignal.Notifications.addClickListener((event) {
+      final data = event.notification.additionalData;
+      onClick(data?['referenciaTipo'] as String?, data?['referenciaId']?.toString());
+    });
+  }
 }

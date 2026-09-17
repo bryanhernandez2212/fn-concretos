@@ -6,13 +6,15 @@ import '../auth/auth_service.dart';
 import '../operaciones/operaciones_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_feedback.dart';
+import 'navigation_live_update.dart';
 import 'remision.dart';
 import 'route_navigation_widgets.dart';
 
 const _accentYellow = AppColors.accent;
 
-/// Matches this screen's own always-dark chrome ([RouteNavBackButton], [RouteNavBottomBar])
-/// so the native turn-by-turn header never clashes with it. Set for both
+/// Matches this screen's own always-dark chrome ([RouteNavBackButton],
+/// [RouteNavBottomBar]) so the native turn-by-turn header never clashes
+/// with it. Set for both
 /// day/night slots because [NavigationForceNightMode.forceNight] below pins
 /// the SDK to its night skin regardless of time of day — without that, the
 /// header would flip to a bright day skin mid-route and jar against this
@@ -45,10 +47,26 @@ const _navigationHeaderStyle = NavigationHeaderStylingOptions(
 /// android/app/src/main/AndroidManifest.xml and
 /// ios/Runner/AppDelegate.swift.
 ///
-/// The floating back button and bottom "Finalizar ruta"/"Ruta terminada"
-/// strip are this app's own chrome, layered over the native navigation
-/// view via [GoogleMapsNavigationView.initialPadding] so they don't
-/// overlap its header/footer. Arrival is detected by the SDK itself
+/// The floating back button (top-left) and bottom "Finalizar ruta"/"Ruta
+/// terminada" bar are this app's own chrome layered over the native
+/// navigation view. That bottom bar used to be opaque, and since ordinary
+/// Flutter widgets always paint on top of an embedded platform view, it was
+/// silently hiding the SDK's own header/footer/speedometer/trip-progress-bar
+/// underneath it — confirmed on a real device — even though the code was
+/// correctly enabling every one of those pieces. Removing the bar outright
+/// (rather than just making it transparent) was tried first, since it used
+/// to be functionally redundant with the back button (both called
+/// [_finish]) — but on a real device that made the *entire* native view
+/// collapse to a tiny box in a corner instead of filling the screen, so
+/// this app's own `Stack` apparently needs this non-positioned, full-width
+/// child present to size the platform view correctly (mechanism
+/// undocumented by the plugin). [RouteNavBottomBar] is kept for that
+/// reason, with a transparent background instead of an opaque one, so the
+/// native chrome underneath stays visible. Its own "Finalizar ruta"/"Ruta
+/// terminada" button now calls [_finalizarRuta] instead of [_finish] — a
+/// deliberate, labeled tap doesn't need [_confirmarSalida] asking "¿Salir
+/// de la navegación?" a second time the way the ambiguous back arrow does.
+/// Arrival is detected by the SDK itself
 /// ([GoogleMapsNavigator.setOnArrivalListener]) rather than a manual
 /// distance calculation — real geofencing this time, not a heuristic.
 class RouteNavigationScreen extends StatefulWidget {
@@ -61,10 +79,16 @@ class RouteNavigationScreen extends StatefulWidget {
 }
 
 class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
+  /// Below this remaining distance to the obra, `proximoLlegar` gets
+  /// registered automatically (see [_start]'s remaining-distance listener).
+  static const _proximoLlegarDistanciaMetros = 1000;
+
   GoogleNavigationViewController? _viewController;
   StreamSubscription<OnArrivalEvent>? _arrivalSubscription;
+  StreamSubscription<RemainingTimeOrDistanceChangedEvent>? _remainingDistanceSubscription;
   Timer? _gpsTimer;
   bool _arrived = false;
+  bool _proximoLlegarRegistrado = false;
   bool _guidanceRunning = false;
   String? _errorText;
 
@@ -77,7 +101,12 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
   @override
   void dispose() {
     _arrivalSubscription?.cancel();
+    _remainingDistanceSubscription?.cancel();
     _gpsTimer?.cancel();
+    // Covers exiting early (back arrow/"Finalizar ruta" before arrival) —
+    // the arrival listener below already stops it on a normal finish, but
+    // this screen can also just be popped mid-route.
+    NavigationLiveUpdate.stop();
     if (_guidanceRunning) {
       // Best-effort: the view/session may already be gone by the time this
       // runs (e.g. Android killed the activity), so a missing session here
@@ -111,6 +140,8 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
 
     _arrivalSubscription = GoogleMapsNavigator.setOnArrivalListener((_) {
       _gpsTimer?.cancel();
+      _remainingDistanceSubscription?.cancel();
+      NavigationLiveUpdate.stop();
       if (mounted) setState(() => _arrived = true);
       _registrarHito(HitoEntrega.enObra);
     });
@@ -138,6 +169,18 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
     }
 
     await GoogleMapsNavigator.startGuidance();
+    // `initialNavigationUIEnabledPreference: automatic` (below) only checks
+    // once, at the moment the native view is first created, whether a
+    // guidance session is *already* running — and the view mounts on this
+    // screen's very first frame, well before the awaits above finish
+    // starting one. So by the time guidance is actually running, the view
+    // already decided (at creation) to render as a plain map, and none of
+    // the individual toggles below (speedometer, footer, header) have any
+    // effect until the master navigation-UI switch itself is turned on
+    // explicitly — that's this call, not something `automatic` catches up
+    // on later. Confirmed on a real device: without this, none of the
+    // turn-by-turn banner/footer/speedometer ever appeared.
+    await _viewController?.setNavigationUIEnabled(true);
     await _viewController?.followMyLocation(CameraPerspective.tilted);
     // Re-applied here too (already set in onViewCreated) — confirmed by a
     // real device screenshot that neither the speedometer nor the ETA
@@ -160,8 +203,41 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
     if (remisionId != null && AuthService.permisos.contains(permisoOperarRemisiones)) {
       _enviarPosicionActual(remisionId);
       _gpsTimer = Timer.periodic(const Duration(seconds: 15), (_) => _enviarPosicionActual(remisionId));
-      _registrarHito(HitoEntrega.salioPlanta);
+      // Awaited (unlike the GPS ping above) so the two hitos land on the
+      // backend in order — the state machine there is sequential, so an
+      // out-of-order `enCamino` racing ahead of `salioPlanta` could be
+      // rejected. There's no separate real-world trigger for "en camino"
+      // distinct from having just left the plant, so it follows right
+      // after — only "próximo a llegar" (below) waits on an actual signal.
+      await _registrarHito(HitoEntrega.salioPlanta);
+      await _registrarHito(HitoEntrega.enCamino);
     }
+
+    // Unlike the GPS ping/hitos above, the lock-screen "Live Update" is a
+    // pure UX nicety independent of permisoOperarRemisiones/remisionId —
+    // the driver is navigating either way, so it starts regardless.
+    NavigationLiveUpdate.start(folio: remision.folio, destino: remision.obra, remisionId: remision.remisionId);
+    _remainingDistanceSubscription = GoogleMapsNavigator.setOnRemainingTimeOrDistanceChangedListener(
+      (event) {
+        NavigationLiveUpdate.update(
+          folio: remision.folio,
+          destino: remision.obra,
+          remisionId: remision.remisionId,
+          remainingDistanceMetros: event.remainingDistance,
+          remainingTimeSeconds: event.remainingTime,
+        );
+        if (!_proximoLlegarRegistrado && event.remainingDistance <= _proximoLlegarDistanciaMetros) {
+          _proximoLlegarRegistrado = true;
+          _registrarHito(HitoEntrega.proximoLlegar);
+        }
+      },
+      // The event otherwise fires on every 1m/1s change (the plugin's own
+      // defaults) — throttled coarser since both the hito check and the
+      // live-update notification are fine reacting to 50m/10s jumps rather
+      // than a continuous stream.
+      remainingDistanceThresholdMeters: 50,
+      remainingTimeThresholdSeconds: 10,
+    );
   }
 
   /// Best-effort: a failed ping just means the next one 15s later tries
@@ -189,8 +265,9 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
   }
 
   /// Whether leaving right now would cut off an in-progress route — used to
-  /// gate the exit confirmation. Once arrived there's nothing left to
-  /// interrupt, so "Ruta terminada" exits immediately.
+  /// gate the back arrow's exit confirmation ([_finish]) only. The bottom
+  /// bar's "Finalizar ruta"/"Ruta terminada" button ([_finalizarRuta])
+  /// always exits immediately regardless of this, arrived or not.
   bool get _wouldInterruptRoute => _guidanceRunning && !_arrived;
 
   Future<void> _finish() async {
@@ -198,6 +275,16 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
       final salir = await _confirmarSalida();
       if (salir != true) return;
     }
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  /// [RouteNavBottomBar]'s "Finalizar ruta"/"Ruta terminada" button pops
+  /// directly, without [_confirmarSalida] — unlike the ambiguous back arrow
+  /// ([_finish], still gated by it to guard against an accidental tap), a
+  /// labeled "Finalizar ruta" tap already *is* the driver's confirmation, so
+  /// asking "¿Salir de la navegación?" again on top of it just made the
+  /// button feel like it was silently failing/acting like a plain exit.
+  void _finalizarRuta() {
     if (mounted) Navigator.of(context).pop();
   }
 
@@ -287,6 +374,17 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
                   initialNavigationUIEnabledPreference: NavigationUIEnabledPreference.automatic,
                   initialForceNightMode: NavigationForceNightMode.forceNight,
                   initialNavigationHeaderStylingOptions: _navigationHeaderStyle,
+                  // Removing this entirely (padding: null) was tried when the
+                  // bottom bar it was reserving space for got deleted above —
+                  // on a real device (force-quit between installs to rule
+                  // out a stale suspended process) that made the whole
+                  // native view collapse to a tiny box in the top-left
+                  // corner instead of filling the screen. Restored to the
+                  // same value that was rendering full-screen before, on the
+                  // working theory that the SDK's own header/footer layout
+                  // needs a real non-zero padding value to lay itself out
+                  // against, degenerate otherwise — even though nothing of
+                  // ours occupies this reserved space anymore.
                   initialPadding: EdgeInsets.only(bottom: 96 + MediaQuery.of(context).padding.bottom),
                 ),
               )
@@ -309,7 +407,7 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
             ),
             Align(
               alignment: Alignment.bottomCenter,
-              child: RouteNavBottomBar(arrived: _arrived, onFinish: _finish),
+              child: RouteNavBottomBar(arrived: _arrived, onFinish: _finalizarRuta),
             ),
           ],
         ),

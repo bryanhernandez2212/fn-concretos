@@ -11,16 +11,6 @@ import 'mfa_verification_dialog.dart';
 import 'role_unavailable_screen.dart';
 import 'roles.dart';
 
-/// Field operators (see [rolesConAppMovil]) go to [HomeScreen] by role
-/// name — that pair of roles is hardcoded in this build regardless of
-/// permissions. Everyone else is routed by *permission*, not role name:
-/// whoever holds `pedidos.autorizar_credito` gets [DireccionHomeScreen],
-/// and whoever holds `agenda.administrar` gets [AsesorComercialHomeScreen] —
-/// since the backend's roles-controller lets a permission move to a
-/// different or renamed role independently of this app. No mobile
-/// screens exist for anyone else yet, so they see [RoleUnavailableScreen].
-/// Shared by [LoginScreen] (after a fresh login) and [SplashScreen] (after
-/// silently restoring a persisted session).
 Widget destinationForSession() {
   if (rolesConAppMovil.contains(AuthService.rol)) {
     return const HomeScreen();

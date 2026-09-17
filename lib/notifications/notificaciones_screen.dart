@@ -6,8 +6,10 @@ import '../widgets/app_feedback.dart';
 import 'notificacion.dart';
 import 'notificaciones_service.dart';
 
-/// Backed by auth-service's real `notificacion-controller`. A single flat
-/// page (no infinite scroll) — see `NotificacionesService.listar`.
+/// Backed by auth-service's real `notificacion-controller`. Infinite scroll:
+/// loads [_pageSize] at a time, fetching the next page once the user
+/// scrolls near the bottom (see [_onScroll]) — see
+/// `NotificacionesService.listar`.
 class NotificacionesScreen extends StatefulWidget {
   const NotificacionesScreen({super.key});
 
@@ -16,33 +18,86 @@ class NotificacionesScreen extends StatefulWidget {
 }
 
 class _NotificacionesScreenState extends State<NotificacionesScreen> {
-  late Future<List<Notificacion>> _future;
-  List<Notificacion>? _ultimaData;
+  static const _pageSize = 20;
+
+  final _scrollController = ScrollController();
+  final List<Notificacion> _items = [];
+  bool _cargandoInicial = true;
+  bool _cargandoMas = false;
+  bool _hasMore = true;
+  int _pagina = 0;
+  AuthException? _errorInicial;
 
   @override
   void initState() {
     super.initState();
-    _future = NotificacionesService.listar();
+    _scrollController.addListener(_onScroll);
+    _cargarInicial();
   }
 
-  Future<void> _refrescar() async {
-    final future = NotificacionesService.listar();
-    setState(() => _future = future);
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_hasMore || _cargandoMas || _cargandoInicial) return;
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      _cargarMas();
+    }
+  }
+
+  Future<void> _cargarInicial() async {
+    setState(() {
+      _cargandoInicial = true;
+      _errorInicial = null;
+    });
     try {
-      await future;
+      final resultado = await NotificacionesService.listar(page: 0, size: _pageSize);
+      if (!mounted) return;
+      setState(() {
+        _items
+          ..clear()
+          ..addAll(resultado.items);
+        _pagina = 0;
+        _hasMore = resultado.hasMore;
+      });
     } catch (e) {
-      if (mounted && _ultimaData != null) {
-        AppSnack.error(context, e is AuthException ? e.message : 'No se pudo actualizar');
+      if (mounted) {
+        setState(() => _errorInicial = e is AuthException ? e : AuthException('No se pudieron cargar las notificaciones'));
       }
+    } finally {
+      if (mounted) setState(() => _cargandoInicial = false);
+    }
+  }
+
+  Future<void> _cargarMas() async {
+    setState(() => _cargandoMas = true);
+    try {
+      final siguiente = _pagina + 1;
+      final resultado = await NotificacionesService.listar(page: siguiente, size: _pageSize);
+      if (!mounted) return;
+      setState(() {
+        _items.addAll(resultado.items);
+        _pagina = siguiente;
+        _hasMore = resultado.hasMore;
+      });
+    } catch (_) {
+      // Best-effort — a failed "load more" just leaves _hasMore as-is, so
+      // the next scroll near the bottom retries rather than surfacing an
+      // error over what's already loaded fine.
+    } finally {
+      if (mounted) setState(() => _cargandoMas = false);
     }
   }
 
   Future<void> _marcarLeida(Notificacion n) async {
     if (n.leida) return;
     setState(() {
-      _ultimaData = _ultimaData
-          ?.map((e) => e.id == n.id ? e.copyWith(leida: true, leidaEn: DateTime.now()) : e)
-          .toList();
+      final idx = _items.indexWhere((e) => e.id == n.id);
+      if (idx != -1) _items[idx] = n.copyWith(leida: true, leidaEn: DateTime.now());
     });
     try {
       await NotificacionesService.marcarLeida(n.id);
@@ -53,10 +108,11 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
   }
 
   Future<void> _marcarTodasLeidas() async {
-    final data = _ultimaData;
-    if (data == null || data.every((n) => n.leida)) return;
+    if (_items.isEmpty || _items.every((n) => n.leida)) return;
     setState(() {
-      _ultimaData = data.map((e) => e.copyWith(leida: true, leidaEn: DateTime.now())).toList();
+      for (var i = 0; i < _items.length; i++) {
+        _items[i] = _items[i].copyWith(leida: true, leidaEn: DateTime.now());
+      }
     });
     try {
       await NotificacionesService.marcarTodasLeidas();
@@ -75,6 +131,45 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
     final cardColor = AppColors.card(context);
     final borderColor = AppColors.border(context, alpha: 0.08);
 
+    Widget body;
+    if (_cargandoInicial && _items.isEmpty) {
+      body = const Center(child: CircularProgressIndicator());
+    } else if (_items.isEmpty && _errorInicial != null) {
+      body = ListView(
+        controller: _scrollController,
+        children: [_mensaje(icono: Icons.error_outline, texto: _errorInicial!.message, mutedColor: mutedColor)],
+      );
+    } else if (_items.isEmpty) {
+      body = ListView(
+        controller: _scrollController,
+        children: [_mensaje(icono: Icons.notifications_none, texto: 'No tienes notificaciones', mutedColor: mutedColor)],
+      );
+    } else {
+      body = ListView.separated(
+        controller: _scrollController,
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+        itemCount: _items.length + (_hasMore ? 1 : 0),
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        itemBuilder: (context, index) {
+          if (index >= _items.length) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            );
+          }
+          final n = _items[index];
+          return _NotificacionCard(
+            notificacion: n,
+            cardColor: cardColor,
+            borderColor: borderColor,
+            textColor: textColor,
+            mutedColor: mutedColor,
+            onTap: () => _marcarLeida(n),
+          );
+        },
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Notificaciones'),
@@ -88,63 +183,7 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _refrescar,
-        // See DeliveriesScreen: RefreshIndicator needs a scrollable
-        // descendant present in every state, so this always returns a
-        // ListView regardless of loading/error/success.
-        child: FutureBuilder<List<Notificacion>>(
-          future: _future,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
-              _ultimaData = snapshot.data;
-            }
-            final data = _ultimaData;
-
-            if (data == null) {
-              if (snapshot.hasError) {
-                return ListView(
-                  children: [_mensaje(
-                    icono: Icons.error_outline,
-                    texto: snapshot.error is AuthException
-                        ? (snapshot.error as AuthException).message
-                        : 'No se pudieron cargar las notificaciones',
-                    mutedColor: mutedColor,
-                  )],
-                );
-              }
-              return const Center(child: CircularProgressIndicator());
-            }
-
-            if (data.isEmpty) {
-              return ListView(
-                children: [_mensaje(
-                  icono: Icons.notifications_none,
-                  texto: 'No tienes notificaciones',
-                  mutedColor: mutedColor,
-                )],
-              );
-            }
-
-            return ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-              itemCount: data.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                final n = data[index];
-                return _NotificacionCard(
-                  notificacion: n,
-                  cardColor: cardColor,
-                  borderColor: borderColor,
-                  textColor: textColor,
-                  mutedColor: mutedColor,
-                  onTap: () => _marcarLeida(n),
-                );
-              },
-            );
-          },
-        ),
-      ),
+      body: RefreshIndicator(onRefresh: _cargarInicial, child: body),
     );
   }
 

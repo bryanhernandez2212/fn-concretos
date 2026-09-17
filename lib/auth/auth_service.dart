@@ -114,7 +114,7 @@ class AuthService {
     }
 
     await _setTokens(data);
-    await _fetchMe();
+    await _fetchMe(requestPushPermission: true);
   }
 
   /// Completes a login that was paused by [MfaRequiredException].
@@ -125,7 +125,7 @@ class AuthService {
       'code': code,
     });
     await _setTokens(data);
-    await _fetchMe();
+    await _fetchMe(requestPushPermission: true);
   }
 
   /// Tries to resume a previous session from the refresh token persisted in
@@ -295,7 +295,12 @@ class AuthService {
 
   /// `/auth/me` is the documented source of truth for who's logged in —
   /// more reliable than guessing at undocumented JWT claim names.
-  static Future<void> _fetchMe() async {
+  ///
+  /// [requestPushPermission] should only be true from an explicit user
+  /// action (`login`/`verifyMfa`) — never from `restoreSession`, which runs
+  /// silently off the splash screen on every app launch and would otherwise
+  /// prompt for push permission before the user has seen anything.
+  static Future<void> _fetchMe({bool requestPushPermission = false}) async {
     final data = await _get('/auth/me', auth: true);
     username = data['user'] as String?;
     rol = data['rolNombre'] as String?;
@@ -308,6 +313,7 @@ class AuthService {
     // Best-effort: a OneSignal hiccup shouldn't block login/session-restore.
     try {
       await OneSignalService.syncSession(usuarioId: usuarioId, rol: rol, permisos: permisos);
+      if (requestPushPermission) await OneSignalService.requestPushPermission();
     } catch (_) {}
   }
 

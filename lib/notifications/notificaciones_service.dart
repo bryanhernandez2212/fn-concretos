@@ -4,6 +4,16 @@ import '../auth/auth_service.dart';
 import '../config/api_config.dart';
 import 'notificacion.dart';
 
+/// One page of `GET /notificaciones`, plus whether another page exists —
+/// [NotificacionesScreen] uses [hasMore] to decide whether scrolling near
+/// the bottom should fetch the next [NotificacionesService.listar] page.
+class NotificacionesPage {
+  final List<Notificacion> items;
+  final bool hasMore;
+
+  const NotificacionesPage({required this.items, required this.hasMore});
+}
+
 /// Talks to auth-service's real `notificacion-controller` (same sandbox as
 /// [AuthService] — `GET /notificaciones` and friends live there, not under
 /// `comercial`/`operaciones`). `POST /notificaciones` isn't called from
@@ -14,17 +24,23 @@ class NotificacionesService {
   static const _timeout = Duration(seconds: 20);
 
   /// [leida] filters to only read/unread notifications; omit for everything.
-  /// [size] is a flat page (no infinite-scroll UI yet), newest first.
-  static Future<List<Notificacion>> listar({bool? leida, int size = 50}) async {
+  /// Newest first, [size] items per [page] (0-indexed) — [hasMore] backs
+  /// the screen's infinite scroll.
+  static Future<NotificacionesPage> listar({bool? leida, int page = 0, int size = 20}) async {
     final query = {
-      'page': '0',
+      'page': '$page',
       'size': '$size',
       'sort': 'creadoEn,desc',
       if (leida != null) 'leida': '$leida',
     };
-    final data = await _get('/notificaciones', query);
-    final content = (data as Map<String, dynamic>)['content'] as List<dynamic>? ?? const [];
-    return content.map((e) => Notificacion.fromJson(e as Map<String, dynamic>)).toList();
+    final data = await _get('/notificaciones', query) as Map<String, dynamic>;
+    final content = data['content'] as List<dynamic>? ?? const [];
+    final items = content.map((e) => Notificacion.fromJson(e as Map<String, dynamic>)).toList();
+    // Spring's Page response carries `last`; fall back to "page came back
+    // full" if that field is ever missing, so a short last page still stops.
+    final last = data['last'] as bool?;
+    final hasMore = last != null ? !last : items.length >= size;
+    return NotificacionesPage(items: items, hasMore: hasMore);
   }
 
   /// The response shape is a generic `{key: count}` map (backend hasn't
