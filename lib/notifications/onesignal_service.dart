@@ -23,20 +23,23 @@ class OneSignalService {
   /// Call once a session is established (login, MFA verify, or a restored
   /// session — see `AuthService._fetchMe`) so backend notifications can
   /// target this device: by `external_id` (`usuarioId`, this account's
-  /// auth-service id — the same field `notificacion-controller`'s
-  /// `NotificacionCreateRequest.usuarioId` expects, e.g. for "tu remisión ya
-  /// puede avanzar" to one specific conductor), or by the `rol`/`permisos`
-  /// tags (e.g. for a "todo Dirección" segment built in the OneSignal
-  /// dashboard around `pedidos.autorizar_credito`). Deliberately not
-  /// `idEmpleado` — that's a different id (the employee record), and
-  /// wouldn't match what `usuarioId` refers to.
+  /// auth-service id, prefixed with `fn` — backend rejects/never persists a
+  /// bare numeric external_id equal to a restricted value like `1`, so every
+  /// external_id is now sent as `fn$usuarioId` on both sides; the same field
+  /// `notificacion-controller`'s `NotificacionCreateRequest.usuarioId`
+  /// expects, e.g. for "tu remisión ya puede avanzar" to one specific
+  /// conductor), or by the `rol`/`permisos` tags (e.g. for a "todo
+  /// Dirección" segment built in the OneSignal dashboard around
+  /// `pedidos.autorizar_credito`). Deliberately not `idEmpleado` — that's a
+  /// different id (the employee record), and wouldn't match what
+  /// `usuarioId` refers to.
   static Future<void> syncSession({
     required int? usuarioId,
     required String? rol,
     required List<String> permisos,
   }) async {
     if (usuarioId != null) {
-      await OneSignal.login(usuarioId.toString());
+      await OneSignal.login('fn$usuarioId');
     }
     await OneSignal.User.addTags({'rol': rol ?? '', 'permisos': permisos.join(',')});
   }
