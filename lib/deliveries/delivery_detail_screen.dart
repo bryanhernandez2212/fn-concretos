@@ -4,11 +4,11 @@ import '../direccion/comercial_service.dart';
 import '../operaciones/evidencia.dart';
 import '../operaciones/operaciones_service.dart';
 import '../operaciones/remision_tracking.dart';
-import '../theme/app_colors.dart';
 import '../widgets/app_feedback.dart';
 import '../widgets/contacto_card.dart';
 import '../widgets/evidencia_viewer_screen.dart';
 import '../widgets/field_group.dart';
+import 'delivery_detail_sections.dart';
 import 'delivery_detail_widgets.dart';
 import 'delivery_photo_screen.dart';
 import 'evidencia_fotos_screen.dart';
@@ -17,20 +17,6 @@ import 'prueba_concreto_screen.dart';
 import 'remision.dart';
 import 'route_navigation_screen.dart';
 import 'signature_screen.dart';
-
-/// The 7-step sequential progression, excluding [HitoEntrega.conIncidencia]
-/// (an exception state, not a step to render in a linear stepper).
-const _secuenciaHitos = [
-  HitoEntrega.cargandoPlanta,
-  HitoEntrega.salioPlanta,
-  HitoEntrega.enCamino,
-  HitoEntrega.proximoLlegar,
-  HitoEntrega.enObra,
-  HitoEntrega.descargando,
-  HitoEntrega.entregado,
-];
-
-const _accentYellow = AppColors.accent;
 
 /// `GET /remisiones/{id}/firma` can come back with more than one record
 /// despite the backend supposedly rejecting a second firma (e.g. leftover
@@ -147,14 +133,14 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   }
 
   /// Whether the remisión has genuinely reached [objetivo] or a later step
-  /// in [_secuenciaHitos]. A blank/unrecognized `estatus` (nothing
+  /// in [secuenciaHitos]. A blank/unrecognized `estatus` (nothing
   /// registered yet, or `con_atraso`/`con_incidencia`) never counts as
   /// having reached it — only a confirmed, recognized hito does.
   bool _hitoAlcanzado(RemisionResumen? detalle, HitoEntrega objetivo) {
     if (detalle == null) return false;
     final current = HitoEntrega.fromBackendValue(detalle.estatus);
     if (current == null) return false;
-    return _secuenciaHitos.indexOf(current) >= _secuenciaHitos.indexOf(objetivo);
+    return secuenciaHitos.indexOf(current) >= secuenciaHitos.indexOf(objetivo);
   }
 
   /// True only once the delivery is genuinely done: hito reached
@@ -198,6 +184,107 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     } finally {
       if (mounted) setState(() => _avanzando = false);
     }
+  }
+
+  void _abrirRuta() {
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute(
+            builder: (context) => RouteNavigationScreen(
+              remision: _remision,
+            ),
+          ),
+        )
+        .then((_) => _refrescarDetalle());
+  }
+
+  Future<void> _abrirFirma(FirmaResponse? firma) async {
+    final remision = _remision;
+    // Backend blocks re-firmar (409) since it would double-count entregado
+    // volume on the pedido — once firmada, tapping views the firma instead of
+    // reopening SignatureScreen.
+    if (firma != null) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => EvidenciaViewerScreen(
+            url: firma.firmaDigitalUrl,
+            label: 'Firma digital',
+          ),
+          fullscreenDialog: true,
+        ),
+      );
+      return;
+    }
+    final firmada = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => SignatureScreen(
+          remisionId: remision.remisionId!,
+          remisionFolio: remision.folio,
+        ),
+      ),
+    );
+    if (firmada == true) {
+      _refrescarFirmas();
+      _refrescarPedido();
+    }
+  }
+
+  Future<void> _abrirEvidencia(List<ArchivoResponse> archivos) async {
+    final remision = _remision;
+    // Once evidencia exists, this row is view-only — mirrors the firma
+    // pattern (tapping views instead of reopening the capture screen), since
+    // the backend has no concept of "replacing" a saved photo.
+    if (archivos.isNotEmpty) {
+      if (archivos.length == 1) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => EvidenciaViewerScreen(
+              url: archivos.first.archivoUrl,
+              label: 'Evidencia de entrega',
+            ),
+            fullscreenDialog: true,
+          ),
+        );
+      } else {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => EvidenciaFotosScreen(
+              remisionFolio: remision.folio,
+              archivos: archivos,
+            ),
+          ),
+        );
+      }
+      return;
+    }
+    final guardado = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => DeliveryPhotoScreen(
+          remisionId: remision.remisionId!,
+          remisionFolio: remision.folio,
+        ),
+      ),
+    );
+    if (guardado == true) _refrescarArchivos();
+  }
+
+  void _abrirDosificacion() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => DosificacionScreen(
+          remisionFolio: _remision.folio,
+        ),
+      ),
+    );
+  }
+
+  void _abrirPruebaConcreto() {
+    final remision = _remision;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => PruebaConcretoScreen(remision: remision),
+      ),
+    );
   }
 
   @override
@@ -306,53 +393,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                           final current = HitoEntrega.fromBackendValue(detalle!.estatus);
                           final yaInicio = current != null && current != HitoEntrega.cargandoPlanta;
 
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Ubicación y ruta',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: textColor,
-                                ),
-                              ),
-                              const SizedBox(height: 14),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton.icon(
-                                  onPressed: () {
-                                    Navigator.of(context)
-                                        .push(
-                                          MaterialPageRoute(
-                                            builder: (context) => RouteNavigationScreen(
-                                              remision: remision,
-                                            ),
-                                          ),
-                                        )
-                                        .then((_) => _refrescarDetalle());
-                                  },
-                                  icon: const Icon(
-                                    Icons.navigation,
-                                    color: Colors.black,
-                                  ),
-                                  label: Text(
-                                    yaInicio ? 'Regresar a la ruta' : 'Iniciar ruta',
-                                    style: const TextStyle(fontWeight: FontWeight.w700),
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: _accentYellow,
-                                    foregroundColor: Colors.black,
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
-                                    elevation: 0,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(14),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          );
+                          return RouteSection(yaInicio: yaInicio, textColor: textColor, onPressed: _abrirRuta);
                         },
                       );
                     },
@@ -361,14 +402,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
               ),
               if (remision.remisionId != null && puedeOperar) ...[
                 const SizedBox(height: 28),
-                Text(
-                  'Avanzar hito de entrega',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: textColor,
-                  ),
-                ),
+                DeliverySectionTitle(title: 'Avanzar hito de entrega', textColor: textColor),
                 const SizedBox(height: 14),
                 FutureBuilder<RemisionResumen?>(
                   future: _detalleFuture,
@@ -394,143 +428,20 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                     final detalle = _detalleOverride ?? snapshot.data;
                     if (detalle == null) return const SizedBox.shrink();
 
-                    final horarios = <(String, DateTime?)>[
-                      ('Cargó en planta', detalle.horaCarga),
-                      ('Salida de planta', detalle.horaSalida),
-                      ('Llegada a obra', detalle.horaLlegadaObra),
-                      ('Entrega', detalle.horaEntrega),
-                    ].where((h) => h.$2 != null).toList();
-
-                    // A blank estatus resolves to `cargandoPlanta` (see
-                    // `HitoEntrega.fromBackendValue`) — null here only means
-                    // a genuinely unrecognized status (`con_atraso`, etc).
-                    final current = HitoEntrega.fromBackendValue(
-                      detalle.estatus,
-                    );
-                    if (current == null) {
-                      debugPrint(
-                        'DeliveryDetailScreen: unrecognized estatus="${detalle.estatus}"',
-                      );
-                      // con_atraso / con_incidencia / anything else unrecognized:
-                      // no known "next" step, so show the raw status instead of
-                      // a stepper we can't meaningfully advance.
-                      return Column(
-                        children: [
-                          if (horarios.isNotEmpty) ...[
-                            HorariosCard(
-                              horarios: horarios,
-                              cardColor: cardColor,
-                              borderColor: borderColor,
-                              textColor: textColor,
-                              mutedColor: mutedColor,
-                            ),
-                            const SizedBox(height: 12),
-                          ],
-                          FieldGroup(
-                            cardColor: cardColor,
-                            borderColor: borderColor,
-                            padding: EdgeInsets.zero,
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Text(
-                                detalle.estatus,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  color: textColor,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    }
-
-                    final isFinal = current == HitoEntrega.entregado;
-                    final currentIndex = _secuenciaHitos.indexOf(current);
-
-                    return Column(
-                      children: [
-                        if (horarios.isNotEmpty) ...[
-                          HorariosCard(
-                            horarios: horarios,
-                            cardColor: cardColor,
-                            borderColor: borderColor,
-                            textColor: textColor,
-                            mutedColor: mutedColor,
-                          ),
-                          const SizedBox(height: 12),
-                        ],
-                        FieldGroup(
-                          cardColor: cardColor,
-                          borderColor: borderColor,
-                          padding: EdgeInsets.zero,
-                          child: Column(
-                            children: [
-                              for (final hito in _secuenciaHitos)
-                                HitoRow(
-                                  hito: hito,
-                                  current: current,
-                                  isLast: hito == _secuenciaHitos.last,
-                                  textColor: textColor,
-                                  mutedColor: mutedColor,
-                                ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: isFinal || _avanzando
-                                ? null
-                                : () => _avanzarHito(
-                                    _secuenciaHitos[currentIndex + 1],
-                                  ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _accentYellow,
-                              foregroundColor: Colors.black,
-                              disabledBackgroundColor: _accentYellow.withValues(
-                                alpha: 0.3,
-                              ),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            child: _avanzando
-                                ? const SizedBox(
-                                    height: 18,
-                                    width: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.5,
-                                      color: Colors.black,
-                                    ),
-                                  )
-                                : Text(
-                                    isFinal
-                                        ? 'Entrega finalizada'
-                                        : 'Avanzar a "${_secuenciaHitos[currentIndex + 1].label}"',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                          ),
-                        ),
-                      ],
+                    return HitoStepperSection(
+                      detalle: detalle,
+                      avanzando: _avanzando,
+                      onAvanzar: _avanzarHito,
+                      cardColor: cardColor,
+                      borderColor: borderColor,
+                      textColor: textColor,
+                      mutedColor: mutedColor,
                     );
                   },
                 ),
               ],
               const SizedBox(height: 28),
-              Text(
-                'Evidencia de entrega',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: textColor,
-                ),
-              ),
+              DeliverySectionTitle(title: 'Evidencia de entrega', textColor: textColor),
               const SizedBox(height: 14),
               FieldGroup(
                 cardColor: cardColor,
@@ -559,48 +470,12 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                               future: _firmasFuture,
                               builder: (context, snapshot) {
                                 final firma = _firmaMasReciente(snapshot.data);
-                                return ActionRow(
-                                  icon: Icons.draw_outlined,
-                                  label: 'Firma digital de entrega',
+                                return FirmaActionRow(
+                                  firma: firma,
+                                  habilitado: habilitado,
+                                  onTap: () => _abrirFirma(firma),
                                   textColor: textColor,
                                   mutedColor: mutedColor,
-                                  enabled: habilitado,
-                                  statusLabel: firma != null ? 'Firmada' : null,
-                                  statusColor: firma != null
-                                      ? AppColors.success
-                                      : null,
-                                  onTap: () async {
-                                    // Backend blocks re-firmar (409) since it
-                                    // would double-count entregado volume on
-                                    // the pedido — once firmada, tapping
-                                    // views the firma instead of reopening
-                                    // SignatureScreen.
-                                    if (firma != null) {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (context) => EvidenciaViewerScreen(
-                                            url: firma.firmaDigitalUrl,
-                                            label: 'Firma digital',
-                                          ),
-                                          fullscreenDialog: true,
-                                        ),
-                                      );
-                                      return;
-                                    }
-                                    final firmada = await Navigator.of(context)
-                                        .push<bool>(
-                                          MaterialPageRoute(
-                                            builder: (context) => SignatureScreen(
-                                              remisionId: remision.remisionId!,
-                                              remisionFolio: remision.folio,
-                                            ),
-                                          ),
-                                        );
-                                    if (firmada == true) {
-                                      _refrescarFirmas();
-                                      _refrescarPedido();
-                                    }
-                                  },
                                 );
                               },
                             ),
@@ -621,65 +496,12 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                                           (a) => a.tipoArchivo == 'foto_evidencia',
                                         )
                                         .toList();
-                                return ActionRow(
-                                  icon: Icons.photo_camera_outlined,
-                                  label: 'Foto / evidencia de entrega',
+                                return EvidenciaActionRow(
+                                  archivos: archivos,
+                                  habilitado: habilitado,
+                                  onTap: () => _abrirEvidencia(archivos),
                                   textColor: textColor,
                                   mutedColor: mutedColor,
-                                  enabled: habilitado,
-                                  statusLabel: archivos.isNotEmpty
-                                      ? (archivos.length == 1
-                                            ? '1 foto'
-                                            : '${archivos.length} fotos')
-                                      : null,
-                                  statusColor: archivos.isNotEmpty
-                                      ? AppColors.success
-                                      : null,
-                                  onTap: () async {
-                                    // Once evidencia exists, this row is
-                                    // view-only — mirrors the firma pattern
-                                    // (tapping views instead of reopening the
-                                    // capture screen), since the backend has
-                                    // no concept of "replacing" a saved photo.
-                                    if (archivos.isNotEmpty) {
-                                      if (archivos.length == 1) {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                EvidenciaViewerScreen(
-                                                  url: archivos.first
-                                                      .archivoUrl,
-                                                  label: 'Evidencia de entrega',
-                                                ),
-                                            fullscreenDialog: true,
-                                          ),
-                                        );
-                                      } else {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                EvidenciaFotosScreen(
-                                                  remisionFolio: remision.folio,
-                                                  archivos: archivos,
-                                                ),
-                                          ),
-                                        );
-                                      }
-                                      return;
-                                    }
-                                    final guardado = await Navigator.of(context)
-                                        .push<bool>(
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                DeliveryPhotoScreen(
-                                                  remisionId:
-                                                      remision.remisionId!,
-                                                  remisionFolio: remision.folio,
-                                                ),
-                                          ),
-                                        );
-                                    if (guardado == true) _refrescarArchivos();
-                                  },
                                 );
                               },
                             ),
@@ -688,41 +510,15 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                         );
                       },
                     ),
-                    if (AuthService.rol == 'Operador de Bomba') ...[
-                      Divider(height: 1, color: borderColor),
-                      ActionRow(
-                        icon: Icons.water_drop_outlined,
-                        label: 'Reporte de dosificación',
+                    if (AuthService.rol == 'Operador de Bomba')
+                      OperadorBombaRows(
+                        mostrarPrueba: remision.remisionId != null && puedeOperar,
+                        onDosificacion: _abrirDosificacion,
+                        onPruebaConcreto: _abrirPruebaConcreto,
+                        borderColor: borderColor,
                         textColor: textColor,
                         mutedColor: mutedColor,
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => DosificacionScreen(
-                                remisionFolio: remision.folio,
-                              ),
-                            ),
-                          );
-                        },
                       ),
-                      if (remision.remisionId != null && puedeOperar) ...[
-                        Divider(height: 1, color: borderColor),
-                        ActionRow(
-                          icon: Icons.science_outlined,
-                          label: 'Prueba de concreto fresco',
-                          textColor: textColor,
-                          mutedColor: mutedColor,
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    PruebaConcretoScreen(remision: remision),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ],
                   ],
                 ),
               ),

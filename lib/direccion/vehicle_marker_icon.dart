@@ -8,23 +8,9 @@ import 'package:google_navigation_flutter/google_navigation_flutter.dart';
 
 import '../operaciones/remision_tracking.dart';
 
-/// Renders and registers the vehicle-shaped marker used on Dirección's
-/// live-tracking maps (`PedidoDetailScreen`'s "Ubicación en vivo" and
-/// `RutasActivasScreen`) so a moving remisión reads like a rideshare app's
-/// top-down vehicle puck instead of the default static map pin.
-///
-/// `registerBitmapImage` is a process-wide registry, not scoped to one
-/// `GoogleMapViewController` (see `google_maps_image_registry.dart`), so the
-/// resulting [ImageDescriptor] is cached per color here — one registration
-/// per route color for the lifetime of the app, not per poll/rebuild.
 class VehicleMarkerIcon {
   VehicleMarkerIcon._();
 
-  /// The car shape below is drawn centered in its canvas (front at the top),
-  /// so it must be anchored at its geometric center. `MarkerOptions`'s
-  /// default anchor, `(0.5, 1.0)`, is meant for pins that point down from a
-  /// bottom tip; using it here would offset the car upward from its real
-  /// position and make `rotation` swing it around the wrong point.
   static const anchor = MarkerAnchor(u: 0.5, v: 0.5);
 
   static final Map<int, Future<ImageDescriptor>> _cache = {};
@@ -132,14 +118,6 @@ double? speedKmhBetween(GpsPing from, GpsPing to) {
   return (metros / segundos) * 3.6;
 }
 
-/// Slides [marker] from its current position/rotation to [toPosition]/
-/// [toRotation] over [duration] (ticking every 200ms via `updateMarkers`)
-/// instead of snapping it there on the next poll — so a truck reads as
-/// continuously moving between GPS pings rather than teleporting every 15s.
-/// Cancel the returned [Timer] (e.g. before starting a new glide for the
-/// same marker) to stop it early; each tick's updated [Marker] is handed to
-/// [onUpdate] so the caller can track it as the *next* glide's starting
-/// point, since markers in this package are immutable.
 Timer glideMarkerTo(
   GoogleMapViewController controller,
   Marker marker, {

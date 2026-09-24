@@ -165,7 +165,7 @@ class _VisitaDetailScreenState extends State<VisitaDetailScreen> {
                   children: [
                     // A static map "thumbnail" — gestures disabled since
                     // it's embedded in this scrolling ListView (same reason
-                    // `pedido_detail_widgets.dart`'s LiveTrackingCard
+                    // `live_tracking_widgets.dart`'s LiveTrackingCard
                     // disables them), tapping opens the interactive
                     // fullscreen view instead. Read-only; no marker drag,
                     // unlike `ObraLocationPickerScreen`.

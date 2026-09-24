@@ -5,35 +5,12 @@ import '../auth/auth_service.dart';
 import '../config/api_config.dart';
 import 'pedido.dart';
 
-/// Granular permission names (as returned in `/auth/me`'s `permisos`) that
-/// gate the Dirección screens — checked instead of `AuthService.rol` so
-/// access follows whatever the backend's role/permission catalog actually
-/// grants, not a hardcoded role name (`roles-controller` lets permissions be
-/// reassigned to different roles independently of this app).
 const permisoAutorizarCredito = 'pedidos.autorizar_credito';
 const permisoAutorizarLogistica = 'pedidos.autorizar_logistica';
 
-/// Talks to the real fnconcretos `comercial` sandbox (see its
-/// `/v3/api-docs`) — pedidos, autorizaciones, clientes. Reuses
-/// [AuthService.authHeaders] for the bearer token; this app has no
-/// state-management package, so results are returned directly rather than
-/// cached anywhere — except the handful of per-id lookups below (`_cached`)
-/// that `PedidoDetailScreen` re-fetches on every visit even for a pedido
-/// already seen this session, since a fresh `Navigator.push` builds a brand
-/// new screen instance each time.
 class ComercialService {
   static const _baseUrl = ApiConfig.comercial;
 
-  /// Short-lived in-memory cache for read-only per-id lookups
-  /// (cliente/obra/estado-cuenta/contacto) — reference-ish data that doesn't
-  /// need to be up-to-the-second fresh, unlike a Pedido's own totals (kept
-  /// live-polled, see `PedidoDetailScreen`) or the authorization queue
-  /// itself (`pedidosPendientesDePago`, deliberately *not* cached here,
-  /// since a stale read could hide/show a pedido someone else just
-  /// actioned). A plain static field, same "no state-management package"
-  /// pattern as `AuthService`'s session fields — not a general-purpose HTTP
-  /// cache, just enough to make repeat visits to the same pedido/cliente
-  /// within a short window feel instant instead of re-fetching from scratch.
   static final Map<String, (dynamic, DateTime)> _cache = {};
   static const _cacheTtl = Duration(seconds: 60);
 
@@ -65,12 +42,6 @@ class ComercialService {
     });
   }
 
-  /// `GET /clientes` — searches by `tipo`/`estatus` plus free-text `q`
-  /// (matches against nombre/numeroCliente per cliente-controller's
-  /// description). Dirección's own screens never search clientes — they
-  /// only ever look one up by the id a Pedido already carries — so this
-  /// exists for Asesor Comercial's obra-registration flow, which needs to
-  /// pick an existing cliente instead of typing a raw id.
   static Future<List<Cliente>> buscarClientes({String? q, String? tipo, String? estatus}) async {
     final params = {
       if (q != null && q.isNotEmpty) 'q': q,

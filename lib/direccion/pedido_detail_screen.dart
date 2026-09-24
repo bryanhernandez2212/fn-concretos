@@ -1,15 +1,20 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../asesor_comercial/asesor_comercial_service.dart';
+import '../asesor_comercial/cotizacion.dart';
 import '../auth/auth_service.dart';
+import '../catalogo/catalogo_service.dart';
 import '../operaciones/operaciones_service.dart';
 import '../operaciones/remision_tracking.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_feedback.dart';
 import '../widgets/contacto_card.dart';
 import 'comercial_service.dart';
+import 'live_tracking_widgets.dart';
 import 'pedido.dart';
 import 'pedido_detail_widgets.dart';
+import 'pedido_pago_widgets.dart';
 
 const _red = AppColors.error;
 
@@ -33,6 +38,8 @@ class _PedidoDetailScreenState extends State<PedidoDetailScreen> {
   late Future<(Cliente, EstadoCuenta, ClienteContacto?)> _future;
   late Future<List<RemisionResumen>> _remisionesFuture;
   late Future<Obra?> _obraFuture;
+  Map<int, String> _nombresProducto = const {};
+  Cotizacion? _cotizacion;
   bool _submitting = false;
 
   /// `widget.pedido` is a snapshot from whenever this screen was opened —
@@ -51,6 +58,8 @@ class _PedidoDetailScreenState extends State<PedidoDetailScreen> {
     _future = _load();
     _remisionesFuture = OperacionesService.remisionesPorPedido(widget.pedido.id);
     _obraFuture = _cargarObra();
+    _cargarNombresProducto();
+    _cargarCotizacion();
     _pedidoTimer = Timer.periodic(const Duration(seconds: 15), (_) => _refrescarPedido());
   }
 
@@ -80,6 +89,30 @@ class _PedidoDetailScreenState extends State<PedidoDetailScreen> {
       // Best-effort background refresh — a failed poll just tries again in
       // 15s, no need to surface an error for it.
     }
+  }
+
+  /// Best-effort, for [MontosPedidoCard]'s partida labels — a failed
+  /// catalog lookup just leaves those showing descripción/tipoLinea.
+  Future<void> _cargarNombresProducto() async {
+    if (!widget.pedido.productos.any((p) => p.productoId != null)) return;
+    try {
+      final productos = await CatalogoService.productos();
+      if (mounted) setState(() => _nombresProducto = {for (final p in productos) p.id: p.nombre});
+    } catch (_) {}
+  }
+
+  /// Best-effort — `formaPago` and the subtotal/descuento/IVA/total
+  /// breakdown only live on the pedido's cotización (`PedidoResponse`
+  /// echoes neither), so a pedido without one — or a failed lookup — just
+  /// hides [FormaPagoCard] and leaves [MontosPedidoCard] on its own
+  /// partida-sum total.
+  Future<void> _cargarCotizacion() async {
+    final cotizacionId = widget.pedido.cotizacionId;
+    if (cotizacionId == null) return;
+    try {
+      final cotizacion = await AsesorComercialService.obtenerCotizacion(cotizacionId);
+      if (mounted) setState(() => _cotizacion = cotizacion);
+    } catch (_) {}
   }
 
   Future<(Cliente, EstadoCuenta, ClienteContacto?)> _load() async {
@@ -222,6 +255,28 @@ class _PedidoDetailScreenState extends State<PedidoDetailScreen> {
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
             children: [
               SummaryCard(pedido: pedido, cardColor: cardColor, borderColor: borderColor, textColor: textColor, mutedColor: mutedColor),
+              if (pedido.productos.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                MontosPedidoCard(
+                  pedido: pedido,
+                  nombresProducto: _nombresProducto,
+                  cotizacion: _cotizacion,
+                  cardColor: cardColor,
+                  borderColor: borderColor,
+                  textColor: textColor,
+                  mutedColor: mutedColor,
+                ),
+              ],
+              if (_cotizacion?.formaPago?.isNotEmpty ?? false) ...[
+                const SizedBox(height: 16),
+                FormaPagoCard(
+                  formaPago: _cotizacion!.formaPago!,
+                  cardColor: cardColor,
+                  borderColor: borderColor,
+                  textColor: textColor,
+                  mutedColor: mutedColor,
+                ),
+              ],
               if (contacto != null) ...[
                 const SizedBox(height: 16),
                 ContactoCard(

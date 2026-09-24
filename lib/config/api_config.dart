@@ -6,4 +6,5 @@ class ApiConfig {
   static const operaciones = '$_host/operaciones';
   static const administracion = '$_host/administracion';
   static const catalogo = '$_host/catalogo';
+  static const finanzas = '$_host/finanzas';
 }

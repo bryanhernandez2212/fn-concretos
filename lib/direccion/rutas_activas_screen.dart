@@ -6,26 +6,11 @@ import '../deliveries/deliveries_widgets.dart';
 import '../deliveries/entregas_service.dart';
 import '../operaciones/operaciones_service.dart';
 import '../operaciones/remision_tracking.dart';
-import '../theme/app_colors.dart';
-import '../widgets/bottom_nav_bar.dart';
 import '../widgets/notification_bell_button.dart';
 import 'comercial_service.dart';
 import 'route_eta.dart';
+import 'rutas_activas_widgets.dart';
 import 'vehicle_marker_icon.dart';
-
-const _accentYellow = AppColors.accent;
-
-/// Cycled across simultaneous routes so overlapping polylines stay visually
-/// distinguishable on one shared map (all markers keep the default pin —
-/// only [google_navigation_flutter]'s bitmap-registration API can recolor
-/// those, which isn't worth the added complexity just for this).
-const _routeColors = [
-  _accentYellow,
-  Color(0xFF4FC3F7),
-  Color(0xFFFF7043),
-  Color(0xFFAB47BC),
-  Color(0xFF66BB6A),
-];
 
 /// "Rutas activas" — one map for every remisión currently out of the plant
 /// (not just one pedido at a time, unlike `PedidoDetailScreen`'s "Ubicación
@@ -173,7 +158,7 @@ class _RutasActivasScreenState extends State<RutasActivasScreen> {
         final ultima = ruta?.ultimaUbicacion;
         if (ultima == null) continue;
         idsVistos.add(remision.id);
-        final color = _routeColors[index % _routeColors.length];
+        final color = routeColorFor(index);
         final posicion = LatLng(
           latitude: ultima.latitud,
           longitude: ultima.longitud,
@@ -441,41 +426,13 @@ class _RutasActivasScreenState extends State<RutasActivasScreen> {
       return const Center(child: CircularProgressIndicator());
     }
     if (_errorInicial != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.error_outline, size: 40, color: mutedColor),
-              const SizedBox(height: 12),
-              Text(
-                _errorInicial!,
-                textAlign: TextAlign.center,
-                style: TextStyle(color: mutedColor),
-              ),
-            ],
-          ),
-        ),
-      );
+      return RutasMessageState(icon: Icons.error_outline, message: _errorInicial!, mutedColor: mutedColor);
     }
     if (_remisiones.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.map_outlined, size: 40, color: mutedColor),
-              const SizedBox(height: 12),
-              Text(
-                'No hay camiones en ruta en este momento',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: mutedColor),
-              ),
-            ],
-          ),
-        ),
+      return RutasMessageState(
+        icon: Icons.map_outlined,
+        message: 'No hay camiones en ruta en este momento',
+        mutedColor: mutedColor,
       );
     }
 
@@ -522,142 +479,17 @@ class _RutasActivasScreenState extends State<RutasActivasScreen> {
             left: 0,
             right: 0,
             bottom: 0,
-            child: SizedBox(
-              height: 300,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceAlt(context),
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(20),
-                  ),
-                ),
-                child: RefreshIndicator(
-                  onRefresh: _cargar,
-                  child: ListView.separated(
-                    // The floating BottomNavBar overlays the bottom of this
-                    // panel (see DireccionHomeScreen's shared shell) — without
-                    // this, the last remisión ends up scrolled only as far as
-                    // the plain 24px padding, which sits right under the nav
-                    // bar's pill instead of clear of it.
-                    padding: EdgeInsets.fromLTRB(
-                      20,
-                      16,
-                      20,
-                      BottomNavBar.clearance(context) + 16,
-                    ),
-                    itemCount: _remisiones.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 10),
-                    itemBuilder: (context, index) {
-                      final remision = _remisiones[index];
-                      final ruta = _rutas[remision.id];
-                      final tieneUbicacion = ruta?.ultimaUbicacion != null;
-                      final velocidad = _velocidades[remision.id];
-                      final eta = _etaTrackers[remision.id];
-                      return Material(
-                        color: cardColor,
-                        borderRadius: BorderRadius.circular(16),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(16),
-                          onTap: tieneUbicacion
-                              ? () => _centrarEn(remision.id)
-                              : null,
-                          child: Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: borderColor),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 10,
-                                  height: 10,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color:
-                                        _routeColors[index %
-                                            _routeColors.length],
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        remision.folioRemision,
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
-                                          color: textColor,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        [
-                                          remision.estatus.replaceAll('_', ' '),
-                                          if (remision.conductorId != null)
-                                            'Conductor #${remision.conductorId}',
-                                        ].join(' · '),
-                                        style: TextStyle(
-                                          fontSize: 12.5,
-                                          color: mutedColor,
-                                        ),
-                                      ),
-                                      if (velocidad != null || eta?.duracionRestanteSegundos != null) ...[
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          [
-                                            if (velocidad != null) '${velocidad.round()} km/h',
-                                            if (eta?.duracionRestanteSegundos != null)
-                                              'Llega en ${formatEta(eta!.duracionRestanteSegundos!)}',
-                                          ].join(' · '),
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: _routeColors[index % _routeColors.length],
-                                          ),
-                                        ),
-                                      ],
-                                      if (eta?.progreso != null) ...[
-                                        const SizedBox(height: 6),
-                                        ClipRRect(
-                                          borderRadius: BorderRadius.circular(3),
-                                          child: LinearProgressIndicator(
-                                            value: eta!.progreso,
-                                            minHeight: 4,
-                                            backgroundColor: borderColor,
-                                            valueColor: AlwaysStoppedAnimation(_routeColors[index % _routeColors.length]),
-                                          ),
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                                if (!tieneUbicacion)
-                                  Text(
-                                    'Sin señal',
-                                    style: TextStyle(
-                                      fontSize: 11.5,
-                                      color: mutedColor,
-                                    ),
-                                  )
-                                else
-                                  Icon(
-                                    Icons.my_location,
-                                    size: 18,
-                                    color: mutedColor,
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ),
+            child: RutasTruckListPanel(
+              remisiones: _remisiones,
+              rutas: _rutas,
+              velocidades: _velocidades,
+              etaTrackers: _etaTrackers,
+              onRefresh: _cargar,
+              onCentrarEn: _centrarEn,
+              cardColor: cardColor,
+              borderColor: borderColor,
+              textColor: textColor,
+              mutedColor: mutedColor,
             ),
           ),
       ],

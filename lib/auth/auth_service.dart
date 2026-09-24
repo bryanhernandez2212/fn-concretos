@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
@@ -314,7 +315,9 @@ class AuthService {
     try {
       await OneSignalService.syncSession(usuarioId: usuarioId, rol: rol, permisos: permisos);
       if (requestPushPermission) await OneSignalService.requestPushPermission();
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('OneSignal sync failed: $e');
+    }
   }
 
   static Future<Map<String, dynamic>> _get(String path, {bool auth = false}) async {

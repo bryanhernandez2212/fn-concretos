@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 
 /// Wraps the OneSignal Flutter SDK — the one place in the app that talks to
@@ -18,7 +19,36 @@ class OneSignalService {
 
   static const _appId = '076ef77e-2eff-46d3-8197-43802e38af11';
 
-  static Future<void> initialize() => OneSignal.initialize(_appId);
+  /// The external_id of the current session, kept so [_reLogin] can
+  /// re-assert it once push is actually usable (see [initialize]).
+  static String? _externalId;
+
+  static Future<void> initialize() async {
+    if (kDebugMode) OneSignal.Debug.setLogLevel(OSLogLevel.verbose);
+    await OneSignal.initialize(_appId);
+    // `login` can run before the SDK has a push subscription/permission —
+    // on a fresh install `syncSession` fires right after `/auth/me`, before
+    // the permission prompt is even shown — so re-assert the external_id
+    // the moment permission is granted or the subscription changes, rather
+    // than trusting that first call alone.
+    OneSignal.Notifications.addPermissionObserver((granted) {
+      if (granted) _reLogin('permission');
+    });
+    OneSignal.User.pushSubscription.addObserver((state) {
+      if (state.current.id != null) _reLogin('subscription');
+    });
+  }
+
+  static Future<void> _reLogin(String reason) async {
+    final id = _externalId;
+    if (id == null) return;
+    try {
+      await OneSignal.login(id);
+      debugPrint('OneSignal: login($id) re-asserted ($reason)');
+    } catch (e) {
+      debugPrint('OneSignal: login($id) failed ($reason): $e');
+    }
+  }
 
   /// Call once a session is established (login, MFA verify, or a restored
   /// session — see `AuthService._fetchMe`) so backend notifications can
@@ -39,7 +69,9 @@ class OneSignalService {
     required List<String> permisos,
   }) async {
     if (usuarioId != null) {
-      await OneSignal.login('fn$usuarioId');
+      _externalId = 'fn$usuarioId';
+      await OneSignal.login(_externalId!);
+      debugPrint('OneSignal: login($_externalId)');
     }
     await OneSignal.User.addTags({'rol': rol ?? '', 'permisos': permisos.join(',')});
   }
@@ -52,11 +84,18 @@ class OneSignalService {
   /// "ask before showing anything of value" pattern to avoid. Only
   /// `AuthService.login`/`verifyMfa` request it, since those already follow
   /// an explicit user action (typing credentials / a TOTP code).
-  static Future<void> requestPushPermission() => OneSignal.Notifications.requestPermission(true);
+  static Future<void> requestPushPermission() async {
+    final granted = await OneSignal.Notifications.requestPermission(true);
+    debugPrint('OneSignal: push permission granted=$granted');
+    if (granted) await _reLogin('permission prompt');
+  }
 
   /// Call on logout so a shared/handed-down device stops receiving this
   /// employee's targeted notifications.
-  static Future<void> clearSession() => OneSignal.logout();
+  static Future<void> clearSession() {
+    _externalId = null;
+    return OneSignal.logout();
+  }
 
   /// Registers the handler for tapping a push notification — app closed,
   /// backgrounded, or foregrounded. The backend doesn't send

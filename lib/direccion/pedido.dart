@@ -3,6 +3,11 @@
 class Pedido {
   final int id;
   final String folio;
+
+  /// The cotización this pedido was converted from, if any — the only
+  /// place `formaPago` (efectivo/factura) lives; `PedidoResponse` doesn't
+  /// echo it.
+  final int? cotizacionId;
   final int clienteId;
   final int obraId;
   final String clienteNombre;
@@ -19,9 +24,16 @@ class Pedido {
   final String estatusGeneral;
   final String? motivoRechazo;
 
+  /// The pedido's partidas (producto/bombeo/servicio/flete_vacio líneas,
+  /// carried over from the cotización it was converted from) — the only
+  /// place `PedidoResponse` carries money: there's no pedido-level total
+  /// field, so [montoTotal] sums these.
+  final List<PedidoItem> productos;
+
   const Pedido({
     required this.id,
     required this.folio,
+    this.cotizacionId,
     required this.clienteId,
     required this.obraId,
     required this.clienteNombre,
@@ -37,12 +49,22 @@ class Pedido {
     required this.estatusLogisticaAutorizacion,
     required this.estatusGeneral,
     required this.motivoRechazo,
+    this.productos = const [],
   });
+
+  /// Null when no partida carries a `precioTotal` — "no amounts on file",
+  /// which is different from a genuine $0 pedido.
+  double? get montoTotal {
+    final conPrecio = productos.where((p) => p.precioTotal != null);
+    if (conPrecio.isEmpty) return null;
+    return conPrecio.fold<double>(0, (sum, p) => sum + p.precioTotal!);
+  }
 
   factory Pedido.fromJson(Map<String, dynamic> json) {
     return Pedido(
       id: _parseInt(json['id']),
       folio: json['folio'] as String? ?? '',
+      cotizacionId: _parseIntOrNull(json['cotizacionId']),
       clienteId: _parseInt(json['clienteId']),
       obraId: _parseInt(json['obraId']),
       clienteNombre: json['clienteNombre'] as String? ?? 'Cliente sin nombre',
@@ -58,6 +80,39 @@ class Pedido {
       estatusLogisticaAutorizacion: json['estatusLogisticaAutorizacion'] as String? ?? '',
       estatusGeneral: json['estatusGeneral'] as String? ?? '',
       motivoRechazo: json['motivoRechazo'] as String?,
+      productos: (json['productos'] as List<dynamic>? ?? const [])
+          .map((e) => PedidoItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+
+/// Mirrors `PedidoItemResponse` — one partida of a [Pedido].
+class PedidoItem {
+  final String? tipoLinea;
+  final int? productoId;
+  final double? volumenSolicitadoM3;
+  final double? precioUnitario;
+  final double? precioTotal;
+  final String? descripcion;
+
+  const PedidoItem({
+    this.tipoLinea,
+    this.productoId,
+    this.volumenSolicitadoM3,
+    this.precioUnitario,
+    this.precioTotal,
+    this.descripcion,
+  });
+
+  factory PedidoItem.fromJson(Map<String, dynamic> json) {
+    return PedidoItem(
+      tipoLinea: json['tipoLinea'] as String?,
+      productoId: _parseIntOrNull(json['productoId']),
+      volumenSolicitadoM3: (json['volumenSolicitadoM3'] as num?)?.toDouble(),
+      precioUnitario: (json['precioUnitario'] as num?)?.toDouble(),
+      precioTotal: (json['precioTotal'] as num?)?.toDouble(),
+      descripcion: json['descripcion'] as String?,
     );
   }
 }

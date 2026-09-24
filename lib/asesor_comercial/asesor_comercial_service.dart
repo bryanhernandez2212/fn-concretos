@@ -32,21 +32,21 @@ const permisoAdministrarPreciosCatalogo = 'catalogo.precios.administrar';
 class AsesorComercialService {
   static const _baseUrl = ApiConfig.comercial;
 
-  /// Resolves the logged-in advisor's own `Asesor` row. There's no backend
-  /// concept of "mi asesor" as a single call — `GET /asesores` is
-  /// unfiltered, so this fetches everything and keeps the one whose
-  /// `usuarioId` matches `AuthService.usuarioId` — the *account* id, not
-  /// `idEmpleado` (same distinction `OneSignalService.syncSession` relies
-  /// on), since `AsesorResponse.usuarioId` links to the account record, not
-  /// the employee one.
+  /// Resolves the logged-in advisor's own `Asesor` row via `GET
+  /// /asesores/me`, which answers off the bearer token itself. A 404 means
+  /// this account has no asesor linked — returned as `null` rather than an
+  /// error, since that's an expected answer (e.g. the Comisiones tab hides
+  /// itself on it), not a failure. Any other error still throws.
   static Future<Asesor?> miAsesor() async {
-    final data = await _get('/asesores');
-    final usuarioId = AuthService.usuarioId;
-    for (final entry in data as List<dynamic>) {
-      final asesor = Asesor.fromJson(entry as Map<String, dynamic>);
-      if (asesor.usuarioId == usuarioId) return asesor;
+    final headers = await AuthService.authHeaders();
+    final http.Response response;
+    try {
+      response = await http.get(Uri.parse('$_baseUrl/asesores/me'), headers: headers);
+    } catch (_) {
+      throw AuthException('No se pudo conectar con el servidor');
     }
-    return null;
+    if (response.statusCode == 404) return null;
+    return Asesor.fromJson(_handleResponse(response) as Map<String, dynamic>);
   }
 
   static Future<List<Visita>> visitasDelDia({required int asesorId, required DateTime fecha}) async {

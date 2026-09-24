@@ -153,6 +153,13 @@ class Cotizacion {
   final double precioUnitario;
   final double precioUnitarioConDescuento;
   final double montoTotal;
+
+  /// Nullable — added to `CotizacionResponse` after the rest of this DTO,
+  /// so an older backend (or a cotización saved before the change) may
+  /// still omit them.
+  final double? subtotal;
+  final double? iva;
+  final double? porcentajeIva;
   final String estatus;
   final int? cotizacionOrigenId;
   final String? createdAt;
@@ -178,6 +185,9 @@ class Cotizacion {
     required this.precioUnitario,
     required this.precioUnitarioConDescuento,
     required this.montoTotal,
+    this.subtotal,
+    this.iva,
+    this.porcentajeIva,
     required this.estatus,
     required this.cotizacionOrigenId,
     required this.createdAt,
@@ -207,6 +217,9 @@ class Cotizacion {
       precioUnitario: (json['precioUnitario'] as num?)?.toDouble() ?? 0,
       precioUnitarioConDescuento: (json['precioUnitarioConDescuento'] as num?)?.toDouble() ?? 0,
       montoTotal: (json['montoTotal'] as num?)?.toDouble() ?? 0,
+      subtotal: (json['subtotal'] as num?)?.toDouble(),
+      iva: (json['iva'] as num?)?.toDouble(),
+      porcentajeIva: (json['porcentajeIva'] as num?)?.toDouble(),
       estatus: json['estatus'] as String? ?? 'negociacion',
       cotizacionOrigenId: parseAsesorIntOrNull(json['cotizacionOrigenId']),
       createdAt: json['createdAt'] as String?,
