@@ -19,7 +19,21 @@ const _accentYellow = AppColors.accent;
 class VehiclePendingScreen extends StatefulWidget {
   final int vehiculoId;
 
-  const VehiclePendingScreen({super.key, required this.vehiculoId});
+  /// Shown in the header card so the driver sees which unit they're
+  /// reporting on — optional, purely for display.
+  final String? unidad;
+  final String? placas;
+
+  /// Preselected from `VehicleScreen`'s Reportes tab tiles.
+  final TipoPendiente? tipoInicial;
+
+  const VehiclePendingScreen({
+    super.key,
+    required this.vehiculoId,
+    this.unidad,
+    this.placas,
+    this.tipoInicial,
+  });
 
   @override
   State<VehiclePendingScreen> createState() => _VehiclePendingScreenState();
@@ -28,9 +42,19 @@ class VehiclePendingScreen extends StatefulWidget {
 class _VehiclePendingScreenState extends State<VehiclePendingScreen> {
   final _descriptionController = TextEditingController();
   final _picker = ImagePicker();
-  TipoPendiente _tipo = TipoPendiente.fallaMecanica;
+  late TipoPendiente _tipo = widget.tipoInicial ?? TipoPendiente.fallaMecanica;
   XFile? _photo;
   bool _enviando = false;
+
+  static const _maxDescripcion = 500;
+
+  @override
+  void initState() {
+    super.initState();
+    // Rebuild on typing so the step-2 check and the submit button's enabled
+    // state follow the text.
+    _descriptionController.addListener(() => setState(() {}));
+  }
 
   @override
   void dispose() {
@@ -38,13 +62,16 @@ class _VehiclePendingScreenState extends State<VehiclePendingScreen> {
     super.dispose();
   }
 
-  Future<void> _takePhoto() async {
+  Future<void> _pickPhoto(ImageSource source) async {
     try {
-      final photo = await _picker.pickImage(source: ImageSource.camera, imageQuality: 80);
+      final photo = await _picker.pickImage(source: source, imageQuality: 80);
       if (photo != null) setState(() => _photo = photo);
     } catch (_) {
       if (!mounted) return;
-      AppSnack.error(context, 'No se pudo acceder a la cámara');
+      AppSnack.error(
+        context,
+        source == ImageSource.camera ? 'No se pudo acceder a la cámara' : 'No se pudo abrir la galería',
+      );
     }
   }
 
@@ -93,131 +120,247 @@ class _VehiclePendingScreenState extends State<VehiclePendingScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : Colors.black87;
-    final mutedColor = (isDark ? Colors.white : Colors.black).withValues(alpha: 0.55);
-    final cardColor = isDark ? const Color(0xFF141414) : Colors.white;
-    final borderColor = isDark
-        ? Colors.white.withValues(alpha: 0.10)
-        : Colors.black.withValues(alpha: 0.12);
+    final textColor = AppColors.text(context);
+    final mutedColor = AppColors.mutedText(context);
+    final borderColor = AppColors.border(context);
     final fillColor = isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.045);
+    final descripcionLista = _descriptionController.text.trim().isNotEmpty;
+    final unidadTexto = [widget.unidad, widget.placas].whereType<String>().where((t) => t.isNotEmpty).join(' · ');
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Reportar Pendiente'),
+        title: const Text('Reportar pendiente'),
         backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         foregroundColor: isDark ? Colors.white : Colors.black,
         elevation: 0,
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-        children: [
-          SectionLabel(text: 'Tipo de pendiente', textColor: textColor),
-          const SizedBox(height: 10),
-          FieldGroup(
-            cardColor: cardColor,
-            borderColor: borderColor,
-            expand: true,
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final tipo in TipoPendiente.values)
-                  ChoiceChip(
-                    label: Text(tipo.label),
-                    avatar: Icon(tipo.icon, size: 16, color: _tipo == tipo ? Colors.black : textColor),
-                    selected: _tipo == tipo,
-                    onSelected: (_) => setState(() => _tipo = tipo),
-                    selectedColor: _accentYellow,
-                    labelStyle: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: _tipo == tipo ? Colors.black : textColor,
+      body: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          children: [
+            if (unidadTexto.isNotEmpty) ...[
+              FieldGroup(
+                cardColor: AppColors.card(context),
+                borderColor: borderColor,
+                expand: true,
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: const BoxDecoration(shape: BoxShape.circle, color: _accentYellow),
+                      child: const Icon(Icons.local_shipping_sharp, color: AppColors.onAccent, size: 20),
                     ),
-                    backgroundColor: fillColor,
-                    side: BorderSide.none,
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          SectionLabel(text: 'Descripción', textColor: textColor),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _descriptionController,
-            maxLines: 4,
-            style: TextStyle(color: textColor),
-            decoration: InputDecoration(
-              hintText: 'Describe lo que observaste...',
-              hintStyle: TextStyle(color: mutedColor),
-              filled: true,
-              fillColor: fillColor,
-              contentPadding: const EdgeInsets.all(16),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: _accentYellow, width: 1.5),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Unidad', style: TextStyle(fontSize: 12, color: mutedColor)),
+                          Text(
+                            unidadTexto,
+                            style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: textColor),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          SectionLabel(text: 'Evidencia (opcional)', textColor: textColor),
-          const SizedBox(height: 10),
-          if (_photo != null)
-            Stack(
-              children: [
-                ClipRRect(
+              const SizedBox(height: 22),
+            ],
+            const StepHeader(numero: 1, titulo: '¿Qué tipo de problema?', completo: true),
+            DropdownButtonFormField<TipoPendiente>(
+              initialValue: _tipo,
+              isExpanded: true,
+              dropdownColor: AppColors.card(context),
+              borderRadius: BorderRadius.circular(16),
+              icon: Icon(Icons.keyboard_arrow_down, color: mutedColor),
+              style: TextStyle(fontSize: 15, color: textColor),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: fillColor,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    height: 160,
-                    width: double.infinity,
-                    decoration: BoxDecoration(border: Border.all(color: borderColor)),
-                    child: Image.file(File(_photo!.path), fit: BoxFit.cover),
-                  ),
+                  borderSide: const BorderSide(color: _accentYellow, width: 1.5),
                 ),
-                Positioned(
-                  top: 6,
-                  right: 6,
-                  child: GestureDetector(
-                    onTap: _removePhoto,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
-                      child: const Icon(Icons.close, size: 16, color: Colors.white),
+              ),
+              items: [
+                for (final tipo in TipoPendiente.values)
+                  DropdownMenuItem(
+                    value: tipo,
+                    child: Row(
+                      children: [
+                        Icon(tipo.icon, size: 20, color: _accentYellow),
+                        const SizedBox(width: 12),
+                        Text(tipo.label),
+                      ],
                     ),
                   ),
-                ),
               ],
-            )
-          else
-            OutlinedButton.icon(
-              onPressed: _takePhoto,
-              icon: const Icon(Icons.camera_alt_outlined, size: 18),
-              label: const Text('Tomar foto'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: textColor,
-                side: BorderSide(color: borderColor),
-                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              onChanged: (tipo) {
+                if (tipo != null) setState(() => _tipo = tipo);
+              },
+            ),
+            const SizedBox(height: 26),
+            StepHeader(
+              numero: 2,
+              titulo: 'Describe el problema',
+              subtitulo: 'Escribe con detalle lo que observaste',
+              completo: descripcionLista,
+            ),
+            TextField(
+              controller: _descriptionController,
+              maxLines: 5,
+              minLines: 4,
+              maxLength: _maxDescripcion,
+              textCapitalization: TextCapitalization.sentences,
+              style: TextStyle(color: textColor),
+              decoration: InputDecoration(
+                hintText: 'Ej. Se escucha un golpeteo al frenar desde esta mañana...',
+                hintStyle: TextStyle(color: mutedColor),
+                counterStyle: TextStyle(color: mutedColor, fontSize: 11.5),
+                filled: true,
+                fillColor: fillColor,
+                contentPadding: const EdgeInsets.all(16),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: _accentYellow, width: 1.5),
+                ),
               ),
             ),
-          const SizedBox(height: 28),
-          SizedBox(
+            const SizedBox(height: 18),
+            StepHeader(
+              numero: 3,
+              titulo: 'Evidencia',
+              subtitulo: 'Opcional, pero ayuda al taller a entender el problema',
+              completo: _photo != null,
+            ),
+            if (_photo != null)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: Stack(
+                  children: [
+                    Image.file(File(_photo!.path), height: 200, width: double.infinity, fit: BoxFit.cover),
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Colors.transparent, Colors.black87],
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            _FotoAccion(
+                              icon: Icons.refresh,
+                              label: 'Cambiar',
+                              onTap: () => _pickPhoto(ImageSource.camera),
+                            ),
+                            const SizedBox(width: 8),
+                            _FotoAccion(icon: Icons.delete_outline, label: 'Quitar', onTap: _removePhoto),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Row(
+                children: [
+                  EvidenciaOptionTile(
+                    icon: Icons.photo_camera_outlined,
+                    label: 'Tomar foto',
+                    onTap: () => _pickPhoto(ImageSource.camera),
+                  ),
+                  const SizedBox(width: 10),
+                  EvidenciaOptionTile(
+                    icon: Icons.photo_library_outlined,
+                    label: 'Galería',
+                    onTap: () => _pickPhoto(ImageSource.gallery),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            border: Border(top: BorderSide(color: borderColor)),
+          ),
+          child: SizedBox(
             width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _enviando ? null : _submit,
+            child: ElevatedButton.icon(
+              onPressed: _enviando || !descripcionLista ? null : _submit,
+              icon: _enviando
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.black),
+                    )
+                  : const Icon(Icons.send_rounded, size: 18),
+              label: Text(
+                _enviando ? 'Enviando...' : 'Enviar reporte de ${_tipo.label.toLowerCase()}',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: _accentYellow,
                 foregroundColor: Colors.black,
+                disabledBackgroundColor: _accentYellow.withValues(alpha: 0.35),
+                disabledForegroundColor: Colors.black54,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 elevation: 0,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              child: _enviando
-                  ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.black))
-                  : const Text('Enviar reporte', style: TextStyle(fontWeight: FontWeight.w700)),
             ),
           ),
-        ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FotoAccion extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _FotoAccion({required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.18),
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          child: Row(
+            children: [
+              Icon(icon, size: 16, color: Colors.white),
+              const SizedBox(width: 6),
+              Text(label, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: Colors.white)),
+            ],
+          ),
+        ),
       ),
     );
   }

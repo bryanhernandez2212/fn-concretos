@@ -30,6 +30,12 @@ class _ObraPickerScreenState extends State<ObraPickerScreen> {
   bool _buscoAlMenosUnaVez = false;
 
   @override
+  void initState() {
+    super.initState();
+    _buscar();
+  }
+
+  @override
   void dispose() {
     _queryController.dispose();
     super.dispose();
@@ -38,7 +44,10 @@ class _ObraPickerScreenState extends State<ObraPickerScreen> {
   void _buscar() {
     setState(() {
       _buscoAlMenosUnaVez = true;
-      _future = ComercialService.buscarObras(nombre: _queryController.text.trim());
+      _future = ComercialService.buscarObras(
+        nombre: _queryController.text.trim(),
+        clienteId: widget.clienteId,
+      );
     });
   }
 
@@ -163,7 +172,32 @@ class _ObraPickerScreenState extends State<ObraPickerScreen> {
                           final obra = obras[index];
                           return InkWell(
                             borderRadius: BorderRadius.circular(16),
-                            onTap: () => Navigator.of(context).pop(obra),
+                            onTap: () {
+                              if (obra.estatus?.toLowerCase() == 'ocupada') {
+                                showDialog(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: const Text('Obra Ocupada'),
+                                    content: const Text('Esta obra está marcada como ocupada actualmente. ¿Seguro que deseas seleccionarla?'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.of(ctx).pop(),
+                                        child: const Text('Cancelar'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.of(ctx).pop();
+                                          Navigator.of(context).pop(obra);
+                                        },
+                                        child: const Text('Seleccionar'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              } else {
+                                Navigator.of(context).pop(obra);
+                              }
+                            },
                             child: Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(

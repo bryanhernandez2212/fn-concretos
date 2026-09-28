@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../operaciones/evidencia.dart';
+import '../operaciones/rastreo_gps.dart';
+import '../widgets/rastreo_info_card.dart';
 import '../operaciones/remision_tracking.dart';
 import '../theme/app_colors.dart';
 import '../widgets/field_group.dart';
@@ -50,7 +52,17 @@ class RouteSection extends StatelessWidget {
   final Color textColor;
   final VoidCallback onPressed;
 
-  const RouteSection({super.key, required this.yaInicio, required this.textColor, required this.onPressed});
+  /// Which medium tracks this unit (`OrigenGps`) — null while it's still
+  /// being resolved, in which case the info card just isn't shown yet.
+  final OrigenGps? origenGps;
+
+  const RouteSection({
+    super.key,
+    required this.yaInicio,
+    required this.textColor,
+    required this.onPressed,
+    this.origenGps,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +71,10 @@ class RouteSection extends StatelessWidget {
       children: [
         DeliverySectionTitle(title: 'Ubicación y ruta', textColor: textColor),
         const SizedBox(height: 14),
+        if (origenGps != null) ...[
+          RastreoInfoCard(origen: origenGps!),
+          const SizedBox(height: 12),
+        ],
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(

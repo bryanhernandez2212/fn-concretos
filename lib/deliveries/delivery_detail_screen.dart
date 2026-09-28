@@ -3,6 +3,7 @@ import '../auth/auth_service.dart';
 import '../direccion/comercial_service.dart';
 import '../operaciones/evidencia.dart';
 import '../operaciones/operaciones_service.dart';
+import '../operaciones/rastreo_gps.dart';
 import '../operaciones/remision_tracking.dart';
 import '../widgets/app_feedback.dart';
 import '../widgets/contacto_card.dart';
@@ -73,6 +74,10 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   /// list" situation as firmas.
   Future<List<ArchivoResponse>>? _archivosFuture;
 
+  /// Which medium tracks this unit — shown above "Iniciar ruta" so the
+  /// driver knows whether their phone is the one reporting position.
+  Future<RastreoRemision>? _rastreoFuture;
+
   @override
   void initState() {
     super.initState();
@@ -81,6 +86,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
       _detalleFuture = OperacionesService.remisionDetalle(remisionId);
       _firmasFuture = OperacionesService.firmasPorRemision(remisionId);
       _archivosFuture = OperacionesService.archivosPorRemision(remisionId);
+      _rastreoFuture = RastreoGpsService.paraRemision(remisionId);
     }
   }
 
@@ -393,7 +399,15 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                           final current = HitoEntrega.fromBackendValue(detalle!.estatus);
                           final yaInicio = current != null && current != HitoEntrega.cargandoPlanta;
 
-                          return RouteSection(yaInicio: yaInicio, textColor: textColor, onPressed: _abrirRuta);
+                          return FutureBuilder<RastreoRemision>(
+                            future: _rastreoFuture,
+                            builder: (context, rastreoSnap) => RouteSection(
+                              yaInicio: yaInicio,
+                              textColor: textColor,
+                              onPressed: _abrirRuta,
+                              origenGps: rastreoSnap.data?.origen,
+                            ),
+                          );
                         },
                       );
                     },

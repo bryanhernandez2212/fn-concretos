@@ -26,43 +26,22 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<!-- Shown by the OS permission prompts triggered when the full-screen
-	     navigation view (lib/deliveries/route_navigation_screen.dart)
-	     requests location — no manual in-app toggle asks first.
-	     "Always" is required by google_navigation_flutter to keep
-	     turn-by-turn guidance updating while the app is backgrounded
-	     (e.g. the driver switches to a messaging app mid-trip). -->
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>FN Concretos usa tu ubicación para mostrarte en el mapa durante una entrega y calcular la ruta a la obra.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>FN Concretos necesita tu ubicación en segundo plano para seguir indicándote la ruta durante la navegación.</string>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>location</string>
-	</array>
-	<!-- Shown by the OS permission prompts image_picker triggers on
-	     lib/deliveries/delivery_photo_screen.dart when the driver taps
-	     "Tomar foto" / "Elegir de galería" — no manual toggle asks first. -->
-	<key>NSCameraUsageDescription</key>
-	<string>FN Concretos usa la cámara para capturar fotos de evidencia de entrega.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>FN Concretos accede a tus fotos para adjuntar evidencia de entrega.</string>
-	<!-- Required by local_auth for the Face ID quick-login option (see
-	     lib/auth/biometric_service.dart) — without this, Face ID silently
-	     fails with a dialog saying the app hasn't been updated to use it. -->
-	<key>NSFaceIDUsageDescription</key>
-	<string>FN Concretos usa Face ID para iniciar sesión rápidamente sin escribir tu contraseña cada vez.</string>
-	<!-- Required since iOS 14 for `flutter run`/hot-reload to discover the
-	     Dart VM Service over the local network (mDNS/Bonjour) — without
-	     these, the app runs fine on-device but the host tooling never finds
-	     it and "flutter run" hangs on "Dart VM Service was not discovered".
-	     Debug-tooling only; irrelevant to release builds/end users. -->
-	<key>NSLocalNetworkUsageDescription</key>
-	<string>FN Concretos usa la red local para depuración durante el desarrollo.</string>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_dartobservatory._tcp</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>FN Concretos usa la cámara para capturar fotos de evidencia de entrega.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>FN Concretos usa Face ID para iniciar sesión rápidamente sin escribir tu contraseña cada vez.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>FN Concretos usa la red local para depuración durante el desarrollo.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>FN Concretos necesita tu ubicación en segundo plano para seguir indicándote la ruta durante la navegación.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>FN Concretos usa tu ubicación para mostrarte en el mapa durante una entrega y calcular la ruta a la obra.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>FN Concretos accede a tus fotos para adjuntar evidencia de entrega.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -86,6 +65,10 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

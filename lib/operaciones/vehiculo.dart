@@ -1,6 +1,6 @@
 /// Mirrors `VehiculoResponse` from the `operaciones` service
-/// (`/sandbox/operaciones/v3/api-docs`) — just enough to show "mi vehículo"
-/// and, via `conductorAsignadoId`, tell which one is this driver's own (see
+/// (`/sandbox/operaciones/v3/api-docs`) — every field the backend returns,
+/// all shown on `VehicleScreen`, and, via `conductorAsignadoId`, tell which one is this driver's own (see
 /// `vehicle/vehiculo_service.dart`). There's no query param to filter
 /// `GET /vehiculos` by conductor, so the filtering happens client-side —
 /// same idiom as `AsignacionResumen.conductorId` in
@@ -28,6 +28,11 @@ class VehiculoResumen {
   final int? modelo3dId;
   final String? modelo3dNombre;
   final String? modelo3dUrl;
+  final double? capacidadM3;
+  final int? plantaAsignadaId;
+  final String? origenGps;
+  final String? samsaraVehiculoId;
+  final DateTime? createdAt;
 
   const VehiculoResumen({
     required this.id,
@@ -48,6 +53,11 @@ class VehiculoResumen {
     required this.modelo3dId,
     required this.modelo3dNombre,
     required this.modelo3dUrl,
+    required this.capacidadM3,
+    required this.plantaAsignadaId,
+    required this.origenGps,
+    required this.samsaraVehiculoId,
+    required this.createdAt,
   });
 
   factory VehiculoResumen.fromJson(Map<String, dynamic> json) {
@@ -64,12 +74,19 @@ class VehiculoResumen {
       placas: json['placas'] as String? ?? '',
       gpsInstalado: json['gpsInstalado'] as String? ?? '',
       camaraInstalada: json['camaraInstalada'] as bool? ?? false,
-      fechaUltimoServicio: DateTime.tryParse(json['fechaUltimoServicio'] as String? ?? ''),
+      fechaUltimoServicio: DateTime.tryParse(
+        json['fechaUltimoServicio'] as String? ?? '',
+      ),
       conductorAsignadoId: json['conductorAsignadoId'] as int?,
       tipoVehiculoId: json['tipoVehiculoId'] as int?,
       modelo3dId: json['modelo3dId'] as int?,
       modelo3dNombre: json['modelo3dNombre'] as String?,
       modelo3dUrl: json['modelo3dUrl'] as String?,
+      capacidadM3: (json['capacidadM3'] as num?)?.toDouble(),
+      plantaAsignadaId: json['plantaAsignadaId'] as int?,
+      origenGps: json['origenGps'] as String?,
+      samsaraVehiculoId: json['samsaraVehiculoId'] as String?,
+      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? ''),
     );
   }
 }
@@ -200,8 +217,12 @@ class VehiculoPendienteResumen {
       tipoPendiente: json['tipoPendiente'] as String? ?? '',
       descripcion: json['descripcion'] as String? ?? '',
       estatus: json['estatus'] as String? ?? '',
-      fechaDeteccion: DateTime.tryParse(json['fechaDeteccion'] as String? ?? ''),
-      fechaResolucion: DateTime.tryParse(json['fechaResolucion'] as String? ?? ''),
+      fechaDeteccion: DateTime.tryParse(
+        json['fechaDeteccion'] as String? ?? '',
+      ),
+      fechaResolucion: DateTime.tryParse(
+        json['fechaResolucion'] as String? ?? '',
+      ),
       evidenciaApertura: json['evidenciaApertura'] as String?,
       evidenciaCierre: json['evidenciaCierre'] as String?,
     );

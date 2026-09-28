@@ -17,6 +17,12 @@ class RemisionResumen {
   /// resolved.
   final int? pedidoId;
 
+  /// The olla/bomba units carrying this remisión — used to look up which
+  /// medium tracks it (`VehiculoResumen.origenGps`, see
+  /// `operaciones/rastreo_gps.dart`) and sent along with each GPS ping.
+  final int? vehiculoOllaId;
+  final int? vehiculoBombaId;
+
   /// Timestamps the backend stamps as the remisión reaches each hito (not
   /// sent by the client — `OperacionesService.avanzarHito` only sends the
   /// `evento`). Null until that hito has actually happened.
@@ -43,6 +49,8 @@ class RemisionResumen {
     required this.estatus,
     required this.conductorId,
     this.pedidoId,
+    this.vehiculoOllaId,
+    this.vehiculoBombaId,
     this.horaCarga,
     this.horaSalida,
     this.horaLlegadaObra,
@@ -60,6 +68,8 @@ class RemisionResumen {
       estatus: json['estatus'] as String? ?? '',
       conductorId: json['conductorId'] == null ? null : _parseInt(json['conductorId']),
       pedidoId: json['pedidoId'] == null ? null : _parseInt(json['pedidoId']),
+      vehiculoOllaId: json['vehiculoOllaId'] == null ? null : _parseInt(json['vehiculoOllaId']),
+      vehiculoBombaId: json['vehiculoBombaId'] == null ? null : _parseInt(json['vehiculoBombaId']),
       horaCarga: DateTime.tryParse(json['horaCarga'] as String? ?? ''),
       horaSalida: DateTime.tryParse(json['horaSalida'] as String? ?? ''),
       horaLlegadaObra: DateTime.tryParse(json['horaLlegadaObra'] as String? ?? ''),

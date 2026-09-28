@@ -254,6 +254,7 @@ class Obra {
   final String? ciudad;
   final String? colonia;
   final int? plantaId;
+  final String? estatus;
 
   const Obra({
     required this.id,
@@ -265,6 +266,7 @@ class Obra {
     this.ciudad,
     this.colonia,
     this.plantaId,
+    this.estatus,
   });
 
   factory Obra.fromJson(Map<String, dynamic> json) {
@@ -278,6 +280,7 @@ class Obra {
       ciudad: json['ciudad'] as String?,
       colonia: json['colonia'] as String?,
       plantaId: (json['plantaId'] as num?)?.toInt(),
+      estatus: json['estatus'] as String?,
     );
   }
 }

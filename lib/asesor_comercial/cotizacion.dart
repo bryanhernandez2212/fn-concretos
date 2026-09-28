@@ -58,7 +58,7 @@ String tipoServicioLabel(String? tipoServicio) => tipoServicioOpciones[tipoServi
 /// depends on whether the cotización requires factura, per the team: up to 5%
 /// sin factura/efectivo, 11-12% con factura.
 String limiteDescuentoTexto(bool requiereFactura) =>
-    requiereFactura ? 'Con factura: 11-12%' : 'Sin factura/efectivo: hasta 5%';
+    requiereFactura ? 'Con factura: 8-11%' : 'Sin factura: 0-5%';
 
 /// Mirrors `CotizacionItemResponse` from `comercial-service` — one línea
 /// (partida) of a Cotizacion. The backend requires at least one of these per
@@ -73,6 +73,7 @@ class CotizacionItem {
   final double precioUnitario;
   final double? precioTotal;
   final String? descripcion;
+  final double? porcentajeDescuentoLinea;
 
   const CotizacionItem({
     this.id,
@@ -82,6 +83,7 @@ class CotizacionItem {
     required this.precioUnitario,
     this.precioTotal,
     this.descripcion,
+    this.porcentajeDescuentoLinea,
   });
 
   factory CotizacionItem.fromJson(Map<String, dynamic> json) {
@@ -93,6 +95,7 @@ class CotizacionItem {
       precioUnitario: (json['precioUnitario'] as num?)?.toDouble() ?? 0,
       precioTotal: (json['precioTotal'] as num?)?.toDouble(),
       descripcion: json['descripcion'] as String?,
+      porcentajeDescuentoLinea: (json['porcentajeDescuentoLinea'] as num?)?.toDouble(),
     );
   }
 
@@ -107,6 +110,7 @@ class CotizacionItem {
       if (volumenM3 != null) 'volumenM3': volumenM3,
       'precioUnitario': precioUnitario,
       if (descripcion != null && descripcion!.isNotEmpty) 'descripcion': descripcion,
+      if (porcentajeDescuentoLinea != null) 'porcentajeDescuentoLinea': porcentajeDescuentoLinea,
     };
   }
 
@@ -124,6 +128,7 @@ class CotizacionItem {
       precioUnitario: precioUnitario ?? this.precioUnitario,
       precioTotal: precioTotal,
       descripcion: descripcion ?? this.descripcion,
+      porcentajeDescuentoLinea: porcentajeDescuentoLinea ?? this.porcentajeDescuentoLinea,
     );
   }
 }
@@ -162,6 +167,10 @@ class Cotizacion {
   final double? porcentajeIva;
   final String estatus;
   final int? cotizacionOrigenId;
+  final String? horarioEntrega;
+  final int? elementoConstructivoId;
+  final double? distanciaKm;
+  final String? observaciones;
   final String? createdAt;
 
   const Cotizacion({
@@ -190,6 +199,10 @@ class Cotizacion {
     this.porcentajeIva,
     required this.estatus,
     required this.cotizacionOrigenId,
+    required this.horarioEntrega,
+    this.elementoConstructivoId,
+    this.distanciaKm,
+    this.observaciones,
     required this.createdAt,
   });
 
@@ -222,6 +235,10 @@ class Cotizacion {
       porcentajeIva: (json['porcentajeIva'] as num?)?.toDouble(),
       estatus: json['estatus'] as String? ?? 'negociacion',
       cotizacionOrigenId: parseAsesorIntOrNull(json['cotizacionOrigenId']),
+      horarioEntrega: json['horarioEntrega'] as String?,
+      elementoConstructivoId: parseAsesorIntOrNull(json['elementoConstructivoId']),
+      distanciaKm: (json['distanciaKm'] as num?)?.toDouble(),
+      observaciones: json['observaciones'] as String?,
       createdAt: json['createdAt'] as String?,
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 import '../auth/auth_service.dart';
 import '../catalogo/catalogo_service.dart';
@@ -30,6 +31,7 @@ class CotizacionDetailScreen extends StatefulWidget {
 class _CotizacionDetailScreenState extends State<CotizacionDetailScreen> {
   late Cotizacion _cotizacion;
   bool _procesando = false;
+  bool _enviandoWhatsApp = false;
   List<Producto> _productos = const [];
   List<ClienteContacto> _contactos = const [];
 
@@ -146,6 +148,27 @@ class _CotizacionDetailScreenState extends State<CotizacionDetailScreen> {
       if (mounted) AppSnack.error(context, 'No se pudo duplicar la cotización');
     } finally {
       if (mounted) setState(() => _procesando = false);
+    }
+  }
+
+  Future<void> _enviarWhatsApp() async {
+    setState(() => _enviandoWhatsApp = true);
+    try {
+      final resultado = await AsesorComercialService.enviarWhatsApp(_cotizacion.id);
+      if (!mounted) return;
+      final telefono = resultado['telefono'] as String?;
+      AppSnack.success(
+        context,
+        telefono != null
+            ? 'WhatsApp enviado a $telefono'
+            : 'WhatsApp enviado al cliente',
+      );
+    } on AuthException catch (e) {
+      if (mounted) AppSnack.error(context, e.message);
+    } catch (_) {
+      if (mounted) AppSnack.error(context, 'No se pudo enviar el WhatsApp');
+    } finally {
+      if (mounted) setState(() => _enviandoWhatsApp = false);
     }
   }
 
@@ -299,6 +322,28 @@ class _CotizacionDetailScreenState extends State<CotizacionDetailScreen> {
               const SizedBox(height: 12),
             ],
             if (c.estatus != 'convertida' && c.estatus != 'cancelada') ...[
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _enviandoWhatsApp ? null : _enviarWhatsApp,
+                  icon: _enviandoWhatsApp
+                      ? const SizedBox(
+                          height: 16,
+                          width: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const FaIcon(FontAwesomeIcons.whatsapp, size: 18),
+                  label: Text(_enviandoWhatsApp ? 'Enviando...' : 'Notificar por WhatsApp'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF25D366),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(

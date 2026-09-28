@@ -145,9 +145,12 @@ class AsesorComercialService {
     int? asesorId,
     String? tipoServicio,
     DateTime? fechaSuministroEstimada,
+    String? horarioEntrega,
+    int? elementoConstructivoId,
     String? formaPago,
     bool? requiereFactura,
     double? porcentajeDescuento,
+    String? observaciones,
   }) async {
     final data = await _post('/cotizaciones', _cotizacionBody(
       clienteId: clienteId,
@@ -158,9 +161,12 @@ class AsesorComercialService {
       asesorId: asesorId,
       tipoServicio: tipoServicio,
       fechaSuministroEstimada: fechaSuministroEstimada,
+      horarioEntrega: horarioEntrega,
+      elementoConstructivoId: elementoConstructivoId,
       formaPago: formaPago,
       requiereFactura: requiereFactura,
       porcentajeDescuento: porcentajeDescuento,
+      observaciones: observaciones,
     ));
     return Cotizacion.fromJson(data as Map<String, dynamic>);
   }
@@ -179,9 +185,12 @@ class AsesorComercialService {
     int? asesorId,
     String? tipoServicio,
     DateTime? fechaSuministroEstimada,
+    String? horarioEntrega,
+    int? elementoConstructivoId,
     String? formaPago,
     bool? requiereFactura,
     double? porcentajeDescuento,
+    String? observaciones,
   }) async {
     final data = await _put('/cotizaciones/$id', _cotizacionBody(
       clienteId: clienteId,
@@ -192,9 +201,12 @@ class AsesorComercialService {
       asesorId: asesorId,
       tipoServicio: tipoServicio,
       fechaSuministroEstimada: fechaSuministroEstimada,
+      horarioEntrega: horarioEntrega,
+      elementoConstructivoId: elementoConstructivoId,
       formaPago: formaPago,
       requiereFactura: requiereFactura,
       porcentajeDescuento: porcentajeDescuento,
+      observaciones: observaciones,
     ));
     return Cotizacion.fromJson(data as Map<String, dynamic>);
   }
@@ -208,9 +220,12 @@ class AsesorComercialService {
     int? asesorId,
     String? tipoServicio,
     DateTime? fechaSuministroEstimada,
+    String? horarioEntrega,
+    int? elementoConstructivoId,
     String? formaPago,
     bool? requiereFactura,
     double? porcentajeDescuento,
+    String? observaciones,
   }) {
     return {
       'clienteId': clienteId,
@@ -221,9 +236,12 @@ class AsesorComercialService {
       if (asesorId != null) 'asesorId': asesorId,
       if (tipoServicio != null) 'tipoServicio': tipoServicio,
       if (fechaSuministroEstimada != null) 'fechaSuministroEstimada': _fechaSolo(fechaSuministroEstimada),
+      if (horarioEntrega != null) 'horarioEntrega': horarioEntrega,
+      if (elementoConstructivoId != null) 'elementoConstructivoId': elementoConstructivoId,
       if (formaPago != null) 'formaPago': formaPago,
       if (requiereFactura != null) 'requiereFactura': requiereFactura,
       if (porcentajeDescuento != null) 'porcentajeDescuento': porcentajeDescuento,
+      if (observaciones != null && observaciones!.isNotEmpty) 'observaciones': observaciones,
     };
   }
 
@@ -254,6 +272,14 @@ class AsesorComercialService {
       if (diasCredito != null) 'diasCredito': diasCredito,
     });
     return Pedido.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// `POST /cotizaciones/{id}/enviar-whatsapp` — Notifies the client via
+  /// WhatsApp (approved template 'cotizacion_lista') that their quotation is
+  /// ready, with a link to the public cotización page.
+  static Future<Map<String, dynamic>> enviarWhatsApp(int cotizacionId) async {
+    final data = await _post('/cotizaciones/$cotizacionId/enviar-whatsapp', const {});
+    return data as Map<String, dynamic>;
   }
 
   /// Creates a special mix-design request ahead of quoting. Resolving

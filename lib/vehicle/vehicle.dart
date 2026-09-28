@@ -25,7 +25,8 @@ VehiculoDocumentoEstado estadoDeVigencia(DateTime? vigencia) {
   if (vigencia == null) return VehiculoDocumentoEstado.vigente;
   final hoy = DateTime.now();
   if (vigencia.isBefore(hoy)) return VehiculoDocumentoEstado.vencido;
-  if (vigencia.difference(hoy).inDays <= 30) return VehiculoDocumentoEstado.porVencer;
+  if (vigencia.difference(hoy).inDays <= 30)
+    return VehiculoDocumentoEstado.porVencer;
   return VehiculoDocumentoEstado.vigente;
 }
 
@@ -55,4 +56,33 @@ extension TipoPendienteLabel on TipoPendiente {
     TipoPendiente.mantenimiento => 'mantenimiento',
     TipoPendiente.otro => 'otro',
   };
+}
+
+/// Backend enum-ish values come back snake_case (`app_movil`, `no_instalado`)
+/// with no documented list, so known ones get a proper Spanish label and
+/// anything else falls back to the raw value, de-underscored and capitalized.
+String etiquetaValorVehiculo(String? valor) {
+  if (valor == null || valor.isEmpty) return '';
+  const conocidos = {
+    'activo': 'Activo',
+    'inactivo': 'Inactivo',
+    'en_mantenimiento': 'En mantenimiento',
+    'baja': 'Baja',
+    'instalado': 'Instalado',
+    'no_instalado': 'No instalado',
+    'pendiente': 'Pendiente',
+    'app_movil': 'App móvil',
+    'samsara': 'Samsara',
+  };
+  final conocido = conocidos[valor];
+  if (conocido != null) return conocido;
+  final texto = valor.replaceAll('_', ' ');
+  return texto[0].toUpperCase() + texto.substring(1);
+}
+
+String formatoFechaVehiculo(DateTime? fecha, {bool conHora = false}) {
+  if (fecha == null) return 'Sin registro';
+  String dos(int n) => n.toString().padLeft(2, '0');
+  final dia = '${dos(fecha.day)}/${dos(fecha.month)}/${fecha.year}';
+  return conHora ? '$dia ${dos(fecha.hour)}:${dos(fecha.minute)}' : dia;
 }

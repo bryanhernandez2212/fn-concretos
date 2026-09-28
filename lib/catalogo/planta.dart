@@ -12,6 +12,9 @@ class Planta {
   final String? estatus;
   final double? capacidadReferenciaM3;
   final double? precioPorM3Vacio;
+  final double? latitud;
+  final double? longitud;
+  final double? porcentajeIva;
 
   const Planta({
     required this.id,
@@ -20,6 +23,9 @@ class Planta {
     this.estatus,
     this.capacidadReferenciaM3,
     this.precioPorM3Vacio,
+    this.latitud,
+    this.longitud,
+    this.porcentajeIva,
   });
 
   factory Planta.fromJson(Map<String, dynamic> json) {
@@ -30,6 +36,9 @@ class Planta {
       estatus: json['estatus'] as String?,
       capacidadReferenciaM3: (json['capacidadReferenciaM3'] as num?)?.toDouble(),
       precioPorM3Vacio: (json['precioPorM3Vacio'] as num?)?.toDouble(),
+      latitud: (json['latitud'] as num?)?.toDouble(),
+      longitud: (json['longitud'] as num?)?.toDouble(),
+      porcentajeIva: (json['porcentajeIva'] as num?)?.toDouble(),
     );
   }
 }

@@ -97,11 +97,12 @@ class ComercialService {
   /// nombre"). Used by Asesor Comercial's "registrar visita" flow to find
   /// an obra that's already in the system for a repeat visit, instead of
   /// only ever being able to register a brand-new one.
-  static Future<List<Obra>> buscarObras({String? nombre, String? ciudad, String? estatus}) async {
+  static Future<List<Obra>> buscarObras({String? nombre, String? ciudad, String? estatus, int? clienteId}) async {
     final params = {
       if (nombre != null && nombre.isNotEmpty) 'nombre': nombre,
       if (ciudad != null && ciudad.isNotEmpty) 'ciudad': ciudad,
       if (estatus != null && estatus.isNotEmpty) 'estatus': estatus,
+      if (clienteId != null) 'clienteId': clienteId.toString(),
     };
     final query = params.isEmpty ? '' : '?${Uri(queryParameters: params).query}';
     final data = await _get('/obras$query');

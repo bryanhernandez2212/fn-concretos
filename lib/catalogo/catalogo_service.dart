@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../auth/auth_service.dart';
 import '../config/api_config.dart';
+import 'elemento_constructivo.dart';
 import 'planta.dart';
 import 'producto.dart';
 
@@ -17,24 +18,52 @@ class CatalogoService {
 
   static Future<List<Planta>> plantas() async {
     final data = await _get('/plantas');
-    return (data as List<dynamic>).map((e) => Planta.fromJson(e as Map<String, dynamic>)).toList();
+    return (data as List<dynamic>)
+        .map((e) => Planta.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   /// `GET /productos` — "Buscar por resistencia, categoria o nombre"; [q] is
   /// matched against nombre (same free-text idiom as
   /// `ComercialService.buscarClientes`'s `q`).
   static Future<List<Producto>> productos({String? q}) async {
-    final query = q == null || q.isEmpty ? '' : '?q=${Uri.encodeQueryComponent(q)}';
+    final query = q == null || q.isEmpty
+        ? ''
+        : '?q=${Uri.encodeQueryComponent(q)}';
     final data = await _get('/productos$query');
-    return (data as List<dynamic>).map((e) => Producto.fromJson(e as Map<String, dynamic>)).toList();
+    return (data as List<dynamic>)
+        .map((e) => Producto.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   /// A producto's precio can vary per planta — [plantaId] narrows to the one
   /// the cotización is being built for.
-  static Future<List<Precio>> preciosProducto(int productoId, {int? plantaId}) async {
+  static Future<List<Precio>> preciosProducto(
+    int productoId, {
+    int? plantaId,
+  }) async {
     final query = plantaId == null ? '' : '?plantaId=$plantaId';
     final data = await _get('/productos/$productoId/precios$query');
-    return (data as List<dynamic>).map((e) => Precio.fromJson(e as Map<String, dynamic>)).toList();
+    return (data as List<dynamic>)
+        .map((e) => Precio.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  static Future<List<ElementoConstructivo>> elementosConstructivos() async {
+    final data = await _get('/elementos-constructivos');
+    return (data as List<dynamic>)
+        .map((e) => ElementoConstructivo.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// `GET /tipos-vehiculo` (Mix/Olla, Pluma, Tracto...) as an id → nombre
+  /// map, used to label `VehiculoResumen.tipoVehiculoId` on `VehicleScreen`.
+  static Future<Map<int, String>> tiposVehiculo() async {
+    final data = await _get('/tipos-vehiculo');
+    return {
+      for (final e in (data as List<dynamic>).cast<Map<String, dynamic>>())
+        (e['id'] as num).toInt(): e['nombre'] as String? ?? '',
+    };
   }
 
   static Future<dynamic> _get(String path) async {
@@ -58,7 +87,9 @@ class CatalogoService {
       }
     }
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      final message = data is Map<String, dynamic> ? data['message'] as String? : null;
+      final message = data is Map<String, dynamic>
+          ? data['message'] as String?
+          : null;
       throw AuthException(message ?? 'Ocurrió un error inesperado');
     }
     return data;

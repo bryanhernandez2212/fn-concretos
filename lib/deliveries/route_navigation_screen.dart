@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart' as geo;
 import 'package:google_navigation_flutter/google_navigation_flutter.dart';
 import '../auth/auth_service.dart';
 import '../operaciones/operaciones_service.dart';
+import '../operaciones/rastreo_gps.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_feedback.dart';
 import 'navigation_live_update.dart';
@@ -201,8 +202,18 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
     // to.
     final remisionId = remision.remisionId;
     if (remisionId != null && AuthService.permisos.contains(permisoOperarRemisiones)) {
-      _enviarPosicionActual(remisionId);
-      _gpsTimer = Timer.periodic(const Duration(seconds: 15), (_) => _enviarPosicionActual(remisionId));
+      // A Samsara-tracked unit already gets its positions registered by the
+      // backend — sending the phone's too would interleave two streams on
+      // the same route. Hitos below still come from this screen either way.
+      final rastreo = await RastreoGpsService.paraRemision(remisionId);
+      if (mounted) AppSnack.info(context, rastreo.origen.titulo);
+      if (rastreo.origen.telefonoEnviaPosicion) {
+        _enviarPosicionActual(remisionId, rastreo.vehiculoId);
+        _gpsTimer = Timer.periodic(
+          const Duration(seconds: 15),
+          (_) => _enviarPosicionActual(remisionId, rastreo.vehiculoId),
+        );
+      }
       // Awaited (unlike the GPS ping above) so the two hitos land on the
       // backend in order — the state machine there is sequential, so an
       // out-of-order `enCamino` racing ahead of `salioPlanta` could be
@@ -242,10 +253,15 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
 
   /// Best-effort: a failed ping just means the next one 15s later tries
   /// again — not worth interrupting navigation over.
-  Future<void> _enviarPosicionActual(int remisionId) async {
+  Future<void> _enviarPosicionActual(int remisionId, int? vehiculoId) async {
     try {
       final posicion = await geo.Geolocator.getCurrentPosition();
-      await OperacionesService.enviarPosicion(remisionId, latitud: posicion.latitude, longitud: posicion.longitude);
+      await OperacionesService.enviarPosicion(
+        remisionId,
+        latitud: posicion.latitude,
+        longitud: posicion.longitude,
+        vehiculoId: vehiculoId,
+      );
     } catch (_) {}
   }
 

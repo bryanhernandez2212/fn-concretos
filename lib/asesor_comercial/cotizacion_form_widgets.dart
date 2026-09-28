@@ -14,6 +14,7 @@ class PartidaControllers {
   final volumen = TextEditingController();
   final precio = TextEditingController();
   final descripcion = TextEditingController();
+  final descuentoLinea = TextEditingController();
   String tipoLinea;
   int? productoId;
 
@@ -30,6 +31,7 @@ class PartidaControllers {
     c.volumen.text = item.volumenM3 == null ? '' : '${item.volumenM3}';
     c.precio.text = '${item.precioUnitario}';
     c.descripcion.text = item.descripcion ?? '';
+    c.descuentoLinea.text = item.porcentajeDescuentoLinea == null || item.porcentajeDescuentoLinea == 0 ? '' : '${item.porcentajeDescuentoLinea}';
     c.productoId = item.productoId;
     return c;
   }
@@ -38,6 +40,7 @@ class PartidaControllers {
     volumen.dispose();
     precio.dispose();
     descripcion.dispose();
+    descuentoLinea.dispose();
   }
 }
 
@@ -65,9 +68,12 @@ InputDecoration cotizacionFieldDecoration(String hint, Color mutedColor, Color f
 /// a flat fee, so just precio.
 double importeEstimado(PartidaControllers item) {
   final precio = double.tryParse(item.precio.text.trim()) ?? 0;
-  if (item.tipoLinea != tipoLineaProducto) return precio;
+  final desc = double.tryParse(item.descuentoLinea.text.trim()) ?? 0;
+  final precioConDesc = precio * (1 - (desc / 100));
+  
+  if (item.tipoLinea != tipoLineaProducto) return precioConDesc;
   final volumen = double.tryParse(item.volumen.text.trim()) ?? 0;
-  return precio * volumen;
+  return precioConDesc * volumen;
 }
 
 double sumaPorTipo(List<PartidaControllers> items, String tipoLinea) =>
@@ -241,14 +247,32 @@ class PartidaCard extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 12),
-          TextField(
-            controller: item.descripcion,
-            style: TextStyle(color: textColor),
-            decoration: cotizacionFieldDecoration(
-              item.tipoLinea == tipoLineaProducto ? 'Descripción (opcional)' : 'Descripción (ej. Bombeo pluma propia)',
-              mutedColor,
-              fillColor,
-            ),
+          Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: TextField(
+                  controller: item.descripcion,
+                  style: TextStyle(color: textColor),
+                  decoration: cotizacionFieldDecoration(
+                    item.tipoLinea == tipoLineaProducto ? 'Descripción (opcional)' : 'Descripción (ej. Bombeo)',
+                    mutedColor,
+                    fillColor,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: TextField(
+                  controller: item.descuentoLinea,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  style: TextStyle(color: textColor),
+                  onChanged: (_) => onChanged(),
+                  decoration: cotizacionFieldDecoration('% Desc.', mutedColor, fillColor),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           Align(
@@ -272,6 +296,8 @@ class ResumenCotizacionCard extends StatelessWidget {
   final double subtotalServicios;
   final double fleteVacio;
   final double porcentajeDescuento;
+  final bool requiereFactura;
+  final double porcentajeIva;
   final Color textColor;
   final Color mutedColor;
   final Color cardColor;
@@ -284,6 +310,8 @@ class ResumenCotizacionCard extends StatelessWidget {
     required this.subtotalServicios,
     required this.fleteVacio,
     required this.porcentajeDescuento,
+    required this.requiereFactura,
+    this.porcentajeIva = 0.16,
     required this.textColor,
     required this.mutedColor,
     required this.cardColor,
@@ -295,7 +323,10 @@ class ResumenCotizacionCard extends StatelessWidget {
     final subtotal = subtotalProductos + subtotalBombeo + subtotalServicios + fleteVacio;
     // Only líneas producto se descuentan — bombeo/servicio/flete_vacío no.
     final descuento = subtotalProductos * (porcentajeDescuento / 100);
-    final total = subtotal - descuento;
+    final subtotalConDescuento = subtotal - descuento;
+    
+    final iva = requiereFactura ? subtotalConDescuento * porcentajeIva : 0.0;
+    final total = subtotalConDescuento + iva;
 
     Widget renglon(String label, double valor, {bool negativo = false}) {
       return Padding(
@@ -331,6 +362,7 @@ class ResumenCotizacionCard extends StatelessWidget {
           renglon('Servicios adicionales', subtotalServicios),
           renglon('Flete / Vacío estimado', fleteVacio),
           if (porcentajeDescuento > 0) renglon('Descuento ($porcentajeDescuento%)', descuento, negativo: true),
+          if (requiereFactura) renglon('IVA (${(porcentajeIva * 100).toStringAsFixed(0)}%)', iva),
           const Divider(height: 20),
           Row(
             children: [

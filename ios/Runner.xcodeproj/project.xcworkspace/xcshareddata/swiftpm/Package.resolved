@@ -1,0 +1,32 @@
+{
+  "pins" : [
+    {
+      "identity" : "ios-maps-sdk",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/googlemaps/ios-maps-sdk",
+      "state" : {
+        "revision" : "98096f0cd3524e7217fe36936dc1a0c738819f9c",
+        "version" : "10.14.0"
+      }
+    },
+    {
+      "identity" : "ios-navigation-sdk",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/googlemaps/ios-navigation-sdk",
+      "state" : {
+        "revision" : "8cc96283effd2f0de352aeb3d483ea16ffbbf97e",
+        "version" : "10.14.0"
+      }
+    },
+    {
+      "identity" : "onesignal-xcframework",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/OneSignal/OneSignal-XCFramework",
+      "state" : {
+        "revision" : "befe5b59232a6d8752ad3ae49bd2f86474dff932",
+        "version" : "5.5.6"
+      }
+    }
+  ],
+  "version" : 2
+}

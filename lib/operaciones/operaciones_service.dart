@@ -86,15 +86,19 @@ class OperacionesService {
   }
 
   /// Reports the olla/bomba's current position while en route. Requires
-  /// [permisoOperarRemisiones].
+  /// [permisoOperarRemisiones]. Only sent from the phone when the unit's
+  /// `origenGps` is `app_movil` — Samsara-tracked units get their positions
+  /// registered by the backend itself (see `rastreo_gps.dart`).
   static Future<void> enviarPosicion(
     int remisionId, {
     required double latitud,
     required double longitud,
+    int? vehiculoId,
   }) {
     return _post('/remisiones/$remisionId/gps', {
       'latitud': latitud,
       'longitud': longitud,
+      if (vehiculoId != null) 'vehiculoId': vehiculoId,
     });
   }
 
@@ -278,6 +282,11 @@ class OperacionesService {
     return (data as List<dynamic>)
         .map((e) => VehiculoResumen.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  static Future<VehiculoResumen> vehiculo(int id) async {
+    final data = await _get('/vehiculos/$id');
+    return VehiculoResumen.fromJson(data as Map<String, dynamic>);
   }
 
   static Future<List<VehiculoMantenimientoResumen>> mantenimientosVehiculo(
