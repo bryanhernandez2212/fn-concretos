@@ -10,7 +10,7 @@ import UIKit
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     // REQUIRED for the map/navigation in
-    // lib/deliveries/route_navigation_screen.dart to work on iOS: needs
+    // lib/deliveries/navegacion/route_navigation_screen.dart to work on iOS: needs
     // "Maps SDK for iOS" AND "Navigation SDK for iOS" enabled on this key
     // in Google Cloud Console. The Navigation SDK is billed separately
     // from Maps SDK — check current pricing before relying on this in

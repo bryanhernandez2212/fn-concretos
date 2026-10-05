@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import '../auth/auth_service.dart';
+import '../finanzas/orden_compra.dart';
 import '../profile/mfa_screen.dart';
 import '../profile/profile_screen.dart';
 import '../theme/app_colors.dart';
 import '../widgets/bottom_nav_bar.dart';
-import 'autorizaciones_screen.dart';
-import 'rutas_activas_screen.dart';
+import 'autorizaciones/autorizaciones_screen.dart';
+import 'ordenes_compra/ordenes_compra_screen.dart';
+import 'rutas/rutas_activas_screen.dart';
 
 const _accentYellow = AppColors.accent;
 
-/// App shell for the Dirección role: Autorizaciones, Rutas activas (a
-/// fleet-wide live map, not tied to any one pedido) and Perfil — vistas.md
+/// App shell for the Dirección role: Autorizaciones (credit), Compras
+/// (órdenes de compra — only with `ordenes_compra.autorizar`), Rutas
+/// activas (a fleet-wide live map, not tied to any one pedido) and Perfil — vistas.md
 /// only scopes Dirección's mobile screens to pedido credit authorization,
 /// everything else in that role stays on desktop.
 class DireccionHomeScreen extends StatefulWidget {
@@ -24,18 +27,24 @@ class _DireccionHomeScreenState extends State<DireccionHomeScreen> {
   int _currentIndex = 0;
   bool _navCompact = false;
 
+  /// Órdenes de compra only show up for sessions that can actually
+  /// authorize them — gated by permission, not role name, same reasoning
+  /// as `destinationForSession()`'s own routing.
+  final bool _conCompras = AuthService.permisos.contains(permisoAutorizarOrdenesCompra);
+
   /// [RutasActivasScreen] embeds a real Google Maps platform view — unlike
   /// the other tabs, it's the one exception to "every tab stays mounted"
   /// below: a platform view composites through the native view hierarchy,
   /// not Flutter's own canvas, so fading it to opacity 0 while inactive
   /// doesn't reliably hide it (it can keep rendering, or bleed through onto
   /// whichever tab IS visible) the way it does for ordinary widgets.
-  static const _rutasTabIndex = 1;
+  late final int _rutasTabIndex = _conCompras ? 2 : 1;
 
-  final List<Widget> _pages = const [
-    AutorizacionesScreen(),
-    RutasActivasScreen(),
-    ProfileScreen(),
+  late final List<Widget> _pages = [
+    const AutorizacionesScreen(),
+    if (_conCompras) const OrdenesCompraScreen(),
+    const RutasActivasScreen(),
+    const ProfileScreen(),
   ];
 
   @override
@@ -162,18 +171,24 @@ class _DireccionHomeScreenState extends State<DireccionHomeScreen> {
         currentIndex: _currentIndex,
         compact: _navCompact,
         onTap: (int index) => setState(() => _currentIndex = index),
-        items: const [
-          NavItem(
+        items: [
+          const NavItem(
             icon: Icons.fact_check_outlined,
             selectedIcon: Icons.fact_check,
             label: 'Autorizaciones',
           ),
-          NavItem(
+          if (_conCompras)
+            const NavItem(
+              icon: Icons.shopping_cart_outlined,
+              selectedIcon: Icons.shopping_cart,
+              label: 'Compras',
+            ),
+          const NavItem(
             icon: Icons.map_outlined,
             selectedIcon: Icons.map,
             label: 'Rutas',
           ),
-          NavItem(
+          const NavItem(
             icon: Icons.person_outline,
             selectedIcon: Icons.person,
             label: 'Perfil',

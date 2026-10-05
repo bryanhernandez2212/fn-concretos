@@ -8,7 +8,7 @@ import io.flutter.plugin.common.MethodChannel
 // local_auth (Face ID/Touch ID/biometría) requires a FragmentActivity to
 // host its authentication prompt — FlutterActivity alone can't.
 class MainActivity : FlutterFragmentActivity() {
-    // Backs lib/deliveries/navigation_live_update.dart, which talks to
+    // Backs lib/deliveries/navegacion/navigation_live_update.dart, which talks to
     // NavigationLiveUpdateManager.kt for the Android 16 "Live Update"
     // lock-screen/status-bar card while RouteNavigationScreen is
     // navigating — no Flutter/Dart wrapper exists for that native-only

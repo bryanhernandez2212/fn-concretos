@@ -82,7 +82,7 @@ class RemisionResumen {
   }
 }
 
-/// See `direccion/pedido.dart`'s identical helper — some Spring/Jackson
+/// See `comercial/pedido.dart`'s identical helper — some Spring/Jackson
 /// setups serialize `Long` fields as JSON strings, and this schema doesn't
 /// mark `id`/`conductorId` as required either.
 int _parseInt(dynamic value, {int fallback = 0}) {

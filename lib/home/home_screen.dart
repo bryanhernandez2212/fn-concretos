@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../profile/profile_screen.dart';
-import '../deliveries/deliveries_screen.dart';
+import '../deliveries/listado/deliveries_screen.dart';
 import '../vehicle/vehicle_screen.dart';
 import '../widgets/bottom_nav_bar.dart';
 

@@ -39,7 +39,7 @@ const catalogoRoles = [
 /// additionally gets a dosificación-report entry point (still a mock
 /// submission, since `InformePesadora` has no backend service yet, per
 /// vistas.md) and, once a Remisión exists, the real prueba-de-concreto-fresco
-/// form (see `deliveries/delivery_detail_screen.dart`).
+/// form (see `deliveries/detalle/delivery_detail_screen.dart`).
 const rolesConAppMovil = {'Operador de Olla', 'Operador de Bomba'};
 
 Rol? rolPorNombre(String? nombre) {

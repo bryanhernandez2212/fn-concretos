@@ -1,8 +1,11 @@
 import 'package:flutter/foundation.dart';
 
 import '../auth/auth_service.dart';
-import '../direccion/comercial_service.dart';
+import '../comercial/comercial_service.dart';
+import '../comercial/pedido.dart';
 import '../operaciones/operaciones_service.dart';
+import '../operaciones/produccion.dart';
+import '../operaciones/remision_tracking.dart';
 import 'remision.dart';
 
 String _fechaStr(DateTime dia) =>
@@ -13,7 +16,7 @@ String _fechaStr(DateTime dia) =>
 /// conductor's own remisiones, but across every conductor, for Dirección's
 /// "Rutas activas" summary card. `asignadas` is the day's total remisiones,
 /// not its own bucket — `enRuta + entregadas + pendientes` always sums back
-/// to it, same convention as `deliveries/deliveries_widgets.dart`'s
+/// to it, same convention as `deliveries/listado/deliveries_widgets.dart`'s
 /// `RutasResumenCard`.
 class ResumenEntregasDia {
   final int asignadas;
@@ -59,8 +62,11 @@ class EntregasService {
     final programacion = await OperacionesService.programacionDelDia(fechaStr);
     final idEmpleado = AuthService.idEmpleado;
 
-    final entregas = <Remision>[];
-    for (final item in programacion) {
+    // The programación is the whole plant's, so most pedidos in it aren't
+    // this conductor's. Every lookup below runs in parallel: one request
+    // after another made load time grow with the size of the plant's day.
+    // `Future.wait` keeps the programación's order.
+    final porPedido = await Future.wait(programacion.map((item) async {
       final remisiones = await OperacionesService.remisionesPorPedido(item.pedidoId);
       final propias = remisiones.where((r) => r.conductorId == idEmpleado).toList();
       if (propias.isEmpty) {
@@ -69,15 +75,21 @@ class EntregasService {
           'para conductorId=$idEmpleado (remisiones encontradas: '
           '${remisiones.map((r) => 'id=${r.id} conductorId=${r.conductorId}').toList()})',
         );
-        continue;
+        return const <Remision>[];
       }
 
       final pedido = await ComercialService.obtenerPedido(item.pedidoId);
-      final obra = await ComercialService.obtenerObra(pedido.obraId);
-      final contacto = await ComercialService.contactoParaEntrega(
-        obraId: pedido.obraId,
-        clienteId: pedido.clienteId,
-      );
+      // `Future.wait` (not a record's `.wait`) so a failure surfaces as the
+      // original `AuthException` rather than a `ParallelWaitError`.
+      final detalles = await Future.wait<Object?>([
+        ComercialService.obtenerObra(pedido.obraId),
+        ComercialService.contactoParaEntrega(
+          obraId: pedido.obraId,
+          clienteId: pedido.clienteId,
+        ),
+      ]);
+      final obra = detalles[0] as Obra;
+      final contacto = detalles[1] as ClienteContacto?;
 
       // The same conductor can have more than one remisión on the same
       // pedido — e.g. the olla can't carry the whole volume in one trip, so
@@ -86,34 +98,35 @@ class EntregasService {
       // than collapsing to just one — otherwise an already-entregada trip
       // could shadow a still-active one for the same pedido (or vice versa)
       // depending on array order, hiding whichever didn't get picked.
-      for (final remisionPropia in propias) {
-        entregas.add(Remision(
-          folio: pedido.folio,
-          cliente: pedido.clienteNombre,
-          obra: obra.nombre,
-          direccion: obra.direccion,
-          horaProgramada: item.horaArranque,
-          tipoConcreto: pedido.tipoServicio,
-          // This remisión's own volume — not the pedido's total, since a
-          // pedido can be split across several remisiones.
-          volumenM3: remisionPropia.metrosCargados ?? remisionPropia.metrosSolicitados ?? pedido.volumenSolicitadoM3,
-          volumenPedidoTotal: pedido.volumenSolicitadoM3,
-          volumenPedidoEntregado: pedido.volumenEntregadoM3,
-          volumenPedidoPendiente: pedido.volumenPendienteM3,
-          hitoActual: HitoEntrega.fromBackendValue(remisionPropia.estatus),
-          remisionId: remisionPropia.id,
-          destinoLat: obra.latitud,
-          destinoLng: obra.longitud,
-          pedidoId: pedido.id,
-          clienteId: pedido.clienteId,
-          obraId: pedido.obraId,
-          contactoNombre: contacto?.nombre,
-          contactoCargo: contacto?.cargo,
-          telefono: contacto?.telefono,
-        ));
-      }
-    }
-    return entregas;
+      return [
+        for (final remisionPropia in propias)
+          Remision(
+            folio: pedido.folio,
+            cliente: pedido.clienteNombre,
+            obra: obra.nombre,
+            direccion: obra.direccion,
+            horaProgramada: item.horaArranque,
+            tipoConcreto: pedido.tipoServicio,
+            // This remisión's own volume — not the pedido's total, since a
+            // pedido can be split across several remisiones.
+            volumenM3: remisionPropia.metrosCargados ?? remisionPropia.metrosSolicitados ?? pedido.volumenSolicitadoM3,
+            volumenPedidoTotal: pedido.volumenSolicitadoM3,
+            volumenPedidoEntregado: pedido.volumenEntregadoM3,
+            volumenPedidoPendiente: pedido.volumenPendienteM3,
+            hitoActual: HitoEntrega.fromBackendValue(remisionPropia.estatus),
+            remisionId: remisionPropia.id,
+            destinoLat: obra.latitud,
+            destinoLng: obra.longitud,
+            pedidoId: pedido.id,
+            clienteId: pedido.clienteId,
+            obraId: pedido.obraId,
+            contactoNombre: contacto?.nombre,
+            contactoCargo: contacto?.cargo,
+            telefono: contacto?.telefono,
+          ),
+      ];
+    }));
+    return porPedido.expand((e) => e).toList();
   }
 
   /// Fleet-wide counterpart to [entregasDelDia] — every remisión scheduled
@@ -121,19 +134,33 @@ class EntregasService {
   /// logged-in one. Skips the per-pedido cliente/obra/contacto lookups
   /// [entregasDelDia] needs to build its detail cards, since a summary
   /// count only needs each remisión's `estatus` — much cheaper to poll
-  /// fleet-wide than the full per-driver list would be.
+  /// fleet-wide than the full per-driver list would be. For today, it also
+  /// counts every remisión currently en ruta even if its pedido isn't in
+  /// today's programación, so the count matches the trucks on the map.
   static Future<ResumenEntregasDia> resumenFlotaDelDia({DateTime? fecha}) async {
     final dia = fecha ?? DateTime.now();
     final fechaStr = _fechaStr(dia);
 
-    final programacion = await OperacionesService.programacionDelDia(fechaStr);
+    final esHoy = fecha == null || _fechaStr(DateTime.now()) == fechaStr;
+    // All in parallel — see [entregasDelDia]. The en-ruta list doesn't
+    // depend on the programación, so it's fetched alongside it.
+    final iniciales = await Future.wait<Object>([
+      OperacionesService.programacionDelDia(fechaStr),
+      if (esHoy) OperacionesService.remisionesEnRuta(),
+    ]);
+    final programacion = iniciales[0] as List<ProgramacionProduccion>;
+    final remisionesEnRuta = esHoy ? iniciales[1] as List<RemisionResumen> : const <RemisionResumen>[];
+    final porPedido = await Future.wait(
+      programacion.map((item) => OperacionesService.remisionesPorPedido(item.pedidoId)),
+    );
 
     var entregadas = 0;
     var enRuta = 0;
     var total = 0;
-    for (final item in programacion) {
-      final remisiones = await OperacionesService.remisionesPorPedido(item.pedidoId);
+    final vistas = <int>{};
+    for (final remisiones in porPedido) {
       for (final remision in remisiones) {
+        if (!vistas.add(remision.id)) continue;
         total++;
         final hito = HitoEntrega.fromBackendValue(remision.estatus);
         if (hito == HitoEntrega.entregado) {
@@ -143,6 +170,20 @@ class EntregasService {
         }
       }
     }
+
+    // A truck can be out on the road for a pedido that isn't in [fecha]'s
+    // programación (scheduled another day, or never programmed at all) —
+    // `RutasActivasScreen`'s map still shows it, since
+    // `remisionesEnRuta()` doesn't filter by date, so it has to count here
+    // too or "En ruta" undercounts the trucks visibly on the map. Only
+    // applies to today: a past/future day's summary shouldn't pull in
+    // whatever happens to be on the road right now.
+    for (final remision in remisionesEnRuta) {
+      if (!vistas.add(remision.id)) continue;
+      total++;
+      enRuta++;
+    }
+
     return ResumenEntregasDia(
       asignadas: total,
       enRuta: enRuta,

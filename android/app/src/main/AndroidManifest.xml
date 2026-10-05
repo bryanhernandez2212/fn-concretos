@@ -2,7 +2,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Coarse/fine location: needed for the "my location" blue dot and
          live route tracking on the full-screen navigation view
-         (lib/deliveries/route_navigation_screen.dart). Requesting this at
+         (lib/deliveries/navegacion/route_navigation_screen.dart). Requesting this at
          runtime (via the geolocator plugin) is what makes Android show its
          own permission prompt — this app has no manual "compartir
          ubicación" toggle asking first. -->
@@ -22,7 +22,7 @@
          already pulled in transitively (see OneSignal's manifest merge). -->
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <!-- Needed by image_picker's camera capture on
-         lib/deliveries/delivery_photo_screen.dart. Gallery picking uses
+         lib/deliveries/evidencias/delivery_photo_screen.dart. Gallery picking uses
          Android's system Photo Picker on modern devices, which needs no
          declared permission. Requested at runtime by image_picker itself
          when the driver taps "Tomar foto" — no manual toggle. -->
@@ -64,7 +64,7 @@
             android:name="flutterEmbedding"
             android:value="2" />
         <!-- REQUIRED for the map/navigation in
-             lib/deliveries/route_navigation_screen.dart to work on
+             lib/deliveries/navegacion/route_navigation_screen.dart to work on
              Android: needs "Maps SDK for Android" AND "Navigation SDK for
              Android" enabled on this key in Google Cloud Console. Without
              Maps SDK the map loads blank/greyed out with a "For

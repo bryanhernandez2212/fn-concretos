@@ -1,12 +1,12 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import '../config/http_client.dart' as http;
 import '../auth/auth_service.dart';
 import '../config/api_config.dart';
-import '../direccion/pedido.dart';
+import '../comercial/pedido.dart';
 import 'asesor.dart';
-import 'cotizacion.dart';
-import 'solicitud_diseno.dart';
-import 'visita.dart';
+import 'cotizaciones/cotizacion.dart';
+import 'solicitudes_diseno/solicitud_diseno.dart';
+import 'visitas/visita.dart';
 
 /// Granular permission names (as returned in `/auth/me`'s `permisos`) that
 /// gate the Asesor Comercial screens — same reasoning as
@@ -15,7 +15,7 @@ import 'visita.dart';
 /// rather than a hardcoded role name. `permisoAdministrarAgenda` is kept
 /// even though this app dropped its Agenda tab (there was nothing to do
 /// there — no screen ever created an `AgendaActividad`, only listed/marked
-/// existing ones) — `auth/login_screen.dart`'s `destinationForSession()`
+/// existing ones) — `auth/login/login_screen.dart`'s `destinationForSession()`
 /// still routes on it to decide this role gets a mobile shell at all, since
 /// that's the backend's permission name for the role, not tied to any one
 /// screen inside it.
@@ -24,7 +24,7 @@ const permisoAplicarDescuentoEspecial = 'cotizaciones.aplicar_descuento_especial
 const permisoAdministrarPreciosCatalogo = 'catalogo.precios.administrar';
 
 /// Talks to the real fnconcretos `comercial` sandbox (same base URL as
-/// `direccion/comercial_service.dart`) for the Asesor Comercial role's own
+/// `comercial/comercial_service.dart`) for the Asesor Comercial role's own
 /// entities: asesores, visitas, cotizaciones, solicitudes de diseño. Reuses
 /// [AuthService.authHeaders] for the bearer token; this app has no
 /// state-management package, so results are returned directly rather than

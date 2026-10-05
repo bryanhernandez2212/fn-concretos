@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../widgets/info_pill.dart';
-import 'cotizacion.dart';
-import 'visita.dart';
+import 'cotizaciones/cotizacion.dart';
+import 'visitas/visita.dart';
 
 /// Color for a status pill shared across Visitas/Cotizaciones — covers
 /// every `estatus` string this role's entities can carry

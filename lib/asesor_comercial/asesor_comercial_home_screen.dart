@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import '../profile/profile_screen.dart';
 import '../widgets/bottom_nav_bar.dart';
 import 'asesor_comercial_service.dart';
-import 'comisiones_screen.dart';
-import 'cotizaciones_screen.dart';
-import 'visitas_screen.dart';
+import 'comisiones/comisiones_screen.dart';
+import 'cotizaciones/cotizaciones_screen.dart';
+import 'visitas/visitas_screen.dart';
 
 /// App shell for the Asesor Comercial role: Visitas, Cotizaciones,
 /// Comisiones and Perfil. There used to be an "Agenda" tab too, dropped

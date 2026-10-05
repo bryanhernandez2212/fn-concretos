@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'auth/splash_screen.dart';
-import 'deliveries/delivery_detail_screen.dart';
+import 'deliveries/detalle/delivery_detail_screen.dart';
 import 'deliveries/entregas_service.dart';
-import 'deliveries/navigation_live_update.dart';
+import 'deliveries/navegacion/navigation_live_update.dart';
 import 'notifications/notificaciones_screen.dart';
 import 'notifications/onesignal_service.dart';
 
@@ -44,7 +44,7 @@ Future<void> _handleNotificationClick(String? referenciaTipo, String? referencia
 }
 
 /// Deep-links the Android Live Update notification (see
-/// `deliveries/navigation_live_update.dart`) to that delivery's detail
+/// `deliveries/navegacion/navigation_live_update.dart`) to that delivery's detail
 /// screen — reconnecting straight into the live map/guidance session isn't
 /// attempted (uncertain whether the Navigation SDK can safely resume one),
 /// so this is as close as tapping the notification gets; "Regresar a la

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'auth_service.dart';
-import 'biometric_lock_screen.dart';
-import 'login_screen.dart';
+import 'biometria/biometric_lock_screen.dart';
+import 'login/login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});

@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import '../config/http_client.dart' as http;
 import '../auth/auth_service.dart';
 import '../config/api_config.dart';
 import 'notificacion.dart';

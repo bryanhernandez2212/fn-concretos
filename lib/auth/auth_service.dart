@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:http/http.dart' as http;
+import '../config/http_client.dart' as http;
 import '../config/api_config.dart';
 import '../notifications/onesignal_service.dart';
 
@@ -80,8 +80,8 @@ class AuthService {
   /// [_ensureFreshToken], so the choice sticks for the whole session.
   static bool _rememberSession = false;
 
-  /// Whether Face ID/Touch ID quick login (see `auth/biometric_service.dart`
-  /// and `auth/biometric_lock_screen.dart`) is turned on for this device.
+  /// Whether Face ID/Touch ID quick login (see `auth/biometria/biometric_service.dart`
+  /// and `auth/biometria/biometric_lock_screen.dart`) is turned on for this device.
   /// Only meaningful alongside a persisted refresh token — [restoreSession]
   /// is what loads this from storage, and only after successfully resuming
   /// a session, since there'd be nothing for it to gate otherwise.
@@ -262,8 +262,12 @@ class AuthService {
     if (accessToken == null) {
       throw AuthException('Respuesta de login sin token de acceso');
     }
+    // Without an expiry, _ensureFreshToken would refresh before every single
+    // request, so fall back to the JWT's own `exp` claim.
     final expiresIn = data['expiresIn'] as int?;
-    _accessTokenExpiresAt = expiresIn == null ? null : DateTime.now().add(Duration(seconds: expiresIn));
+    _accessTokenExpiresAt = expiresIn == null
+        ? _jwtExpiry(accessToken!)
+        : DateTime.now().add(Duration(seconds: expiresIn));
 
     // The refresh token rotates on every use (including background renewals
     // from _ensureFreshToken), so re-persist it here rather than only at
@@ -290,8 +294,36 @@ class AuthService {
     if (expiresAt != null && DateTime.now().isBefore(expiresAt.subtract(const Duration(seconds: 30)))) {
       return;
     }
-    final data = await _post('/auth/refresh', {'refreshToken': refreshToken});
-    await _setTokens(data);
+    // Parallel requests (e.g. `EntregasService.entregasDelDia`) can all find
+    // the token stale at once. The refresh token rotates on every use, so
+    // they must share one in-flight refresh instead of each sending the
+    // same (soon invalid) refresh token.
+    final inFlight = _refreshInFlight ??= () async {
+      try {
+        final data = await _post('/auth/refresh', {'refreshToken': refreshToken});
+        await _setTokens(data);
+      } finally {
+        _refreshInFlight = null;
+      }
+    }();
+    await inFlight;
+  }
+
+  static Future<void>? _refreshInFlight;
+
+  /// Reads the `exp` claim (seconds since epoch) off a JWT's payload, or null
+  /// if the token isn't a JWT or has no `exp`.
+  static DateTime? _jwtExpiry(String token) {
+    try {
+      final partes = token.split('.');
+      if (partes.length != 3) return null;
+      final payload = jsonDecode(utf8.decode(base64Url.decode(base64Url.normalize(partes[1]))));
+      final exp = (payload as Map<String, dynamic>)['exp'];
+      if (exp is! num) return null;
+      return DateTime.fromMillisecondsSinceEpoch(exp.toInt() * 1000);
+    } catch (_) {
+      return null;
+    }
   }
 
   /// `/auth/me` is the documented source of truth for who's logged in —

@@ -29,6 +29,12 @@ extension OrigenGpsInfo on OrigenGps {
     OrigenGps.samsara => 'Rastreo por Samsara',
   };
 
+  /// Short label for compact chips (e.g. `RutasActivasScreen`'s truck list).
+  String get etiqueta => switch (this) {
+    OrigenGps.appMovil => 'GPS móvil',
+    OrigenGps.samsara => 'Samsara',
+  };
+
   String get descripcion => switch (this) {
     OrigenGps.appMovil =>
       'Tu ubicación se envía desde este teléfono mientras la ruta está activa. Mantén la navegación abierta.',
