@@ -44,6 +44,9 @@ class AppColors {
   /// Warning / en mantenimiento / pendiente abierto / por vencer.
   static const warning = Color(0xFFFFA000);
 
+  /// Neutral status with no outcome yet (borrador / sin prefactura).
+  static const neutral = Color(0xFF9E9E9E);
+
   // ---------------------------------------------------------------------
   // Native launch screen
   // ---------------------------------------------------------------------

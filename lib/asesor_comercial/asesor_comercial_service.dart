@@ -124,6 +124,17 @@ class AsesorComercialService {
         .toList();
   }
 
+  /// `GET /pedidos?asesorId=` — unlike `/cotizaciones`, pedidos do filter
+  /// by asesor server-side.
+  static Future<List<Pedido>> misPedidos({required int asesorId, String? estatusGeneral}) async {
+    final params = {
+      'asesorId': '$asesorId',
+      if (estatusGeneral != null) 'estatusGeneral': estatusGeneral,
+    };
+    final data = await _get('/pedidos?${Uri(queryParameters: params).query}');
+    return (data as List<dynamic>).map((e) => Pedido.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
   static Future<Cotizacion> obtenerCotizacion(int id) async {
     final data = await _get('/cotizaciones/$id');
     return Cotizacion.fromJson(data as Map<String, dynamic>);

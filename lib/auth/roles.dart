@@ -31,6 +31,11 @@ const catalogoRoles = [
     nombre: 'Asesor Comercial',
     descripcion: 'App móvil de campo: agenda, visitas a obra y cotizaciones',
   ),
+  Rol(
+    id: 11,
+    nombre: 'Jefe de Planta',
+    descripcion: 'App móvil de planta: programación de pedidos, ollas y solicitudes de compra',
+  ),
 ];
 
 /// Roles this build has real mobile screens for. Both field operators ride

@@ -837,7 +837,8 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
           ),
         ),
         child: Stepper(
-          type: StepperType.vertical,
+          type: StepperType.horizontal,
+          elevation: 0,
           currentStep: _currentStep,
           onStepTapped: (step) => setState(() => _currentStep = step),
           onStepContinue: () {
@@ -914,93 +915,91 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
           },
           steps: [
             Step(
-              title: Text(
-                'Cliente y obra',
-                style: TextStyle(color: textColor, fontWeight: FontWeight.w700),
-              ),
+              title: const Text('Cliente', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
               isActive: _currentStep >= 0,
               state: _currentStep > 0 ? StepState.complete : StepState.indexed,
-              content: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (widget.origenFijo)
-                    _filaInfo(
-                      icon: Icons.business_outlined,
-                      texto: _clienteNombre ?? '',
-                      textColor: textColor,
-                      mutedColor: mutedColor,
-                      fillColor: fillColor,
-                    )
-                  else
+              content: Padding(
+                padding: const EdgeInsets.only(top: 16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (widget.origenFijo)
+                      _filaInfo(
+                        icon: Icons.business_outlined,
+                        texto: _clienteNombre ?? '',
+                        textColor: textColor,
+                        mutedColor: mutedColor,
+                        fillColor: fillColor,
+                      )
+                    else
+                      _filaSeleccionable(
+                        icon: Icons.business_outlined,
+                        texto: _clienteNombre,
+                        placeholder: 'Seleccionar cliente…',
+                        onTap: _elegirCliente,
+                        textColor: textColor,
+                        mutedColor: mutedColor,
+                        fillColor: fillColor,
+                      ),
+                    const SizedBox(height: 16),
+                    if (widget.origenFijo)
+                      _filaInfo(
+                        icon: Icons.location_on_outlined,
+                        texto:
+                            _obraNombre ??
+                            (_obraId != null
+                                ? 'Obra #$_obraId'
+                                : 'Sin obra específica'),
+                        textColor: _obraNombre == null && _obraId == null
+                            ? mutedColor
+                            : textColor,
+                        mutedColor: mutedColor,
+                        fillColor: fillColor,
+                      )
+                    else
+                      _filaSeleccionable(
+                        icon: Icons.location_on_outlined,
+                        texto: _obraNombre,
+                        placeholder: 'Sin obra específica',
+                        onTap: _clienteId == null ? null : _elegirObra,
+                        onClear: _obraNombre != null ? _quitarObra : null,
+                        textColor: textColor,
+                        mutedColor: mutedColor,
+                        fillColor: fillColor,
+                      ),
+                    const SizedBox(height: 16),
                     _filaSeleccionable(
-                      icon: Icons.business_outlined,
-                      texto: _clienteNombre,
-                      placeholder: 'Seleccionar cliente…',
-                      onTap: _elegirCliente,
+                      icon: Icons.person_outline,
+                      texto: _contactoConId(_contactoId)?.nombre,
+                      placeholder: 'Sin contacto específico',
+                      onTap: _clienteId == null ? null : _elegirContacto,
+                      onClear: _contactoId != null ? _quitarContacto : null,
                       textColor: textColor,
                       mutedColor: mutedColor,
                       fillColor: fillColor,
                     ),
-                  const SizedBox(height: 12),
-                  if (widget.origenFijo)
+                    const SizedBox(height: 16),
                     _filaInfo(
-                      icon: Icons.location_on_outlined,
-                      texto:
-                          _obraNombre ??
-                          (_obraId != null
-                              ? 'Obra #$_obraId'
-                              : 'Sin obra específica'),
-                      textColor: _obraNombre == null && _obraId == null
-                          ? mutedColor
-                          : textColor,
-                      mutedColor: mutedColor,
-                      fillColor: fillColor,
-                    )
-                  else
-                    _filaSeleccionable(
-                      icon: Icons.location_on_outlined,
-                      texto: _obraNombre,
-                      placeholder: 'Sin obra específica',
-                      onTap: _clienteId == null ? null : _elegirObra,
-                      onClear: _obraNombre != null ? _quitarObra : null,
+                      icon: Icons.badge_outlined,
+                      texto: _asesorNombre ?? 'Resolviendo…',
                       textColor: textColor,
                       mutedColor: mutedColor,
                       fillColor: fillColor,
                     ),
-                  const SizedBox(height: 12),
-                  _filaSeleccionable(
-                    icon: Icons.person_outline,
-                    texto: _contactoConId(_contactoId)?.nombre,
-                    placeholder: 'Sin contacto específico',
-                    onTap: _clienteId == null ? null : _elegirContacto,
-                    onClear: _contactoId != null ? _quitarContacto : null,
-                    textColor: textColor,
-                    mutedColor: mutedColor,
-                    fillColor: fillColor,
-                  ),
-                  const SizedBox(height: 12),
-                  _filaInfo(
-                    icon: Icons.badge_outlined,
-                    texto: _asesorNombre ?? 'Resolviendo…',
-                    textColor: textColor,
-                    mutedColor: mutedColor,
-                    fillColor: fillColor,
-                  ),
-                  const SizedBox(height: 12),
-                  _plantaField(textColor, mutedColor, fillColor),
-                ],
+                    const SizedBox(height: 16),
+                    _plantaField(textColor, mutedColor, fillColor),
+                  ],
+                ),
               ),
             ),
             Step(
-              title: Text(
-                'Condiciones comerciales',
-                style: TextStyle(color: textColor, fontWeight: FontWeight.w700),
-              ),
+              title: const Text('Comercial', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
               isActive: _currentStep >= 1,
               state: _currentStep > 1 ? StepState.complete : StepState.indexed,
               content: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const SizedBox(height: 16),
                   DropdownButtonFormField<String?>(
                     initialValue: _tipoServicio,
                     dropdownColor: AppColors.surfaceAlt(context),
@@ -1192,15 +1191,13 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
               ),
             ),
             Step(
-              title: Text(
-                'Productos',
-                style: TextStyle(color: textColor, fontWeight: FontWeight.w700),
-              ),
+              title: const Text('Productos', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
               isActive: _currentStep >= 2,
               state: _currentStep > 2 ? StepState.complete : StepState.indexed,
               content: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const SizedBox(height: 16),
                   Row(
                     children: [
                       const Spacer(),
@@ -1273,14 +1270,12 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
               ),
             ),
             Step(
-              title: Text(
-                'Resumen',
-                style: TextStyle(color: textColor, fontWeight: FontWeight.w700),
-              ),
+              title: const Text('Resumen', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
               isActive: _currentStep >= 3,
               content: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const SizedBox(height: 16),
                   TextField(
                     controller: _observacionesController,
                     maxLines: 3,
@@ -1334,7 +1329,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                     porcentajeDescuento:
                         double.tryParse(_descuentoController.text.trim()) ?? 0,
                     requiereFactura: _requiereFactura,
-                    porcentajeIva: _plantaSeleccionada?.porcentajeIva ?? 0.16,
+                    porcentajeIva: _plantaSeleccionada?.porcentajeIva ?? 16,
                     textColor: textColor,
                     mutedColor: mutedColor,
                     cardColor: cardColor,

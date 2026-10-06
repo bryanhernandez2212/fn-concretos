@@ -3,6 +3,7 @@ import '../config/http_client.dart' as http;
 import '../auth/auth_service.dart';
 import '../config/api_config.dart';
 import 'comision.dart';
+import 'facturacion.dart';
 import 'orden_compra.dart';
 
 /// Talks to the real fnconcretos `finanzas` sandbox (`finanzas-service`,
@@ -71,6 +72,92 @@ class FinanzasService {
   static Future<OrdenCompra> rechazarOrdenCompra(int id, {required String motivo}) async {
     final data = await _patch('/ordenes-compra/$id/rechazar', {'motivoRechazo': motivo});
     return OrdenCompra.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// `GET /pagos/resumen-por-pedido` — amount paid per pedido. A pedido is
+  /// "Pagado" once this covers its `montoTotal` (the web's rule, ±0.01).
+  static Future<Map<int, double>> pagadoPorPedido(List<int> pedidoIds) async {
+    if (pedidoIds.isEmpty) return {};
+    final query = Uri(queryParameters: {'pedidoIds': pedidoIds.map((id) => '$id').toList()}).query;
+    final data = await _get('/pagos/resumen-por-pedido?$query');
+    return {
+      for (final e in data as List<dynamic>)
+        ((e as Map<String, dynamic>)['pedidoId'] as num).toInt(): (e['montoPagado'] as num?)?.toDouble() ?? 0,
+    };
+  }
+
+  /// `GET /facturas/resumen-por-pedido` — backs the "Facturación" badge.
+  static Future<Map<int, PedidoFacturacionResumen>> facturacionPorPedido(List<int> pedidoIds) async {
+    if (pedidoIds.isEmpty) return {};
+    final query = Uri(queryParameters: {'pedidoIds': pedidoIds.map((id) => '$id').toList()}).query;
+    final data = await _get('/facturas/resumen-por-pedido?$query');
+    final resumenes = (data as List<dynamic>).map((e) => PedidoFacturacionResumen.fromJson(e as Map<String, dynamic>));
+    return {for (final r in resumenes) r.pedidoId: r};
+  }
+
+  static Future<List<Prefactura>> prefacturasDePedido(int pedidoId) async {
+    final data = await _get('/prefacturas?pedidoId=$pedidoId');
+    return (data as List<dynamic>).map((e) => Prefactura.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  /// `POST /prefacturas/generar-por-pedido/{pedidoId}` — the whole pedido's
+  /// real amount; links its delivered/signed remisiones automatically.
+  static Future<Prefactura> generarPrefacturaPedido(int pedidoId) async {
+    final data = await _post('/prefacturas/generar-por-pedido/$pedidoId');
+    return Prefactura.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// Public link of a prefactura, the printable page the web opens with
+  /// "Ver prefactura" (`https://fnconcretos.app/prefactura/{token}`).
+  static Future<Uri> ligaPublicaPrefactura(int prefacturaId) async {
+    final data = await _post('/prefacturas/$prefacturaId/token-compartido');
+    final token = (data as Map<String, dynamic>)['token'] as String;
+    return Uri.parse('https://fnconcretos.app/prefactura/$token');
+  }
+
+  /// `POST /pagos` for an anticipo registered while converting a cotización,
+  /// with the same body the web sends (`condicionPedido: 'anticipo'`).
+  static Future<void> registrarAnticipo({
+    required int clienteId,
+    required int pedidoId,
+    required int cotizacionId,
+    required double monto,
+    required String metodoPago,
+    String? cuentaDestino,
+    required bool requiereFactura,
+    int? vendedorId,
+  }) async {
+    final ahora = DateTime.now();
+    String dos(int n) => n.toString().padLeft(2, '0');
+    final fechaPago =
+        '${ahora.year}-${dos(ahora.month)}-${dos(ahora.day)}T${dos(ahora.hour)}:${dos(ahora.minute)}:${dos(ahora.second)}';
+    await _post('/pagos', {
+      'clienteId': clienteId,
+      'fechaPago': fechaPago,
+      'monto': monto,
+      'metodoPago': metodoPago,
+      if (cuentaDestino != null) 'cuentaDestino': cuentaDestino,
+      'requiereFactura': requiereFactura,
+      'condicionPedido': 'anticipo',
+      'pedidoId': pedidoId,
+      'cotizacionId': cotizacionId,
+      if (vendedorId != null) 'vendedorId': vendedorId,
+    });
+  }
+
+  static Future<dynamic> _post(String path, [Map<String, dynamic>? body]) async {
+    final headers = await AuthService.authHeaders();
+    final http.Response response;
+    try {
+      response = await http.post(
+        Uri.parse('$_baseUrl$path'),
+        headers: {...headers, 'Content-Type': 'application/json'},
+        body: body == null ? null : jsonEncode(body),
+      );
+    } catch (_) {
+      throw AuthException('No se pudo conectar con el servidor');
+    }
+    return _handleResponse(response);
   }
 
   static Future<dynamic> _patch(String path, [Map<String, dynamic>? body]) async {

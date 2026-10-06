@@ -198,6 +198,14 @@ class ComercialService {
     });
   }
 
+  /// `POST /pedidos/{id}/enviar-whatsapp-seguimiento` — sends the tracking
+  /// link through the approved WhatsApp template. Returns the phone it went
+  /// to, when the backend reports one.
+  static Future<String?> enviarSeguimientoWhatsApp(int pedidoId) async {
+    final data = await _post('/pedidos/$pedidoId/enviar-whatsapp-seguimiento', const {});
+    return data is Map<String, dynamic> ? data['telefono'] as String? : null;
+  }
+
   static Future<dynamic> _get(String path) async {
     final headers = await AuthService.authHeaders();
     final http.Response response;

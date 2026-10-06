@@ -83,7 +83,7 @@ class _ObraPickerScreenState extends State<ObraPickerScreen> {
               controller: _queryController,
               style: TextStyle(color: textColor),
               textInputAction: TextInputAction.search,
-              onSubmitted: (_) => _buscar(),
+              onChanged: (_) => _buscar(),
               decoration: InputDecoration(
                 hintText: 'Buscar obra por nombre',
                 hintStyle: TextStyle(color: mutedColor),

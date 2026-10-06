@@ -4,9 +4,10 @@ import '../widgets/bottom_nav_bar.dart';
 import 'asesor_comercial_service.dart';
 import 'comisiones/comisiones_screen.dart';
 import 'cotizaciones/cotizaciones_screen.dart';
+import 'pedidos/pedidos_screen.dart';
 import 'visitas/visitas_screen.dart';
 
-/// App shell for the Asesor Comercial role: Visitas, Cotizaciones,
+/// App shell for the Asesor Comercial role: Visitas, Cotizaciones, Pedidos,
 /// Comisiones and Perfil. There used to be an "Agenda" tab too, dropped
 /// since there was nothing to do there — no screen ever created an `AgendaActividad`, the
 /// tab only ever listed/marked existing ones (and nothing populated it
@@ -35,7 +36,7 @@ class _AsesorComercialHomeScreenState extends State<AsesorComercialHomeScreen> {
   bool _navCompact = false;
   bool _mostrarComisiones = true;
 
-  static const _comisionesIndex = 2;
+  static const _comisionesIndex = 3;
 
   @override
   void initState() {
@@ -64,6 +65,7 @@ class _AsesorComercialHomeScreenState extends State<AsesorComercialHomeScreen> {
   List<Widget> get _pages => [
     const VisitasScreen(),
     const CotizacionesScreen(),
+    const PedidosScreen(),
     if (_mostrarComisiones) const ComisionesScreen(),
     const ProfileScreen(),
   ];
@@ -122,6 +124,7 @@ class _AsesorComercialHomeScreenState extends State<AsesorComercialHomeScreen> {
         items: [
           const NavItem(icon: Icons.place_outlined, selectedIcon: Icons.place, label: 'Visitas'),
           const NavItem(icon: Icons.receipt_long_outlined, selectedIcon: Icons.receipt_long, label: 'Cotizaciones'),
+          const NavItem(icon: Icons.assignment_outlined, selectedIcon: Icons.assignment, label: 'Pedidos'),
           if (_mostrarComisiones)
             const NavItem(
               icon: Icons.account_balance_wallet_outlined,

@@ -4,9 +4,7 @@ class Pedido {
   final int id;
   final String folio;
 
-  /// The cotización this pedido was converted from, if any — the only
-  /// place `formaPago` (efectivo/factura) lives; `PedidoResponse` doesn't
-  /// echo it.
+  /// The cotización this pedido was converted from, if any.
   final int? cotizacionId;
   final int clienteId;
   final int obraId;
@@ -18,6 +16,10 @@ class Pedido {
   final double volumenPendienteM3;
   final String condicionPago;
   final int? diasCredito;
+
+  /// `efectivo`/`transferencia`/`tarjeta_debito`/`tarjeta_credito` (the
+  /// web's catalog).
+  final String? formaPago;
   final String? fechaProgramada;
   final String estatusPagoAutorizacion;
   final String estatusLogisticaAutorizacion;
@@ -29,6 +31,9 @@ class Pedido {
   /// place `PedidoResponse` carries money: there's no pedido-level total
   /// field, so [montoTotal] sums these.
   final List<PedidoItem> productos;
+
+  /// `PedidoResponse.montoTotal`, when the backend sends it.
+  final double? _montoTotal;
 
   const Pedido({
     required this.id,
@@ -44,17 +49,20 @@ class Pedido {
     required this.volumenPendienteM3,
     required this.condicionPago,
     required this.diasCredito,
+    this.formaPago,
     required this.fechaProgramada,
     required this.estatusPagoAutorizacion,
     required this.estatusLogisticaAutorizacion,
     required this.estatusGeneral,
     required this.motivoRechazo,
     this.productos = const [],
-  });
+    double? montoTotal,
+  }) : _montoTotal = montoTotal;
 
-  /// Null when no partida carries a `precioTotal` — "no amounts on file",
-  /// which is different from a genuine $0 pedido.
+  /// The backend's `montoTotal`, else the sum of the partidas. Null when
+  /// neither is on file, which is different from a genuine $0 pedido.
   double? get montoTotal {
+    if (_montoTotal != null) return _montoTotal;
     final conPrecio = productos.where((p) => p.precioTotal != null);
     if (conPrecio.isEmpty) return null;
     return conPrecio.fold<double>(0, (sum, p) => sum + p.precioTotal!);
@@ -75,6 +83,8 @@ class Pedido {
       volumenPendienteM3: (json['volumenPendienteM3'] as num?)?.toDouble() ?? 0,
       condicionPago: json['condicionPago'] as String? ?? '',
       diasCredito: _parseIntOrNull(json['diasCredito']),
+      formaPago: json['formaPago'] as String?,
+      montoTotal: (json['montoTotal'] as num?)?.toDouble(),
       fechaProgramada: json['fechaProgramada'] as String?,
       estatusPagoAutorizacion: json['estatusPagoAutorizacion'] as String? ?? '',
       estatusLogisticaAutorizacion: json['estatusLogisticaAutorizacion'] as String? ?? '',

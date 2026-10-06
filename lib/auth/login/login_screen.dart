@@ -5,6 +5,7 @@ import '../../asesor_comercial/asesor_comercial_service.dart';
 import '../../comercial/comercial_service.dart';
 import '../../direccion/direccion_home_screen.dart';
 import '../../home/home_screen.dart';
+import '../../jefe_planta/jefe_planta_home_screen.dart';
 import '../auth_service.dart';
 import '../recuperar_password/forgot_password_screen.dart';
 import 'mfa_verification_dialog.dart';
@@ -16,6 +17,10 @@ Widget destinationForSession() {
     return const HomeScreen();
   } else if (AuthService.permisos.contains(permisoAutorizarCredito)) {
     return const DireccionHomeScreen();
+  } else if (AuthService.permisos.contains(permisoAutorizarLogistica)) {
+    // Jefe de Planta. Checked after Dirección so a Dirección account that
+    // also holds this permission keeps its own shell.
+    return const JefePlantaHomeScreen();
   } else if (AuthService.permisos.contains(permisoAdministrarAgenda)) {
     return const AsesorComercialHomeScreen();
   } else {

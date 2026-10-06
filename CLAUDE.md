@@ -37,7 +37,8 @@ The app routes by role/permission and talks to six real backend microservices. A
 `lib/` is organized by feature folder. Large features split into sub-area folders:
 
 - `direccion/`: `autorizaciones/`, `pedidos/`, `rutas/`, `live_tracking/`, `ordenes_compra/`
-- `asesor_comercial/`: `visitas/`, `cotizaciones/`, `clientes_obras/`, `comisiones/`, `solicitudes_diseno/`
+- `asesor_comercial/`: `visitas/`, `cotizaciones/`, `pedidos/`, `clientes_obras/`, `comisiones/`, `solicitudes_diseno/`
+- `jefe_planta/`: `programacion/`, `ollas/`, `solicitudes/`
 - `deliveries/`: `listado/`, `detalle/`, `evidencias/`, `pruebas_campo/`, `navegacion/`
 - `auth/`: `login/`, `recuperar_password/`, `biometria/`
 
@@ -59,9 +60,10 @@ Large screens keep their State in the screen file. Self-contained UI moves into 
 - Routing, in order:
   1. A role in `roles.dart`'s `rolesConAppMovil` (`Operador de Olla`/`Operador de Bomba`) goes to `home/HomeScreen`: Entregas / Vehículo / Perfil.
   2. The permission `pedidos.autorizar_credito` goes to `DireccionHomeScreen`: Autorizaciones / Compras (only with `ordenes_compra.autorizar`) / Rutas / Perfil.
-  3. The permission `agenda.administrar` goes to `AsesorComercialHomeScreen`: Visitas / Cotizaciones / Comisiones (hidden if `miAsesor()` returns a 404) / Perfil.
-  4. Everyone else goes to `RoleUnavailableScreen`.
-- Dirección and Asesor routing is by **permission, not role name** on purpose, because the backend can move permissions between roles. `catalogoRoles` in `roles.dart` only mirrors role names and descriptions for display.
+  3. The permission `pedidos.autorizar_logistica` goes to `JefePlantaHomeScreen` (role "Jefe de Planta", rol_id 11): Programación / Ollas / Solicitudes / Perfil. It's checked after Dirección on purpose.
+  4. The permission `agenda.administrar` goes to `AsesorComercialHomeScreen`: Visitas / Cotizaciones / Pedidos / Comisiones (hidden if `miAsesor()` returns a 404) / Perfil.
+  5. Everyone else goes to `RoleUnavailableScreen`.
+- Dirección, Jefe de Planta and Asesor routing is by **permission, not role name** on purpose, because the backend can move permissions between roles. `catalogoRoles` in `roles.dart` only mirrors role names and descriptions for display.
 - The shells keep every tab mounted and cross-fade between them (`AnimatedOpacity`+`AnimatedScale`, not `IndexedStack`). Scrollable tabs pad by `BottomNavBar.clearance(context)`.
 - Top header rows: a tab's own action button (a `HeaderIconButton`) goes **before** the `NotificationBellButton`. Dirección hides that header row on Rutas, because Rutas has its own `AppBar`.
 
@@ -89,7 +91,9 @@ Services import `config/http_client.dart` `as http`, never `package:http` direct
   - `plantaId` comes from the obra, then from the asesor, then from a manual pick.
   - The discount field is always shown. The backend enforces the limits.
   - Editing sends a full `PUT` of the cotización.
-  - Converting to a pedido pops back with a snackbar. It doesn't open Dirección's `PedidoDetailScreen`.
+  - Pedidos are only created by converting a `listo` cotización (there is no `POST /pedidos`). `convertir_pedido_sheet.dart` mirrors the web's modal: fecha programada, `condicionPago` ∈ `liquidado`/`anticipo`/`credito`/`liquidar_obra`, días de crédito only for `credito`, and for `anticipo` an optional payment sent right after as finanzas `POST /pagos` (if that fails the pedido stands and the user is told to register it in Pagos). On success it opens the new pedido, like the web.
+  - The Pedidos tab mirrors the web's Pedidos page: `GET /pedidos?asesorId=`, filters Todos / Pendientes (any of the three estatus contains `pendiente`) / En proceso (`parcial`/`programado`/`proceso`) / Completados (`completo`), search by folio/cliente/obra. "Estatus de pago" comes from finanzas `GET /pagos/resumen-por-pedido` (pagado once it covers `montoTotal`) and "Facturación" from `GET /facturas/resumen-por-pedido`; both are best-effort, and the badge is skipped if they fail. Detail actions are only the web's: Enviar seguimiento por WhatsApp, Generar prefactura (once something was delivered and no `borrador`/`enviada`/`confirmada_cliente` prefactura exists) and Ver prefactura (opens `https://fnconcretos.app/prefactura/{token}`, the printable public page).
+  - The web panel's JS bundle (`https://fnconcretos.app/assets/index-*.js`) is the reference for catalogs, labels and status rules. Copy from it rather than guessing.
   - Obra/visita creation flow: `ClientePickerScreen`, then `ObraFormScreen` (interactive pin picker; native reverse-geocode through the `geocoding` package, not the Google Geocoding API), then `VisitaFormScreen`. "Al instante" chains into check-in; "Programar" doesn't.
   - Check-in photos upload through **operaciones'** presigned URL, because comercial has no upload endpoint.
   - Obra maps stay in the app. An external "open in Google Maps" hand-off was tried and rejected.
@@ -104,6 +108,8 @@ Services import `config/http_client.dart` `as http`, never `package:http` direct
 - **administracion** (`administracion/administracion_service.dart`) provides `GET /empleados/{id}` for profile data. Photo updates do a full `PUT /empleados/{id}`, round-tripping the other fields. It has its own presigned-upload endpoint.
 
 ### Feature notes
+
+- **Jefe de Planta** is **design-only**: every screen reads from the in-memory `jefe_planta/jefe_planta_mock.dart` (a "datos de ejemplo" banner says so), with no HTTP. Its DTO field names already mirror the real backend: finanzas `solicitudes-compra`, operaciones `VehiculoResponse` (moving an olla = `PUT /vehiculos/{id}` with a new `plantaAsignadaId`) and `programacion-produccion`. When endpoints arrive, swap the mock service for real calls. The jefe's planta is `plantaId` from `GET /empleados/{idEmpleado}` (mocked as `miPlantaId = 1`). The role also holds `ordenes_compra.crear`, `remisiones.crear` and `vehiculos.reportar_pendiente`. Still unknown: the dosificador list and the source of "por programar" pedidos.
 
 - **Deliveries**:
   - How `EntregasService.entregasDelDia(fecha:)` builds the list:

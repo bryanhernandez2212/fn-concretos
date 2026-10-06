@@ -104,7 +104,7 @@ double fleteVacioEstimado(List<PartidaControllers> items, Planta? planta) {
 /// selections) and calls [onChanged] so the owning screen can `setState` —
 /// the running estimate/summary depend on it. [onQuitar] null hides the
 /// remove button (the last remaining partida can't be removed).
-class PartidaCard extends StatelessWidget {
+class PartidaCard extends StatefulWidget {
   final int index;
   final PartidaControllers item;
   final List<Producto> productos;
@@ -133,155 +133,290 @@ class PartidaCard extends StatelessWidget {
   });
 
   @override
+  State<PartidaCard> createState() => _PartidaCardState();
+}
+
+class _PartidaCardState extends State<PartidaCard> {
+  bool _expanded = true;
+
+  @override
   Widget build(BuildContext context) {
-    return FieldGroup(
-      cardColor: cardColor,
-      borderColor: borderColor,
-      expand: true,
+    final item = widget.item;
+    final productos = widget.productos;
+    final index = widget.index;
+    final textColor = widget.textColor;
+    final mutedColor = widget.mutedColor;
+    final cardColor = widget.cardColor;
+    final borderColor = widget.borderColor;
+    final fillColor = widget.fillColor;
+    
+    // Resumen para el header cuando está colapsado
+    String tituloResumen = 'Detalles de la partida';
+    if (!_expanded) {
+      if (item.tipoLinea == tipoLineaProducto) {
+        if (item.productoId != null) {
+          final p = productos.where((prod) => prod.id == item.productoId).firstOrNull;
+          tituloResumen = p?.nombre ?? 'Producto';
+        } else {
+          tituloResumen = 'Producto (sin seleccionar)';
+        }
+      } else {
+        tituloResumen = tipoLineaLabel(item.tipoLinea);
+      }
+      final vol = item.volumen.text.trim();
+      if (vol.isNotEmpty) tituloResumen += ' - $vol m³';
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '${index + 1}. ${tipoLineaLabel(item.tipoLinea)}',
-                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: textColor),
+          // Header (Tocable para colapsar/expandir)
+          InkWell(
+            onTap: () => setState(() => _expanded = !_expanded),
+            borderRadius: BorderRadius.vertical(
+              top: const Radius.circular(14),
+              bottom: _expanded ? Radius.zero : const Radius.circular(14),
+            ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: fillColor.withOpacity(0.5),
+                borderRadius: BorderRadius.vertical(
+                  top: const Radius.circular(14),
+                  bottom: _expanded ? Radius.zero : const Radius.circular(14),
                 ),
+                border: _expanded ? Border(bottom: BorderSide(color: borderColor)) : null,
               ),
-              if (onQuitar != null)
-                IconButton(
-                  icon: const Icon(Icons.close, size: 18),
-                  color: mutedColor,
-                  onPressed: onQuitar,
-                  visualDensity: VisualDensity.compact,
-                ),
-            ],
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.accent.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(
+                      '${index + 1}',
+                      style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.accent, fontSize: 13),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      tituloResumen,
+                      style: TextStyle(fontWeight: FontWeight.w700, color: textColor, fontSize: 14),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (!_expanded) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      '\$${importeEstimado(item).toStringAsFixed(2)}',
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.accent),
+                    ),
+                  ],
+                  const SizedBox(width: 8),
+                  Icon(
+                    _expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                    color: mutedColor,
+                  ),
+                  if (widget.onQuitar != null) ...[
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 20),
+                      color: Colors.redAccent,
+                      onPressed: widget.onQuitar,
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: [tipoLineaProducto, tipoLineaBombeo, tipoLineaServicio].map((tipo) {
-              final seleccionado = item.tipoLinea == tipo;
-              return ChoiceChip(
-                label: Text(tipoLineaLabel(tipo)),
-                selected: seleccionado,
-                onSelected: (_) {
-                  item.tipoLinea = tipo;
-                  if (tipo != tipoLineaProducto) item.productoId = null;
-                  onChanged();
-                },
-                selectedColor: AppColors.accent,
-                labelStyle: TextStyle(fontWeight: FontWeight.w600, color: seleccionado ? Colors.black : textColor),
-                backgroundColor: fillColor,
-                side: BorderSide.none,
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 12),
-          if (item.tipoLinea == tipoLineaProducto) ...[
-            if (productos.isNotEmpty)
-              DropdownButtonFormField<int?>(
-                initialValue: item.productoId,
-                dropdownColor: AppColors.surfaceAlt(context),
-                style: TextStyle(color: textColor, fontSize: 14.5),
-                decoration: cotizacionFieldDecoration('Seleccionar producto…', mutedColor, fillColor),
-                items: productos
-                    .map(
-                      (p) => DropdownMenuItem(
-                        value: p.id,
-                        child: Text(p.nombre, overflow: TextOverflow.ellipsis),
+          
+          // Body & Footer se ocultan si está colapsado
+          if (_expanded) ...[
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Selector de Tipo
+                  DropdownButtonFormField<String>(
+                    value: item.tipoLinea,
+                    dropdownColor: AppColors.surfaceAlt(context),
+                    style: TextStyle(color: textColor, fontSize: 14.5, fontWeight: FontWeight.w600),
+                    icon: Icon(Icons.keyboard_arrow_down, color: mutedColor),
+                    decoration: cotizacionFieldDecoration('Tipo de Partida', mutedColor, fillColor).copyWith(
+                      labelText: 'Tipo de Partida',
+                      labelStyle: TextStyle(color: mutedColor, fontSize: 13),
+                      floatingLabelBehavior: FloatingLabelBehavior.always,
+                      prefixIcon: Icon(Icons.category_outlined, color: mutedColor, size: 20),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                    items: [tipoLineaProducto, tipoLineaBombeo, tipoLineaServicio]
+                        .map((tipo) => DropdownMenuItem(
+                              value: tipo,
+                              child: Text(tipoLineaLabel(tipo)),
+                            ))
+                        .toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        item.tipoLinea = value;
+                        if (value != tipoLineaProducto) item.productoId = null;
+                        widget.onChanged();
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  if (item.tipoLinea == tipoLineaProducto) ...[
+                    if (productos.isNotEmpty)
+                      DropdownButtonFormField<int?>(
+                        initialValue: item.productoId,
+                        dropdownColor: AppColors.surfaceAlt(context),
+                        style: TextStyle(color: textColor, fontSize: 14.5, fontWeight: FontWeight.w600),
+                        icon: Icon(Icons.keyboard_arrow_down, color: mutedColor),
+                        decoration: cotizacionFieldDecoration('Seleccionar producto…', mutedColor, fillColor).copyWith(
+                          labelText: 'Producto',
+                          labelStyle: TextStyle(color: mutedColor, fontSize: 13),
+                          floatingLabelBehavior: FloatingLabelBehavior.always,
+                          prefixIcon: Icon(Icons.inventory_2_outlined, color: mutedColor, size: 20),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        ),
+                        items: productos
+                            .map((p) => DropdownMenuItem(value: p.id, child: Text(p.nombre, overflow: TextOverflow.ellipsis)))
+                            .toList(),
+                        onChanged: widget.onProductoSeleccionado,
+                      )
+                    else
+                      TextField(
+                        keyboardType: TextInputType.number,
+                        style: TextStyle(color: textColor),
+                        decoration: cotizacionFieldDecoration('Producto (ID) — no se pudo cargar el catálogo', mutedColor, fillColor),
+                        onChanged: (value) {
+                          item.productoId = int.tryParse(value.trim());
+                          widget.onChanged();
+                        },
                       ),
-                    )
-                    .toList(),
-                onChanged: onProductoSeleccionado,
-              )
-            else
-              TextField(
-                keyboardType: TextInputType.number,
-                style: TextStyle(color: textColor),
-                decoration: cotizacionFieldDecoration(
-                  'Producto (ID) — no se pudo cargar el catálogo',
-                  mutedColor,
-                  fillColor,
-                ),
-                onChanged: (value) {
-                  item.productoId = int.tryParse(value.trim());
-                  onChanged();
-                },
-              ),
-            const SizedBox(height: 12),
-          ],
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: item.volumen,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  style: TextStyle(color: textColor),
-                  onChanged: (_) => onChanged(),
-                  decoration: cotizacionFieldDecoration(
-                    item.tipoLinea == tipoLineaProducto ? 'Volumen (m³)' : 'Volumen (m³) — opcional',
-                    mutedColor,
-                    fillColor,
+                    const SizedBox(height: 16),
+                  ],
+                  
+                  TextField(
+                    controller: item.volumen,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
+                    onChanged: (_) => widget.onChanged(),
+                    decoration: cotizacionFieldDecoration(
+                      item.tipoLinea == tipoLineaProducto ? 'Volumen (m³)' : 'Volumen (opc)',
+                      mutedColor,
+                      fillColor,
+                    ).copyWith(
+                      labelText: 'Volumen',
+                      labelStyle: TextStyle(color: mutedColor, fontSize: 13),
+                      floatingLabelBehavior: FloatingLabelBehavior.always,
+                      prefixIcon: Icon(Icons.water_drop_outlined, color: mutedColor, size: 18),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
                   ),
-                ),
+                  
+                  if (item.tipoLinea == tipoLineaBombeo) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'Sin volumen, se usa la suma de los productos.',
+                      style: TextStyle(fontSize: 11.5, color: mutedColor, fontStyle: FontStyle.italic),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  
+                  TextField(
+                    controller: item.precio,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
+                    onChanged: (_) => widget.onChanged(),
+                    decoration: cotizacionFieldDecoration('Precio unitario', mutedColor, fillColor).copyWith(
+                      labelText: 'Precio Unitario',
+                      labelStyle: TextStyle(color: mutedColor, fontSize: 13),
+                      floatingLabelBehavior: FloatingLabelBehavior.always,
+                      prefixIcon: Icon(Icons.attach_money_outlined, color: mutedColor, size: 18),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  TextField(
+                    controller: item.descripcion,
+                    style: TextStyle(color: textColor),
+                    decoration: cotizacionFieldDecoration(
+                      item.tipoLinea == tipoLineaProducto ? 'Descripción (opcional)' : 'Descripción (ej. Bombeo)',
+                      mutedColor,
+                      fillColor,
+                    ).copyWith(
+                      labelText: 'Descripción',
+                      labelStyle: TextStyle(color: mutedColor, fontSize: 13),
+                      floatingLabelBehavior: FloatingLabelBehavior.always,
+                      prefixIcon: Icon(Icons.description_outlined, color: mutedColor, size: 18),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  TextField(
+                    controller: item.descuentoLinea,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
+                    onChanged: (_) => widget.onChanged(),
+                    decoration: cotizacionFieldDecoration('% Desc.', mutedColor, fillColor).copyWith(
+                      labelText: 'Descuento',
+                      labelStyle: TextStyle(color: mutedColor, fontSize: 13),
+                      floatingLabelBehavior: FloatingLabelBehavior.always,
+                      prefixIcon: Icon(Icons.percent_outlined, color: mutedColor, size: 18),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: item.precio,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  style: TextStyle(color: textColor),
-                  onChanged: (_) => onChanged(),
-                  decoration: cotizacionFieldDecoration('Precio unitario', mutedColor, fillColor),
-                ),
+            ),
+            
+            // Footer
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: AppColors.accent.withOpacity(0.06),
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(14)),
+                border: Border(top: BorderSide(color: borderColor)),
               ),
-            ],
-          ),
-          if (item.tipoLinea == tipoLineaBombeo) ...[
-            const SizedBox(height: 4),
-            Text(
-              'Si no capturas el volumen, se autocompleta con la suma de las partidas de producto.',
-              style: TextStyle(fontSize: 11.5, color: mutedColor),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Subtotal Partida',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: textColor),
+                  ),
+                  Text(
+                    '\$${importeEstimado(item).toStringAsFixed(2)}',
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.accent),
+                  ),
+                ],
+              ),
             ),
           ],
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: TextField(
-                  controller: item.descripcion,
-                  style: TextStyle(color: textColor),
-                  decoration: cotizacionFieldDecoration(
-                    item.tipoLinea == tipoLineaProducto ? 'Descripción (opcional)' : 'Descripción (ej. Bombeo)',
-                    mutedColor,
-                    fillColor,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 2,
-                child: TextField(
-                  controller: item.descuentoLinea,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  style: TextStyle(color: textColor),
-                  onChanged: (_) => onChanged(),
-                  decoration: cotizacionFieldDecoration('% Desc.', mutedColor, fillColor),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              'Importe estimado: \$${importeEstimado(item).toStringAsFixed(2)}',
-              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: mutedColor),
-            ),
-          ),
         ],
       ),
     );
@@ -297,6 +432,9 @@ class ResumenCotizacionCard extends StatelessWidget {
   final double fleteVacio;
   final double porcentajeDescuento;
   final bool requiereFactura;
+
+  /// A percentage (`16` = 16 %), as `Planta.porcentajeIva` comes from the
+  /// backend and as the web uses it.
   final double porcentajeIva;
   final Color textColor;
   final Color mutedColor;
@@ -311,7 +449,7 @@ class ResumenCotizacionCard extends StatelessWidget {
     required this.fleteVacio,
     required this.porcentajeDescuento,
     required this.requiereFactura,
-    this.porcentajeIva = 0.16,
+    this.porcentajeIva = 16,
     required this.textColor,
     required this.mutedColor,
     required this.cardColor,
@@ -325,7 +463,7 @@ class ResumenCotizacionCard extends StatelessWidget {
     final descuento = subtotalProductos * (porcentajeDescuento / 100);
     final subtotalConDescuento = subtotal - descuento;
     
-    final iva = requiereFactura ? subtotalConDescuento * porcentajeIva : 0.0;
+    final iva = requiereFactura ? subtotalConDescuento * (porcentajeIva / 100) : 0.0;
     final total = subtotalConDescuento + iva;
 
     Widget renglon(String label, double valor, {bool negativo = false}) {
@@ -362,7 +500,7 @@ class ResumenCotizacionCard extends StatelessWidget {
           renglon('Servicios adicionales', subtotalServicios),
           renglon('Flete / Vacío estimado', fleteVacio),
           if (porcentajeDescuento > 0) renglon('Descuento ($porcentajeDescuento%)', descuento, negativo: true),
-          if (requiereFactura) renglon('IVA (${(porcentajeIva * 100).toStringAsFixed(0)}%)', iva),
+          if (requiereFactura) renglon('IVA (${porcentajeIva.toStringAsFixed(porcentajeIva == porcentajeIva.roundToDouble() ? 0 : 2)}%)', iva),
           const Divider(height: 20),
           Row(
             children: [

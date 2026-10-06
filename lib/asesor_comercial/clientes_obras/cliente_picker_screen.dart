@@ -24,6 +24,12 @@ class _ClientePickerScreenState extends State<ClientePickerScreen> {
   bool _buscoAlMenosUnaVez = false;
 
   @override
+  void initState() {
+    super.initState();
+    _buscar();
+  }
+
+  @override
   void dispose() {
     _queryController.dispose();
     super.dispose();
@@ -66,7 +72,7 @@ class _ClientePickerScreenState extends State<ClientePickerScreen> {
               controller: _queryController,
               style: TextStyle(color: textColor),
               textInputAction: TextInputAction.search,
-              onSubmitted: (_) => _buscar(),
+              onChanged: (_) => _buscar(),
               decoration: InputDecoration(
                 hintText: 'Buscar por nombre o número de cliente',
                 hintStyle: TextStyle(color: mutedColor),

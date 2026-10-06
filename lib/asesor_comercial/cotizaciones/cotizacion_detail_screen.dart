@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:intl/intl.dart';
 import '../../auth/auth_service.dart';
 import '../../catalogo/catalogo_service.dart';
 import '../../catalogo/producto.dart';
@@ -11,6 +10,8 @@ import '../../widgets/app_feedback.dart';
 import '../../widgets/field_group.dart';
 import '../asesor_comercial_service.dart';
 import '../asesor_comercial_widgets.dart';
+import '../pedidos/pedido_asesor_detail_screen.dart';
+import 'convertir_pedido_sheet.dart';
 import 'cotizacion.dart';
 import 'cotizacion_form_screen.dart';
 
@@ -172,32 +173,23 @@ class _CotizacionDetailScreenState extends State<CotizacionDetailScreen> {
     }
   }
 
+  /// Like the web, a successful conversion lands on the new pedido; the
+  /// cotizaciones list still gets `true` so it refreshes.
   Future<void> _convertirAPedido() async {
-    final resultado = await showDialog<_ConversionInput>(
-      context: context,
-      builder: (context) => _ConvertirPedidoDialog(fechaSugerida: DateTime.now().add(const Duration(days: 1))),
-    );
-    if (resultado == null) return;
-
-    setState(() => _procesando = true);
-    try {
-      final pedido = await AsesorComercialService.convertirAPedido(
-        _cotizacion.id,
-        fechaProgramada: resultado.fechaProgramada,
-        condicionPago: resultado.condicionPago,
-        diasCredito: resultado.diasCredito,
-      );
-      if (!mounted) return;
-      AppSnack.success(context, 'Pedido ${pedido.folio} generado');
-      Navigator.of(context).pop(true);
-    } on AuthException catch (e) {
-      if (mounted) AppSnack.error(context, e.message);
-    } catch (_) {
-      if (mounted) AppSnack.error(context, 'No se pudo convertir la cotización a pedido');
-    } finally {
-      if (mounted) setState(() => _procesando = false);
+    final resultado = await mostrarConvertirPedidoSheet(context, _cotizacion);
+    if (resultado == null || !mounted) return;
+    final aviso = resultado.avisoAnticipo;
+    if (aviso != null) {
+      AppSnack.error(context, aviso);
+    } else {
+      AppSnack.success(context, 'Pedido ${resultado.pedido.folio} generado');
     }
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (context) => PedidoAsesorDetailScreen(pedido: resultado.pedido)),
+      result: true,
+    );
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -411,98 +403,6 @@ class _CotizacionDetailScreenState extends State<CotizacionDetailScreen> {
           Text(value, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: textColor)),
         ],
       ),
-    );
-  }
-}
-
-class _ConversionInput {
-  final DateTime fechaProgramada;
-  final String condicionPago;
-  final int? diasCredito;
-
-  const _ConversionInput({required this.fechaProgramada, required this.condicionPago, this.diasCredito});
-}
-
-class _ConvertirPedidoDialog extends StatefulWidget {
-  final DateTime fechaSugerida;
-
-  const _ConvertirPedidoDialog({required this.fechaSugerida});
-
-  @override
-  State<_ConvertirPedidoDialog> createState() => _ConvertirPedidoDialogState();
-}
-
-class _ConvertirPedidoDialogState extends State<_ConvertirPedidoDialog> {
-  late DateTime _fecha;
-  final _condicionPagoController = TextEditingController();
-  final _diasCreditoController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _fecha = widget.fechaSugerida;
-  }
-
-  @override
-  void dispose() {
-    _condicionPagoController.dispose();
-    _diasCreditoController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _pickFecha() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _fecha,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      locale: const Locale('es'),
-    );
-    if (picked != null) setState(() => _fecha = picked);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Convertir a pedido'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          InkWell(
-            onTap: _pickFecha,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text('Fecha programada: ${DateFormat('d/MM/y').format(_fecha)}'),
-            ),
-          ),
-          TextField(
-            controller: _condicionPagoController,
-            decoration: const InputDecoration(hintText: 'Condición de pago'),
-          ),
-          TextField(
-            controller: _diasCreditoController,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(hintText: 'Días de crédito (opcional)'),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancelar')),
-        ElevatedButton(
-          onPressed: () {
-            if (_condicionPagoController.text.trim().isEmpty) return;
-            Navigator.of(context).pop(
-              _ConversionInput(
-                fechaProgramada: _fecha,
-                condicionPago: _condicionPagoController.text.trim(),
-                diasCredito: int.tryParse(_diasCreditoController.text.trim()),
-              ),
-            );
-          },
-          child: const Text('Convertir'),
-        ),
-      ],
     );
   }
 }
