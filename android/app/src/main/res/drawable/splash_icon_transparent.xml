@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Explicit fully-transparent drawable for windowSplashScreenAnimatedIcon.
+     A plain @android:color/transparent reference isn't reliably honored as
+     an icon drawable on every OEM skin (some fall back to ic_launcher
+     instead of leaving it blank) — a real Drawable resource is more
+     consistently respected. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <solid android:color="@android:color/transparent" />
+</shape>

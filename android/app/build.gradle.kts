@@ -6,13 +6,17 @@ plugins {
 }
 
 android {
-    namespace = "com.example.my_flutter_app"
-    compileSdk = flutter.compileSdkVersion
+    namespace = "com.fnconcretos.app"
+    // flutter_secure_storage requires compileSdk 37; flutter.compileSdkVersion
+    // (36) is backward compatible with this bump per Flutter's own guidance.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // Required by google_navigation_flutter since minSdk (24) < 34.
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
@@ -20,8 +24,10 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.my_flutter_app"
+        // Matches the package name the backend team registered in Firebase
+        // for OneSignal push (see lib/notifications/onesignal_service.dart)
+        // — must stay in sync with that Firebase Android app registration.
+        applicationId = "com.fnconcretos.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -37,6 +43,19 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+}
+
+dependencies {
+    // Required by google_navigation_flutter's core library desugaring —
+    // its native Navigation SDK dependency needs 2.1.5+.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")
+    // NotificationCompat.ProgressStyle / Builder#setRequestPromotedOngoing
+    // (Android 16 "Live Update" notifications, see
+    // NavigationLiveUpdateManager.kt) landed in androidx.core 1.16 — safe
+    // to call unconditionally on this app's minSdk (24) since, like every
+    // other NotificationCompat API, it degrades to a plain notification on
+    // OS versions/devices that don't support promotion instead of crashing.
+    implementation("androidx.core:core-ktx:1.18.0")
 }
 
 flutter {

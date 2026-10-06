@@ -1,9 +1,35 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import '../administracion/administracion_service.dart';
+import '../administracion/empleado.dart';
+import '../deliveries/evidencias/delivery_photo_widgets.dart';
 import '../main.dart';
-import '../auth/login_screen.dart';
+import '../auth/auth_service.dart';
+import '../auth/biometria/biometric_service.dart';
+import '../auth/login/login_screen.dart';
+import '../operaciones/operaciones_service.dart';
+import '../widgets/app_feedback.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../widgets/evidencia_viewer_screen.dart';
+import 'change_password_screen.dart';
+import 'mfa_screen.dart';
+import 'profile_widgets.dart';
 
-const _accentYellow = Color(0xFFFFCC00);
+/// Treats an empty/blank string as absent, so a field `administracion-service`
+/// left blank falls back to '—' the same way a null one would.
+String? _nombreOVacio(String? value) => (value == null || value.trim().isEmpty) ? null : value;
+
+String _themeModeLabel(ThemeMode mode) {
+  switch (mode) {
+    case ThemeMode.light:
+      return 'Claro';
+    case ThemeMode.dark:
+      return 'Oscuro';
+    case ThemeMode.system:
+      return 'Sistema';
+  }
+}
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -13,476 +39,246 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  String _firstName = 'Juan';
-  String _lastName = 'Pérez';
-  String _position = 'Representante de Ventas';
-  String _plant = 'Planta Norte';
-  String _city = 'Ciudad de México';
-  String _email = 'usuario@fnconcretos.com';
   bool _notificationsEnabled = true;
+  OverlayEntry? _appearanceMenuEntry;
+  EmpleadoResponse? _empleado;
+  bool _subiendoFoto = false;
+  final _picker = ImagePicker();
 
-  Future<void> _editProfile() async {
-    final firstNameController = TextEditingController(text: _firstName);
-    final lastNameController = TextEditingController(text: _lastName);
-    final positionController = TextEditingController(text: _position);
-    final plantController = TextEditingController(text: _plant);
-    final cityController = TextEditingController(text: _city);
-    final emailController = TextEditingController(text: _email);
+  bool _biometriaDisponible = false;
+  bool _cambiandoBiometria = false;
 
-    final result = await showDialog<Map<String, String>>(
-      context: context,
-      builder: (context) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        final dialogColor = isDark ? const Color(0xFF1C1C1C) : Colors.white;
-        final textColor = isDark ? Colors.white : Colors.black87;
-        final mutedColor = (isDark ? Colors.white : Colors.black).withValues(alpha: 0.55);
-        final outlineColor = (isDark ? Colors.white : Colors.black).withValues(alpha: 0.2);
+  @override
+  void initState() {
+    super.initState();
+    _cargarEmpleado();
+    _verificarBiometria();
+  }
 
-        return Dialog(
-          backgroundColor: dialogColor,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: _accentYellow.withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.person, color: _accentYellow, size: 30),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  'Editar perfil',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: textColor),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Actualiza tu información personal',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 13, color: mutedColor),
-                ),
-                const SizedBox(height: 24),
-                Flexible(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        _EditField(
-                          controller: firstNameController,
-                          label: 'Nombre',
-                          icon: Icons.badge_outlined,
-                        ),
-                        const SizedBox(height: 14),
-                        _EditField(
-                          controller: lastNameController,
-                          label: 'Apellido',
-                          icon: Icons.badge_outlined,
-                        ),
-                        const SizedBox(height: 14),
-                        _EditField(
-                          controller: positionController,
-                          label: 'Cargo',
-                          icon: Icons.work_outline,
-                        ),
-                        const SizedBox(height: 14),
-                        _EditField(
-                          controller: plantController,
-                          label: 'Planta',
-                          icon: Icons.factory_outlined,
-                        ),
-                        const SizedBox(height: 14),
-                        _EditField(
-                          controller: cityController,
-                          label: 'Ciudad',
-                          icon: Icons.location_city_outlined,
-                        ),
-                        const SizedBox(height: 14),
-                        _EditField(
-                          controller: emailController,
-                          label: 'Correo',
-                          icon: Icons.mail_outline,
-                          keyboardType: TextInputType.emailAddress,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          side: BorderSide(color: outlineColor),
-                        ),
-                        child: Text(
-                          'Cancelar',
-                          style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.of(context).pop({
-                          'firstName': firstNameController.text.trim(),
-                          'lastName': lastNameController.text.trim(),
-                          'position': positionController.text.trim(),
-                          'plant': plantController.text.trim(),
-                          'city': cityController.text.trim(),
-                          'email': emailController.text.trim(),
-                        }),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _accentYellow,
-                          foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        ),
-                        child: const Text('Guardar', style: TextStyle(fontWeight: FontWeight.w700)),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
+  Future<void> _verificarBiometria() async {
+    final disponible = await BiometricService.disponible();
+    if (mounted) setState(() => _biometriaDisponible = disponible);
+  }
 
-    if (result != null) {
-      setState(() {
-        if (result['firstName']?.isNotEmpty ?? false) _firstName = result['firstName']!;
-        if (result['lastName']?.isNotEmpty ?? false) _lastName = result['lastName']!;
-        if (result['position']?.isNotEmpty ?? false) _position = result['position']!;
-        if (result['plant']?.isNotEmpty ?? false) _plant = result['plant']!;
-        if (result['city']?.isNotEmpty ?? false) _city = result['city']!;
-        if (result['email']?.isNotEmpty ?? false) _email = result['email']!;
-      });
+  Future<void> _cambiarBiometria(bool activar) async {
+    setState(() => _cambiandoBiometria = true);
+    try {
+      if (activar) {
+        final etiqueta = Platform.isIOS ? 'Face ID' : 'tu biometría';
+        final autenticado = await BiometricService.autenticar('Confirma tu identidad para activar $etiqueta');
+        if (!autenticado) {
+          if (mounted) AppSnack.error(context, 'No se pudo verificar tu identidad');
+          return;
+        }
+        await AuthService.habilitarBiometria();
+      } else {
+        await AuthService.deshabilitarBiometria();
+      }
+      if (mounted) setState(() {});
+    } on AuthException catch (e) {
+      if (mounted) AppSnack.error(context, e.message);
+    } finally {
+      if (mounted) setState(() => _cambiandoBiometria = false);
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? const Color(0xFF141414) : Colors.white;
-    final cardBorderColor = isDark
-        ? Colors.white.withValues(alpha: 0.10)
-        : Colors.black.withValues(alpha: 0.12);
-    final onCardText = isDark ? Colors.white : Colors.black87;
-    final onCardMuted = isDark ? Colors.white.withValues(alpha: 0.6) : Colors.black.withValues(alpha: 0.55);
+  Future<void> _cargarEmpleado() async {
+    final id = AuthService.idEmpleado;
+    if (id == null) return;
+    try {
+      final empleado = await AdministracionService.obtenerEmpleado(id);
+      if (mounted) setState(() => _empleado = empleado);
+    } catch (_) {
+      // Best-effort: the rest of the profile still works from AuthService's
+      // session fields even if administracion-service is unreachable.
+    }
+  }
 
-    return ListView(
-      padding: EdgeInsets.fromLTRB(20, 20, 20, BottomNavBar.clearance(context) + 16),
-      children: [
-        // Profile summary — tap to edit
-        Container(
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: cardBorderColor),
-          ),
-          child: Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(20),
-              onTap: _editProfile,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 28,
-                      backgroundColor: _accentYellow.withValues(alpha: 0.18),
-                      child: const Icon(Icons.person, size: 30, color: _accentYellow),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '$_firstName $_lastName',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: onCardText),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(_position, style: TextStyle(fontSize: 13, color: onCardMuted)),
-                        ],
-                      ),
-                    ),
-                    Icon(Icons.chevron_right, color: onCardMuted),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 20),
+  Future<void> _pickPhoto() async {
+    final empleado = _empleado;
+    if (empleado == null) return;
 
-        // Preferencias
-        _SettingsGroup(
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const PhotoSourceSheet(),
+    );
+    if (source == null) return;
+
+    try {
+      final picked = await _picker.pickImage(source: source, imageQuality: 80);
+      if (picked == null) return;
+
+      setState(() => _subiendoFoto = true);
+      final bytes = await picked.readAsBytes();
+      final path = picked.path.toLowerCase();
+      final contentType = path.endsWith('.png')
+          ? 'image/png'
+          : (path.endsWith('.heic') ? 'image/heic' : 'image/jpeg');
+      final extension = contentType.split('/').last;
+      final nombreArchivo = 'perfil_${empleado.id}_${DateTime.now().millisecondsSinceEpoch}.$extension';
+
+      final presigned = await AdministracionService.presignedUploadUrl(
+        carpeta: 'empleados-fotos',
+        nombreArchivo: nombreArchivo,
+        contentType: contentType,
+      );
+      await OperacionesService.subirArchivoPresignado(presigned.uploadUrl, bytes, contentType);
+      final actualizado = await AdministracionService.actualizarFotoPerfil(
+        empleado.id,
+        empleado,
+        presigned.publicUrl,
+      );
+      if (mounted) setState(() => _empleado = actualizado);
+    } on AuthException catch (e) {
+      if (mounted) AppSnack.error(context, e.message);
+    } catch (_) {
+      if (!mounted) return;
+      AppSnack.error(context, 'No se pudo acceder a la cámara/galería');
+    } finally {
+      if (mounted) setState(() => _subiendoFoto = false);
+    }
+  }
+
+  void _closeAppearanceMenu() {
+    _appearanceMenuEntry?.remove();
+    _appearanceMenuEntry = null;
+  }
+
+  void _showAppearanceMenu(BuildContext anchorContext) {
+    final overlayState = Overlay.of(anchorContext);
+    final anchorBox = anchorContext.findRenderObject()! as RenderBox;
+    final overlayBox = overlayState.context.findRenderObject()! as RenderBox;
+    final anchorTopRight = anchorBox.localToGlobal(
+      anchorBox.size.topRight(Offset.zero),
+      ancestor: overlayBox,
+    );
+
+    final entry = OverlayEntry(
+      builder: (overlayContext) {
+        return Stack(
           children: [
-            _SettingsTile(
-              icon: Icons.notifications_none,
-              iconColor: _accentYellow,
-              title: 'Notificaciones',
-              trailing: Switch(
-                value: _notificationsEnabled,
-                onChanged: (value) => setState(() => _notificationsEnabled = value),
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _closeAppearanceMenu,
               ),
             ),
-            _SettingsTile(
-              icon: isDark ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
-              iconColor: _accentYellow,
-              title: 'Modo Oscuro',
-              trailing: Switch(
-                value: isDark,
-                onChanged: (value) {
-                  themeNotifier.value = value ? ThemeMode.dark : ThemeMode.light;
+            Positioned(
+              left: anchorTopRight.dx - 240,
+              top: anchorTopRight.dy + 6,
+              width: 240,
+              child: AppearanceGlassMenu(
+                selectedMode: themeNotifier.value,
+                onSelected: (mode) {
+                  themeNotifier.value = mode;
+                  _closeAppearanceMenu();
                 },
               ),
             ),
           ],
+        );
+      },
+    );
+    _appearanceMenuEntry = entry;
+    overlayState.insert(entry);
+  }
+
+  @override
+  void dispose() {
+    _closeAppearanceMenu();
+    super.dispose();
+  }
+
+  void _verFoto(String fotoUrl) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => EvidenciaViewerScreen(url: fotoUrl, label: 'Foto de perfil'),
+      ),
+    );
+  }
+
+  Future<void> _abrirMfa() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const MfaScreen()),
+    );
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _cerrarSesion() async {
+    await AuthService.logout();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (context) => const LoginScreen()),
+      (Route<dynamic> route) => false,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final fotoUrl = _empleado?.fotoPerfilUrl;
+
+    return ListView(
+      padding: EdgeInsets.fromLTRB(20, 20, 20, BottomNavBar.clearance(context) + 16),
+      children: [
+        // Profile summary
+        ProfileHeaderCard(
+          fotoUrl: fotoUrl,
+          subiendoFoto: _subiendoFoto,
+          nombre: _nombreOVacio(_empleado?.nombreCompleto) ?? AuthService.username ?? 'Usuario',
+          puesto: _nombreOVacio(_empleado?.puestoNombre) ?? AuthService.rol ?? '',
+          onPickPhoto: _pickPhoto,
+          onViewPhoto: () => _verFoto(fotoUrl!),
         ),
         const SizedBox(height: 20),
 
-        // Datos personales
-        _SettingsGroup(
-          children: [
-            _SettingsTile(
-              icon: Icons.badge_outlined,
-              iconColor: _accentYellow,
-              title: 'Nombre',
-              trailing: Text(_firstName, style: TextStyle(color: onCardMuted, fontSize: 14)),
-            ),
-            _SettingsTile(
-              icon: Icons.badge_outlined,
-              iconColor: _accentYellow,
-              title: 'Apellido',
-              trailing: Text(_lastName, style: TextStyle(color: onCardMuted, fontSize: 14)),
-            ),
-            _SettingsTile(
-              icon: Icons.work_outline,
-              iconColor: _accentYellow,
-              title: 'Cargo',
-              trailing: Text(_position, style: TextStyle(color: onCardMuted, fontSize: 14)),
-            ),
-            _SettingsTile(
-              icon: Icons.factory_outlined,
-              iconColor: _accentYellow,
-              title: 'Planta',
-              trailing: Text(_plant, style: TextStyle(color: onCardMuted, fontSize: 14)),
-            ),
-            _SettingsTile(
-              icon: Icons.location_city_outlined,
-              iconColor: _accentYellow,
-              title: 'Ciudad',
-              trailing: Text(_city, style: TextStyle(color: onCardMuted, fontSize: 14)),
-            ),
-            _SettingsTile(
-              icon: Icons.mail_outline,
-              iconColor: _accentYellow,
-              title: 'Correo',
-              trailing: Text(_email, style: TextStyle(color: onCardMuted, fontSize: 14)),
-            ),
-          ],
+        // Preferencias
+        PreferencesSettingsGroup(
+          notificationsEnabled: _notificationsEnabled,
+          onNotificationsChanged: (value) => setState(() => _notificationsEnabled = value),
+          themeModeLabel: _themeModeLabel(themeNotifier.value),
+          onAppearanceTap: _showAppearanceMenu,
+        ),
+        const SizedBox(height: 20),
+
+        // Datos personales — usuario/rol/correo vienen de la sesión real
+        // (`AuthService`, poblado desde `GET /auth/me`). Nombre completo,
+        // puesto, área y teléfono vienen de `administracion-service`'s
+        // `GET /empleados/{id}` (ver `_cargarEmpleado`) — null mientras
+        // carga o si ese servicio no respondió, así que cada fila cae de
+        // vuelta a '—' en vez de inventar un dato.
+        PersonalDataSettingsGroup(
+          usuario: AuthService.username,
+          rol: AuthService.rol,
+          correo: AuthService.correo,
+          puesto: _nombreOVacio(_empleado?.puestoNombre),
+          area: _nombreOVacio(_empleado?.areaNombre),
+          telefono: _nombreOVacio(_empleado?.telefono),
+        ),
+        const SizedBox(height: 20),
+
+        // Seguridad
+        SecuritySettingsGroup(
+          biometriaDisponible: _biometriaDisponible,
+          biometriaTitulo: Platform.isIOS ? 'Inicio rápido con Face ID' : 'Inicio rápido con biometría',
+          cambiandoBiometria: _cambiandoBiometria,
+          biometriaHabilitada: AuthService.biometricHabilitado,
+          onBiometriaChanged: _cambiarBiometria,
+          mfaHabilitado: AuthService.mfaHabilitado,
+          onChangePassword: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => const ChangePasswordScreen()),
+          ),
+          onMfa: _abrirMfa,
         ),
         const SizedBox(height: 20),
 
         // Soporte
-        _SettingsGroup(
-          children: [
-            _SettingsTile(
-              icon: Icons.help_outline,
-              iconColor: onCardMuted,
-              title: 'Preguntas Frecuentes',
-              trailing: Icon(Icons.chevron_right, color: onCardMuted),
-              onTap: () {},
-            ),
-            _SettingsTile(
-              icon: Icons.description_outlined,
-              iconColor: onCardMuted,
-              title: 'Términos de Servicio',
-              trailing: Icon(Icons.chevron_right, color: onCardMuted),
-              onTap: () {},
-            ),
-            _SettingsTile(
-              icon: Icons.privacy_tip_outlined,
-              iconColor: onCardMuted,
-              title: 'Política de Privacidad',
-              trailing: Icon(Icons.chevron_right, color: onCardMuted),
-              onTap: () {},
-            ),
-          ],
-        ),
+        const SupportSettingsGroup(),
         const SizedBox(height: 28),
 
         // Cerrar sesión
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: Colors.black.withValues(alpha: 0.08)),
-          ),
-          child: Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(30),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(30),
-              onTap: () {
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (context) => const LoginScreen()),
-                  (Route<dynamic> route) => false,
-                );
-              },
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.logout, color: Colors.redAccent, size: 20),
-                    SizedBox(width: 10),
-                    Text(
-                      'Cerrar Sesión',
-                      style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w700, fontSize: 15),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
+        LogoutButton(onTap: _cerrarSesion),
       ],
-    );
-  }
-}
-
-/// Rounded card that groups related [_SettingsTile]s together. Solid black
-/// (bordered) in dark mode to stand out against the dark background; white
-/// with a visible border in light mode so it doesn't read as a stray black box.
-class _SettingsGroup extends StatelessWidget {
-  final List<Widget> children;
-
-  const _SettingsGroup({required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? const Color(0xFF141414) : Colors.white;
-    final borderColor = isDark
-        ? Colors.white.withValues(alpha: 0.10)
-        : Colors.black.withValues(alpha: 0.12);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
-      ),
-      child: Column(children: children),
-    );
-  }
-}
-
-/// A filled, icon-prefixed text field used inside the edit-profile dialog.
-class _EditField extends StatelessWidget {
-  final TextEditingController controller;
-  final String label;
-  final IconData icon;
-  final TextInputType? keyboardType;
-
-  const _EditField({
-    required this.controller,
-    required this.label,
-    required this.icon,
-    this.keyboardType,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final fillColor = isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.045);
-    final textColor = isDark ? Colors.white : Colors.black87;
-
-    return TextField(
-      controller: controller,
-      keyboardType: keyboardType,
-      style: TextStyle(color: textColor),
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, size: 20, color: _accentYellow),
-        filled: true,
-        fillColor: fillColor,
-        contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _accentYellow, width: 1.5),
-        ),
-      ),
-    );
-  }
-}
-
-/// A single row inside a [_SettingsGroup]: icon, title, and optional
-/// trailing content (switch, value text, or chevron).
-class _SettingsTile extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final String title;
-  final Widget? trailing;
-  final VoidCallback? onTap;
-
-  const _SettingsTile({
-    required this.icon,
-    required this.iconColor,
-    required this.title,
-    this.trailing,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : Colors.black87;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Icon(icon, size: 20, color: iconColor),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: textColor),
-                ),
-              ),
-              ?trailing,
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

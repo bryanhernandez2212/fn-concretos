@@ -19,7 +19,10 @@ pluginManagement {
 
 plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-    id("com.android.application") version "8.11.1" apply false
+    // Bumped from 8.11.1: google_navigation_flutter's native Android
+    // dependency (com.google.android.libraries.navigation:navigation)
+    // requires AGP 8.13.2+.
+    id("com.android.application") version "8.13.2" apply false
     id("org.jetbrains.kotlin.android") version "2.2.20" apply false
 }
 

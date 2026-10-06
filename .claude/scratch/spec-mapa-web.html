@@ -1,0 +1,490 @@
+<title>Rastreo de Flota Web</title>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Big+Shoulders:wght@500;700;900&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #f4f2ec;
+    --surface: #ffffff;
+    --surface-2: #eae6da;
+    --border: #d9d4c5;
+    --ink: #1b1a17;
+    --ink-muted: #6c6759;
+    --accent: #ffcc00;
+    --accent-ink: #1a1a1a;
+    --success: #3f7d53;
+    --success-bg: #e7f0e8;
+    --warning: #b5482e;
+    --warning-bg: #f6e6e0;
+    --code-bg: #1b1a17;
+    --code-ink: #f4f2ec;
+    --code-border: #3a382f;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17181a;
+      --surface: #1e1f21;
+      --surface-2: #26272a;
+      --border: #37383c;
+      --ink: #ece9e1;
+      --ink-muted: #9a968b;
+      --accent: #ffcc00;
+      --accent-ink: #1a1a1a;
+      --success: #7bc496;
+      --success-bg: #1e2e23;
+      --warning: #e88a6c;
+      --warning-bg: #33221d;
+      --code-bg: #101112;
+      --code-ink: #ece9e1;
+      --code-border: #333;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #17181a;
+    --surface: #1e1f21;
+    --surface-2: #26272a;
+    --border: #37383c;
+    --ink: #ece9e1;
+    --ink-muted: #9a968b;
+    --accent: #ffcc00;
+    --accent-ink: #1a1a1a;
+    --success: #7bc496;
+    --success-bg: #1e2e23;
+    --warning: #e88a6c;
+    --warning-bg: #33221d;
+    --code-bg: #101112;
+    --code-ink: #ece9e1;
+    --code-border: #333;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 48px 24px 96px;
+  }
+
+  /* ---- title block, drafting-stamp style ---- */
+  .titleblock {
+    position: relative;
+    border: 1.5px solid var(--ink);
+    padding: 22px 24px 18px;
+    margin-bottom: 40px;
+  }
+  .titleblock::before,
+  .titleblock::after,
+  .tb-corner-br, .tb-corner-tr {
+    content: "";
+    position: absolute;
+    width: 9px;
+    height: 9px;
+    border-color: var(--accent);
+  }
+  .titleblock::before { top: -1.5px; left: -1.5px; border-top: 3px solid var(--accent); border-left: 3px solid var(--accent); }
+  .titleblock::after { bottom: -1.5px; right: -1.5px; border-bottom: 3px solid var(--accent); border-right: 3px solid var(--accent); }
+
+  .tb-eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    margin: 0 0 6px;
+  }
+  .tb-title {
+    font-family: 'Big Shoulders', sans-serif;
+    font-weight: 900;
+    font-size: clamp(34px, 6vw, 46px);
+    line-height: 0.98;
+    letter-spacing: -0.01em;
+    margin: 0 0 16px;
+    text-wrap: balance;
+  }
+  .tb-meta {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px 20px;
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+  }
+  .tb-meta dt {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    margin: 0 0 3px;
+  }
+  .tb-meta dd {
+    margin: 0;
+    font-size: 13.5px;
+    font-weight: 500;
+  }
+
+  /* ---- section structure ---- */
+  section { margin-top: 46px; }
+  .sec-head {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .sec-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent-ink);
+    background: var(--accent);
+    padding: 1px 7px;
+    border-radius: 3px;
+    flex: none;
+  }
+  .sec-title {
+    font-family: 'Big Shoulders', sans-serif;
+    font-weight: 700;
+    font-size: 26px;
+    letter-spacing: -0.005em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .sec-body { max-width: 66ch; }
+  .sec-body p { margin: 0 0 12px; color: var(--ink); }
+  .sec-body p.lede { color: var(--ink-muted); font-size: 15px; }
+
+  code.inline {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.88em;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+  }
+
+  a { color: var(--ink); text-decoration-color: var(--accent); text-decoration-thickness: 2px; }
+
+  /* ---- code panels ---- */
+  .codepanel {
+    background: var(--code-bg);
+    color: var(--code-ink);
+    border: 1px solid var(--code-border);
+    border-top: 3px solid var(--accent);
+    border-radius: 6px;
+    margin: 16px 0;
+    overflow-x: auto;
+  }
+  .codepanel .label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #a8a397;
+    padding: 9px 14px 0;
+  }
+  .codepanel pre {
+    margin: 0;
+    padding: 8px 14px 14px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12.5px;
+    line-height: 1.65;
+    tab-size: 2;
+    white-space: pre;
+  }
+  .codepanel .c1 { color: #8f8a7d; }
+  .codepanel .kw { color: #ffcc00; }
+  .codepanel .fn { color: #d7c8a1; }
+  .codepanel .str { color: #b8d4a8; }
+
+  /* ---- endpoint table ---- */
+  .tablewrap { overflow-x: auto; margin: 16px 0; }
+  table.endpoints {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+  table.endpoints th {
+    text-align: left;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    border-bottom: 1.5px solid var(--ink);
+    padding: 0 10px 8px 0;
+    font-weight: 500;
+  }
+  table.endpoints td {
+    padding: 10px 10px 10px 0;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  table.endpoints tr:last-child td { border-bottom: none; }
+  .method {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 11.5px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    white-space: nowrap;
+  }
+  .path { font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; }
+
+  /* ---- callouts ---- */
+  .callout {
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin: 16px 0;
+    font-size: 14px;
+    border: 1px solid transparent;
+  }
+  .callout .callabel {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 5px;
+  }
+  .callout.warn { background: var(--warning-bg); border-color: color-mix(in srgb, var(--warning) 35%, transparent); }
+  .callout.warn .callabel { color: var(--warning); }
+  .callout.ok { background: var(--success-bg); border-color: color-mix(in srgb, var(--success) 35%, transparent); }
+  .callout.ok .callabel { color: var(--success); }
+
+  /* ---- checklist ---- */
+  ul.check { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  ul.check li {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+    font-size: 14px;
+  }
+  ul.check li::before {
+    content: "";
+    flex: none;
+    width: 7px;
+    height: 7px;
+    border-radius: 1px;
+    background: var(--accent);
+    margin-top: 6px;
+  }
+
+  .rule {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 46px 0 0;
+  }
+
+  footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+
+  @media (max-width: 560px) {
+    .tb-meta { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+
+<div class="page">
+
+  <div class="titleblock">
+    <p class="tb-eyebrow">Especificación técnica · Dirección → Equipo Web</p>
+    <h1 class="tb-title">Rastreo en vivo de flota — versión web</h1>
+    <dl class="tb-meta">
+      <div>
+        <dt>Origen</dt>
+        <dd>App móvil (Flutter), pantallas "Rutas activas" y "Ubicación en vivo"</dd>
+      </div>
+      <div>
+        <dt>Destino</dt>
+        <dd>Dashboard web (React)</dd>
+      </div>
+      <div>
+        <dt>Backend</dt>
+        <dd>operaciones-service (sin cambios)</dd>
+      </div>
+    </dl>
+  </div>
+
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">01</span>
+      <h2 class="sec-title">Qué hay que construir</h2>
+    </div>
+    <div class="sec-body">
+      <p class="lede">Un mapa que muestra, en tiempo casi-real, dónde están las revolvedoras/bombas que ya salieron de planta — con su ícono apuntando en la dirección en que avanzan y una línea mostrando por dónde ya pasaron.</p>
+      <p>Ya existe en la app móvil (Flutter). La lógica de datos es idéntica para web; lo único que cambia es la librería de mapas y cómo se dibuja el marcador.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">02</span>
+      <h2 class="sec-title">El backend ya está listo — no pidan nada nuevo</h2>
+    </div>
+    <div class="sec-body">
+      <p>Son los mismos endpoints REST que ya usa la app móvil. Nada de esto es específico de Flutter.</p>
+    </div>
+    <div class="tablewrap">
+      <table class="endpoints">
+        <thead>
+          <tr><th>Método</th><th>Endpoint</th><th>Para qué</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="method">GET</span></td>
+            <td><span class="path">/remisiones</span></td>
+            <td>Lista de remisiones. Sin filtro trae todas; filtren en el cliente por estatus <code class="inline">salio_planta / en_camino / proximo_llegar / en_obra / descargando</code> para la vista de flota completa.</td>
+          </tr>
+          <tr>
+            <td><span class="method">GET</span></td>
+            <td><span class="path">/remisiones/{id}/ruta</span></td>
+            <td>Posición actual + <code class="inline">historial</code> de puntos GPS de esa remisión. Este es el que alimenta al mapa — pídanlo cada 15s por cada remisión activa.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout warn">
+      <span class="callabel">Antes de empezar</span>
+      Confirmen con backend que operaciones-service tiene CORS habilitado para el dominio del dashboard web. Es lo primero que va a fallar si no está.
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">03</span>
+      <h2 class="sec-title">Maps JavaScript API, no Navigation SDK</h2>
+    </div>
+    <div class="sec-body">
+      <p>En el móvil se usa el Navigation SDK de Google porque el conductor también navega turn-by-turn. Aquí solo van a <strong>mostrar</strong> ubicaciones — con la Maps JavaScript API normal alcanza y de sobra.</p>
+      <p>Librería recomendada: <code class="inline">@vis.gl/react-google-maps</code> (la mantiene Google). Necesitan una API key con "Maps JavaScript API" habilitada — puede ser el mismo proyecto de GCP, solo agreguen ese servicio; no toquen ni paguen el Navigation SDK.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">04</span>
+      <h2 class="sec-title">Flujo de datos: poll cada 15s, no WebSocket</h2>
+    </div>
+    <div class="sec-body">
+      <p>Un <code class="inline">setInterval</code> por remisión activa, mismo intervalo que usa la app móvil para que ambas vistas queden consistentes con el mismo dato.</p>
+    </div>
+    <div class="codepanel">
+      <p class="label">hooks/useRutaRemision.js</p>
+      <pre><span class="kw">function</span> <span class="fn">useRutaRemision</span>(remisionId, token) {
+  <span class="kw">const</span> [ruta, setRuta] = useState(<span class="kw">null</span>);
+
+  useEffect(() =&gt; {
+    <span class="kw">let</span> cancelado = <span class="kw">false</span>;
+
+    <span class="kw">async function</span> <span class="fn">poll</span>() {
+      <span class="kw">const</span> res = <span class="kw">await</span> fetch(
+        <span class="str">`${BASE_URL}/remisiones/${remisionId}/ruta`</span>,
+        { headers: { Authorization: <span class="str">`Bearer ${token}`</span> } }
+      );
+      <span class="kw">const</span> data = <span class="kw">await</span> res.json();
+      <span class="kw">if</span> (!cancelado) setRuta(data); <span class="c1">// { posicionActual, historial }</span>
+    }
+
+    poll();
+    <span class="kw">const</span> id = setInterval(poll, <span class="str">15_000</span>);
+    <span class="kw">return</span> () =&gt; { cancelado = <span class="kw">true</span>; clearInterval(id); };
+  }, [remisionId, token]);
+
+  <span class="kw">return</span> ruta;
+}</pre>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">05</span>
+      <h2 class="sec-title">Rumbo del ícono: el backend no lo manda</h2>
+    </div>
+    <div class="sec-body">
+      <p>Ni <code class="inline">RutaRemisionResponse</code> ni el ping de GPS traen un ángulo de rumbo. Se calcula en el cliente con los dos últimos puntos del <code class="inline">historial</code> — exactamente igual que hace la app móvil.</p>
+    </div>
+    <div class="codepanel">
+      <p class="label">lib/bearing.js</p>
+      <pre><span class="kw">function</span> <span class="fn">bearingBetween</span>(p1, p2) {
+  <span class="kw">const</span> toRad = d =&gt; (d * Math.PI) / <span class="str">180</span>;
+  <span class="kw">const</span> toDeg = r =&gt; (r * <span class="str">180</span>) / Math.PI;
+  <span class="kw">const</span> dLon = toRad(p2.lng - p1.lng);
+  <span class="kw">const</span> y = Math.sin(dLon) * Math.cos(toRad(p2.lat));
+  <span class="kw">const</span> x =
+    Math.cos(toRad(p1.lat)) * Math.sin(toRad(p2.lat)) -
+    Math.sin(toRad(p1.lat)) * Math.cos(toRad(p2.lat)) * Math.cos(dLon);
+  <span class="kw">return</span> (toDeg(Math.atan2(y, x)) + <span class="str">360</span>) % <span class="str">360</span>;
+}</pre>
+    </div>
+    <div class="callout ok">
+      <span class="callabel">Detalle que importa</span>
+      Si el <code class="inline">historial</code> todavía no tiene suficientes puntos para calcular un nuevo rumbo, mantengan el último valor calculado — no lo regresen a 0°/norte. Así se comporta el ícono nativo y evita que el camión "salte" de dirección entre polls.
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">06</span>
+      <h2 class="sec-title">Marcador rotado y línea de trayecto</h2>
+    </div>
+    <div class="sec-body">
+      <p>Marcador: un <code class="inline">AdvancedMarker</code> con un <code class="inline">&lt;div&gt;</code>/SVG propio, rotado por CSS con <code class="inline">transform: rotate(${'{'}bearing{'}'}deg)</code>. En web no hace falta registrar un bitmap por color de ruta como en nativo — basta con cambiar el <code class="inline">fill</code> del SVG.</p>
+      <p>Trayecto recorrido: un <code class="inline">Polyline</code> alimentado con el arreglo completo de <code class="inline">historial</code>.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">07</span>
+      <h2 class="sec-title">Un solo mapa para toda la flota</h2>
+    </div>
+    <div class="sec-body">
+      <p>Para la vista tipo "Rutas activas" (todos los camiones a la vez): un solo <code class="inline">&lt;Map&gt;</code> con N marcadores, no N mapas. Al llegar datos nuevos actualicen la posición de cada marcador — no desmonten ni recreen el mapa, o van a perder el zoom/posición de cámara del usuario en cada refresh.</p>
+    </div>
+  </section>
+
+  <hr class="rule" />
+
+  <section>
+    <div class="sec-head">
+      <span class="sec-num">✓</span>
+      <h2 class="sec-title">Checklist para pasarle al equipo</h2>
+    </div>
+    <ul class="check">
+      <li>API key nueva o reutilizada con "Maps JavaScript API" — no Navigation SDK.</li>
+      <li>CORS confirmado en operaciones-service para el dominio del dashboard.</li>
+      <li>Mismo bearer token / header <code class="inline">Authorization</code> que ya usa auth-service.</li>
+      <li>Poll de 15s por remisión activa — no WebSocket, no menor a 15s.</li>
+      <li>Rumbo calculado en cliente, con retención del último valor si falta historial.</li>
+      <li>Un mapa persistente con marcadores actualizables, no un mapa por remisión ni recreación en cada poll.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <span>FN Concretera — Dirección</span>
+    <span>Rastreo de flota / spec web v1</span>
+  </footer>
+
+</div>
