@@ -248,6 +248,7 @@ class Obra {
   final int id;
   final String nombre;
   final String direccion;
+  final int? clientePrincipalId;
   final String clientePrincipalNombre;
   final double latitud;
   final double longitud;
@@ -260,6 +261,7 @@ class Obra {
     required this.id,
     required this.nombre,
     required this.direccion,
+    this.clientePrincipalId,
     required this.clientePrincipalNombre,
     required this.latitud,
     required this.longitud,
@@ -274,6 +276,7 @@ class Obra {
       id: json['id'] as int,
       nombre: json['nombre'] as String? ?? 'Obra sin nombre',
       direccion: json['direccion'] as String? ?? '',
+      clientePrincipalId: (json['clientePrincipalId'] as num?)?.toInt(),
       clientePrincipalNombre: json['clientePrincipalNombre'] as String? ?? '',
       latitud: (json['latitud'] as num?)?.toDouble() ?? 0,
       longitud: (json['longitud'] as num?)?.toDouble() ?? 0,

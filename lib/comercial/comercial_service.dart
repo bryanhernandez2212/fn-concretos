@@ -92,21 +92,24 @@ class ComercialService {
     });
   }
 
-  /// `GET /obras` — searches by `nombre`/`ciudad`/`estatus` (per
+  /// `GET /obras` — searches by name (sent as `q`)/`ciudad`/`estatus` (per
   /// obra-controller's own description, "Buscar obras por estatus, ciudad o
   /// nombre"). Used by Asesor Comercial's "registrar visita" flow to find
   /// an obra that's already in the system for a repeat visit, instead of
   /// only ever being able to register a brand-new one.
   static Future<List<Obra>> buscarObras({String? nombre, String? ciudad, String? estatus, int? clienteId}) async {
     final params = {
-      if (nombre != null && nombre.isNotEmpty) 'nombre': nombre,
+      if (nombre != null && nombre.isNotEmpty) 'q': nombre,
       if (ciudad != null && ciudad.isNotEmpty) 'ciudad': ciudad,
       if (estatus != null && estatus.isNotEmpty) 'estatus': estatus,
-      if (clienteId != null) 'clienteId': clienteId.toString(),
     };
     final query = params.isEmpty ? '' : '?${Uri(queryParameters: params).query}';
     final data = await _get('/obras$query');
-    return (data as List<dynamic>).map((e) => Obra.fromJson(e as Map<String, dynamic>)).toList();
+    final obras = (data as List<dynamic>).map((e) => Obra.fromJson(e as Map<String, dynamic>));
+    // `GET /obras` has no clienteId filter, so it's applied here against the
+    // obra's principal client.
+    if (clienteId == null) return obras.toList();
+    return obras.where((o) => o.clientePrincipalId == clienteId).toList();
   }
 
   /// Registers a new Obra (job site) — needed before a cotización can be

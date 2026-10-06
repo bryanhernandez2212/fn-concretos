@@ -13,7 +13,7 @@ The app routes by role/permission and talks to six real backend microservices. A
 - `flutter pub get` installs dependencies. `flutter run` runs the app.
 - `flutter analyze` runs lints (`flutter_lints`; native/build dirs are excluded in `analysis_options.yaml`).
 - `dart format .` formats the code.
-- `flutter test` runs tests. There are no test files yet.
+- `flutter test` runs tests, and `flutter test path/to/file_test.dart` runs a single file. There is no `test/` directory yet.
 - There is no CI and there are no custom build scripts.
 - When installing on a real iOS device, run `flutter build ios --release` explicitly before `flutter install`. Debug builds crash on the dev iPhone, and `flutter install` can pick up a stale build.
 
@@ -69,6 +69,8 @@ Large screens keep their State in the screen file. Self-contained UI moves into 
 
 All services use `AuthService.authHeaders()` (bearer auth, with a token refresh before each call). Transport errors become `AuthException('No se pudo conectar con el servidor')`; follow that pattern in any new call.
 
+Services import `config/http_client.dart` `as http`, never `package:http` directly. It is a drop-in for `get`/`post`/`put`/`patch`/`delete` backed by one shared keep-alive `http.Client`, so connections get reused instead of opening a new TLS handshake per call. Any new service file must use the same import.
+
 - **auth** (`auth/auth_service.dart`) handles login, MFA (TOTP), password flows, `/auth/me` and logout.
   - The refresh token is kept in `flutter_secure_storage` so `restoreSession()` can log the user back in.
   - `POST /auth/validate` is deliberately not implemented, because it's gateway-only.
@@ -78,6 +80,7 @@ All services use `AuthService.authHeaders()` (bearer auth, with a token refresh 
 - **comercial** (`comercial/comercial_service.dart`, `pedido.dart`) handles pedidos, clientes, obras, contactos and estado de cuenta.
   - It has a 60s in-memory `_cached` for cliente/obra/estado de cuenta/contactos lookups. It's deliberately not used for the pending-authorization queue, `obtenerPedido` or writes. This is the only HTTP cache in the app.
   - A pedido's contact is resolved per obra+cliente pairing: `contactoParaEntrega({obraId, clienteId})`.
+  - `GET /obras` only takes `q`/`ciudad`/`estatus`. `buscarObras(clienteId:)` filters on the client by `clientePrincipalId`, so obras where the cliente is only a linked secondary client (`/obras/{id}/clientes`) don't show up.
   - `EstadoCuenta.disponible == false` means the data is stubbed. Show it that way, not as "al corriente".
   - Delivered volume and status update on the server when each remisión's firma is registered. `PedidoDetailScreen` re-polls `obtenerPedido` every 15s.
 - **asesor_comercial** (`asesor_comercial_service.dart`) covers asesores, visitas, cotizaciones and solicitudes de diseño on the comercial sandbox.

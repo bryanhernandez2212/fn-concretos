@@ -1269,20 +1269,6 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                     ),
                     const SizedBox(height: 12),
                   ],
-                  SwitchListTile(
-                    value: _requiereFactura,
-                    onChanged: (value) =>
-                        setState(() => _requiereFactura = value),
-                    title: Text(
-                      'Requiere factura fiscal',
-                      style: TextStyle(
-                        color: textColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    activeThumbColor: AppColors.accent,
-                    contentPadding: EdgeInsets.zero,
-                  ),
                 ],
               ),
             ),
@@ -1324,7 +1310,22 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                     'Un descuento mayor al límite (${limiteDescuentoTexto(_requiereFactura)}) requiere autorización.',
                     style: TextStyle(fontSize: 11.5, color: mutedColor),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
+                  SwitchListTile(
+                    value: _requiereFactura,
+                    onChanged: (value) =>
+                        setState(() => _requiereFactura = value),
+                    title: Text(
+                      'Requiere factura fiscal',
+                      style: TextStyle(
+                        color: textColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    activeThumbColor: AppColors.accent,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  const SizedBox(height: 8),
                   ResumenCotizacionCard(
                     subtotalProductos: sumaPorTipo(_items, tipoLineaProducto),
                     subtotalBombeo: sumaPorTipo(_items, tipoLineaBombeo),
