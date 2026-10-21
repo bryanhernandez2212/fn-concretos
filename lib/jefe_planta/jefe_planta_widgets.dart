@@ -73,44 +73,6 @@ class JefePlantaTabHeader extends StatelessWidget {
   }
 }
 
-/// Visible marker that a screen is still running on mock data, so nobody
-/// mistakes the design's sample rows for real ones.
-class DatosEjemploBanner extends StatelessWidget {
-  const DatosEjemploBanner({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.warning.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
-      ),
-      child: Row(
-        children: [
-          const Icon(
-            Icons.science_outlined,
-            size: 16,
-            color: AppColors.warning,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Vista de diseño con datos de ejemplo',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: AppColors.text(context),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// Colored pill for an estatus label.
 class EstatusPill extends StatelessWidget {
   final String label;

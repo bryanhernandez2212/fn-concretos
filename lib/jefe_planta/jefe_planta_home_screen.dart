@@ -6,8 +6,7 @@ import 'programacion/programacion_screen.dart';
 import 'solicitudes/solicitudes_screen.dart';
 
 /// App shell for the Jefe de Planta role: Programación, Ollas, Solicitudes
-/// and Perfil. The three work tabs are still design-only (see
-/// `jefe_planta_mock.dart`) until the endpoints are wired. Like
+/// and Perfil. The work tabs read from `jefe_planta_service.dart`. Like
 /// `AsesorComercialHomeScreen`, no tab embeds a native platform view, so
 /// every tab stays mounted and cross-fades.
 class JefePlantaHomeScreen extends StatefulWidget {

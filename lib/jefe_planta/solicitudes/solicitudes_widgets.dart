@@ -1,24 +1,35 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/info_pill.dart';
-import '../jefe_planta_mock.dart';
+import '../jefe_planta_service.dart';
 import '../jefe_planta_widgets.dart';
 
+/// Same tones as the web's solicitud columns.
 Color colorEstatusSolicitud(String estatus) => switch (estatus) {
-  estatusSolicitudAutorizada => AppColors.success,
+  estatusSolicitudAutorizada => AppColors.accent,
+  estatusSolicitudOcGenerada => AppColors.success,
   estatusSolicitudRechazada => AppColors.error,
-  estatusSolicitudPendiente => AppColors.warning,
-  _ => AppColors.accent,
+  _ => AppColors.warning,
 };
 
-IconData iconoArea(String area) => switch (area) {
-  'Producción' => Icons.factory_outlined,
-  'Mantenimiento' => Icons.build_outlined,
-  'Flota' => Icons.local_shipping_outlined,
-  'Laboratorio' => Icons.science_outlined,
-  'Seguridad' => Icons.health_and_safety_outlined,
-  _ => Icons.inventory_2_outlined,
-};
+/// Areas are a free-text administración catalog, so only a few common
+/// names get their own icon.
+IconData iconoArea(String? area) {
+  final a = (area ?? '').toLowerCase();
+  if (a.contains('produc')) return Icons.factory_outlined;
+  if (a.contains('manten')) return Icons.build_outlined;
+  if (a.contains('flota') || a.contains('vehic')) {
+    return Icons.local_shipping_outlined;
+  }
+  if (a.contains('labor') || a.contains('calidad')) {
+    return Icons.science_outlined;
+  }
+  if (a.contains('segur')) return Icons.health_and_safety_outlined;
+  return Icons.inventory_2_outlined;
+}
+
+String fechaHoraJp(DateTime d) =>
+    '${fechaCortaJp(d)} ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
 /// One solicitud de compra in the Solicitudes tab.
 class SolicitudCard extends StatelessWidget {
@@ -56,7 +67,7 @@ class SolicitudCard extends StatelessWidget {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      solicitud.area,
+                      solicitud.area ?? 'Sin área',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -103,12 +114,20 @@ class SolicitudCard extends StatelessWidget {
                     mutedColor: mutedColor,
                     textColor: textColor,
                   ),
-                  InfoPill(
-                    icon: Icons.calendar_today_outlined,
-                    text: fechaCortaJp(solicitud.createdAt),
-                    mutedColor: mutedColor,
-                    textColor: textColor,
-                  ),
+                  if (solicitud.createdAt != null)
+                    InfoPill(
+                      icon: Icons.calendar_today_outlined,
+                      text: fechaCortaJp(solicitud.createdAt!.toLocal()),
+                      mutedColor: mutedColor,
+                      textColor: textColor,
+                    ),
+                  if (solicitud.ordenCompraFolio != null)
+                    InfoPill(
+                      icon: Icons.receipt_long_outlined,
+                      text: solicitud.ordenCompraFolio!,
+                      mutedColor: mutedColor,
+                      textColor: textColor,
+                    ),
                   if (solicitud.cotizacionAdjuntaUrl != null)
                     InfoPill(
                       icon: Icons.attach_file,
@@ -178,14 +197,15 @@ class BitacoraTimeline extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${pasos[i].usuario} · ${fechaCortaJp(pasos[i].fecha)} '
-                          '${pasos[i].fecha.hour.toString().padLeft(2, '0')}:${pasos[i].fecha.minute.toString().padLeft(2, '0')}',
+                          pasos[i].fecha == null
+                              ? pasos[i].usuario
+                              : '${pasos[i].usuario} · ${fechaHoraJp(pasos[i].fecha!.toLocal())}',
                           style: TextStyle(fontSize: 12, color: mutedColor),
                         ),
                         if (pasos[i].comentario != null) ...[
                           const SizedBox(height: 4),
                           Text(
-                            '“${pasos[i].comentario}”',
+                            pasos[i].comentario!,
                             style: TextStyle(fontSize: 13, color: textColor),
                           ),
                         ],

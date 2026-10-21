@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/info_pill.dart';
-import '../jefe_planta_mock.dart';
+import '../jefe_planta_service.dart';
 import '../jefe_planta_widgets.dart';
 
 const _diasSemana = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
@@ -156,12 +156,16 @@ class ResumenDia extends StatelessWidget {
 /// card on the right.
 class ProgramacionTimelineItem extends StatelessWidget {
   final ProgramacionPedido fila;
+
+  /// From the dosificador catalog; null shows the raw id.
+  final String? dosificadorNombre;
   final bool ultimo;
   final VoidCallback onTap;
 
   const ProgramacionTimelineItem({
     super.key,
     required this.fila,
+    this.dosificadorNombre,
     required this.ultimo,
     required this.onTap,
   });
@@ -172,7 +176,6 @@ class ProgramacionTimelineItem extends StatelessWidget {
     final mutedColor = AppColors.mutedText(context);
     final color = colorEstatusProgramacion(fila.estatus);
     final cancelada = fila.estatus == estatusProgramacionCancelada;
-    final dosificador = JefePlantaMock.dosificador(fila.dosificadorId);
 
     return IntrinsicHeight(
       child: Row(
@@ -183,7 +186,7 @@ class ProgramacionTimelineItem extends StatelessWidget {
             child: Column(
               children: [
                 Text(
-                  fila.horaArranque,
+                  fila.horaArranque ?? '--:--',
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
                     color: textColor,
@@ -272,15 +275,17 @@ class ProgramacionTimelineItem extends StatelessWidget {
                                         color: mutedColor,
                                       ),
                                     ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      fila.pedido.producto,
-                                      style: TextStyle(
-                                        fontSize: 12.5,
-                                        fontWeight: FontWeight.w600,
-                                        color: textColor,
+                                    if (fila.pedido.producto != null) ...[
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        fila.pedido.producto!,
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: textColor,
+                                        ),
                                       ),
-                                    ),
+                                    ],
                                     const SizedBox(height: 10),
                                     Wrap(
                                       spacing: 6,
@@ -292,11 +297,13 @@ class ProgramacionTimelineItem extends StatelessWidget {
                                           mutedColor: mutedColor,
                                           textColor: textColor,
                                         ),
-                                        if (dosificador != null)
+                                        if (fila.dosificadorId != null)
                                           InfoPill(
                                             icon: Icons
                                                 .precision_manufacturing_outlined,
-                                            text: dosificador.nombre,
+                                            text:
+                                                dosificadorNombre ??
+                                                'Dosificador #${fila.dosificadorId}',
                                             mutedColor: mutedColor,
                                             textColor: textColor,
                                           ),
@@ -305,13 +312,6 @@ class ProgramacionTimelineItem extends StatelessWidget {
                                             icon: Icons.groups_outlined,
                                             text:
                                                 '${fila.personalRequerido} personas',
-                                            mutedColor: mutedColor,
-                                            textColor: textColor,
-                                          ),
-                                        if (fila.logisticaAutorizada)
-                                          InfoPill(
-                                            icon: Icons.verified_outlined,
-                                            text: 'Logística',
                                             mutedColor: mutedColor,
                                             textColor: textColor,
                                           ),
@@ -392,11 +392,13 @@ class PedidoPorProgramarCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(fontSize: 12.5, color: mutedColor),
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Solicitado: ${fechaLarga(pedido.fechaSolicitada)}',
-            style: TextStyle(fontSize: 12, color: mutedColor),
-          ),
+          if (pedido.fechaSolicitada != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Entrega solicitada: ${fechaLarga(pedido.fechaSolicitada!)}',
+              style: TextStyle(fontSize: 12, color: mutedColor),
+            ),
+          ],
           const Spacer(),
           SizedBox(
             width: double.infinity,
@@ -422,9 +424,9 @@ class PedidoPorProgramarCard extends StatelessWidget {
 
 class ProgramarInput {
   final DateTime fecha;
-  final String horaArranque;
+  final String? horaArranque;
   final int? dosificadorId;
-  final int personalRequerido;
+  final int? personalRequerido;
 
   const ProgramarInput({
     required this.fecha,
@@ -434,13 +436,18 @@ class ProgramarInput {
   });
 }
 
-/// Bottom sheet with the `ProgramacionRequest` fields (fecha, hora de
-/// arranque, dosificador, personal). Pops a [ProgramarInput].
+/// Bottom sheet with the `ProgramacionRequest` fields. Only the fecha is
+/// required, like the web's form; hora de arranque, dosificador (from
+/// administración's catalog) and personal are optional.
+/// Pops a [ProgramarInput].
 class ProgramarSheet extends StatefulWidget {
   final PedidoPlanta pedido;
   final DateTime fechaInicial;
   final String? horaInicial;
   final int? dosificadorInicial;
+
+  /// Active dosificadores. May be empty if the catalog couldn't load.
+  final List<Dosificador> dosificadores;
   final int? personalInicial;
   final bool editando;
 
@@ -450,6 +457,7 @@ class ProgramarSheet extends StatefulWidget {
     required this.fechaInicial,
     this.horaInicial,
     this.dosificadorInicial,
+    this.dosificadores = const [],
     this.personalInicial,
     this.editando = false,
   });
@@ -462,12 +470,15 @@ class _ProgramarSheetState extends State<ProgramarSheet> {
   late DateTime _fecha = widget.fechaInicial;
   late TimeOfDay? _hora = _parseHora(widget.horaInicial);
   late int? _dosificadorId = widget.dosificadorInicial;
-  late int _personal = widget.personalInicial ?? 2;
+  late int _personal = widget.personalInicial ?? 0;
 
   static TimeOfDay? _parseHora(String? h) {
-    if (h == null) return null;
-    final p = h.split(':');
-    return TimeOfDay(hour: int.parse(p[0]), minute: int.parse(p[1]));
+    final p = h?.split(':');
+    if (p == null || p.length < 2) return null;
+    final hour = int.tryParse(p[0]);
+    final minute = int.tryParse(p[1]);
+    if (hour == null || minute == null) return null;
+    return TimeOfDay(hour: hour, minute: minute);
   }
 
   String? get _horaTexto => _hora == null
@@ -476,10 +487,11 @@ class _ProgramarSheetState extends State<ProgramarSheet> {
 
   Future<void> _elegirFecha() async {
     final hoy = DateTime.now();
+    final inicio = DateTime(hoy.year, hoy.month, hoy.day);
     final picked = await showDatePicker(
       context: context,
-      initialDate: _fecha,
-      firstDate: DateTime(hoy.year, hoy.month, hoy.day),
+      initialDate: _fecha.isBefore(inicio) ? inicio : _fecha,
+      firstDate: inicio,
       lastDate: hoy.add(const Duration(days: 90)),
       locale: const Locale('es'),
     );
@@ -527,7 +539,7 @@ class _ProgramarSheetState extends State<ProgramarSheet> {
                           style: TextStyle(fontSize: 11.5, color: mutedColor),
                         ),
                         Text(
-                          valor ?? 'Elegir',
+                          valor ?? 'Opcional',
                           style: TextStyle(
                             fontWeight: FontWeight.w700,
                             color: valor == null ? mutedColor : textColor,
@@ -552,122 +564,133 @@ class _ProgramarSheetState extends State<ProgramarSheet> {
           20,
           20 + MediaQuery.of(context).viewInsets.bottom,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SheetHeader(
-              title: widget.editando
-                  ? 'Reprogramar ${widget.pedido.folio}'
-                  : 'Programar ${widget.pedido.folio}',
-              subtitle:
-                  '${widget.pedido.clienteNombre} · ${m3(widget.pedido.volumenM3)}',
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                selector(
-                  icon: Icons.calendar_today_outlined,
-                  label: 'Fecha',
-                  valor: fechaLarga(_fecha),
-                  onTap: _elegirFecha,
-                ),
-                const SizedBox(width: 10),
-                selector(
-                  icon: Icons.schedule,
-                  label: 'Hora de arranque',
-                  valor: _horaTexto,
-                  onTap: _elegirHora,
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Dosificador',
-              style: TextStyle(fontWeight: FontWeight.w700, color: textColor),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: [
-                for (final d in JefePlantaMock.dosificadores)
-                  ChoiceChip(
-                    label: Text(d.nombre),
-                    selected: _dosificadorId == d.id,
-                    showCheckmark: false,
-                    selectedColor: AppColors.accent,
-                    backgroundColor: AppColors.border(context, alpha: 0.06),
-                    side: BorderSide.none,
-                    labelStyle: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: _dosificadorId == d.id
-                          ? AppColors.onAccent
-                          : textColor,
-                    ),
-                    onSelected: (_) => setState(() => _dosificadorId = d.id),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SheetHeader(
+                title: widget.editando
+                    ? 'Reprogramar ${widget.pedido.folio}'
+                    : 'Programar ${widget.pedido.folio}',
+                subtitle:
+                    '${widget.pedido.clienteNombre} · ${m3(widget.pedido.volumenM3)}',
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  selector(
+                    icon: Icons.calendar_today_outlined,
+                    label: 'Fecha',
+                    valor: fechaLarga(_fecha),
+                    onTap: _elegirFecha,
                   ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Personal requerido',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: textColor,
-                    ),
+                  const SizedBox(width: 10),
+                  selector(
+                    icon: Icons.schedule,
+                    label: 'Hora de arranque',
+                    valor: _horaTexto,
+                    onTap: _elegirHora,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<int?>(
+                initialValue: _dosificadorId,
+                isExpanded: true,
+                decoration: campoJp(
+                  context,
+                  'Dosificador (opcional)',
+                  prefixIcon: const Icon(
+                    Icons.precision_manufacturing_outlined,
                   ),
                 ),
-                IconButton.outlined(
-                  onPressed: _personal > 1
-                      ? () => setState(() => _personal--)
-                      : null,
-                  icon: const Icon(Icons.remove),
-                ),
-                SizedBox(
-                  width: 44,
-                  child: Text(
-                    '$_personal',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: textColor,
-                    ),
+                dropdownColor: AppColors.surfaceAlt(context),
+                items: [
+                  const DropdownMenuItem<int?>(
+                    value: null,
+                    child: Text('Sin dosificador'),
                   ),
-                ),
-                IconButton.outlined(
-                  onPressed: () => setState(() => _personal++),
-                  icon: const Icon(Icons.add),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _hora == null
-                    ? null
-                    : () => Navigator.of(context).pop(
-                        ProgramarInput(
-                          fecha: _fecha,
-                          horaArranque: _horaTexto!,
-                          dosificadorId: _dosificadorId,
-                          personalRequerido: _personal,
+                  for (final d in widget.dosificadores)
+                    DropdownMenuItem<int?>(value: d.id, child: Text(d.nombre)),
+                  // Keep a saved one that's no longer in the active catalog.
+                  if (widget.dosificadorInicial != null &&
+                      !widget.dosificadores.any(
+                        (d) => d.id == widget.dosificadorInicial,
+                      ))
+                    DropdownMenuItem<int?>(
+                      value: widget.dosificadorInicial,
+                      child: Text('Dosificador #${widget.dosificadorInicial}'),
+                    ),
+                ],
+                onChanged: (v) => setState(() => _dosificadorId = v),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Personal requerido',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: textColor,
+                          ),
                         ),
+                        Text(
+                          'Opcional',
+                          style: TextStyle(fontSize: 12, color: mutedColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton.outlined(
+                    onPressed: _personal > 0
+                        ? () => setState(() => _personal--)
+                        : null,
+                    icon: const Icon(Icons.remove),
+                  ),
+                  SizedBox(
+                    width: 44,
+                    child: Text(
+                      _personal == 0 ? '—' : '$_personal',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: textColor,
                       ),
-                style: botonPrimarioJp(),
-                child: Text(
-                  _hora == null
-                      ? 'Elige la hora de arranque'
-                      : (widget.editando ? 'Guardar cambios' : 'Programar'),
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  IconButton.outlined(
+                    onPressed: () => setState(() => _personal++),
+                    icon: const Icon(Icons.add),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(
+                    ProgramarInput(
+                      fecha: _fecha,
+                      horaArranque: _horaTexto,
+                      dosificadorId: _dosificadorId,
+                      personalRequerido: _personal == 0 ? null : _personal,
+                    ),
+                  ),
+                  style: botonPrimarioJp(),
+                  child: Text(
+                    widget.editando ? 'Guardar cambios' : 'Programar',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

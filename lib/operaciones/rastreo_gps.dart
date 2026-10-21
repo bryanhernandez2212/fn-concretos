@@ -5,7 +5,7 @@ import 'operaciones_service.dart';
 import 'vehiculo.dart';
 
 /// Which medium feeds a unit's positions into `POST /remisiones/{id}/gps`,
-/// chosen per vehículo from the web app (`VehiculoResumen.origenGps`).
+/// chosen per vehículo from the web app (`VehiculoResumen.oinstrigenGps`).
 ///
 /// - [appMovil]: this phone sends them while `RouteNavigationScreen` is
 ///   guiding (the only mode that existed before Samsara).

@@ -2,18 +2,18 @@ import 'package:flutter/material.dart';
 import '../../catalogo/planta.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/info_pill.dart';
-import '../jefe_planta_mock.dart';
+import '../jefe_planta_service.dart';
 import '../jefe_planta_widgets.dart';
 
+/// Tones from the web's `estatusOperativo` catalog.
 Color colorEstatusOperativo(String estatus) => switch (estatus) {
-  estatusOperativoDisponible => AppColors.success,
-  estatusOperativoEnRuta => AppColors.accent,
-  estatusOperativoMantenimiento => AppColors.warning,
+  estatusOperativoOperando => AppColors.success,
+  estatusOperativoAccidentada => AppColors.error,
   _ => AppColors.warning,
 };
 
 /// An olla en ruta can't change planta mid-trip.
-bool puedeMoverse(OllaPlanta o) => o.estatusOperativo != estatusOperativoEnRuta;
+bool puedeMoverse(OllaPlanta o) => !o.enRuta;
 
 /// Count tile in the Ollas summary row.
 class ResumenFlotaTile extends StatelessWidget {
@@ -68,13 +68,19 @@ class ResumenFlotaTile extends StatelessWidget {
 class OllaCard extends StatelessWidget {
   final OllaPlanta olla;
   final String plantaNombre;
+  final String? operadorNombre;
   final VoidCallback? onMover;
+
+  /// Opens the map centered on this olla.
+  final VoidCallback onUbicacion;
 
   const OllaCard({
     super.key,
     required this.olla,
     required this.plantaNombre,
+    this.operadorNombre,
     required this.onMover,
+    required this.onUbicacion,
   });
 
   @override
@@ -83,6 +89,12 @@ class OllaCard extends StatelessWidget {
     final mutedColor = AppColors.mutedText(context);
     final estatusColor = colorEstatusOperativo(olla.estatusOperativo);
     final movible = puedeMoverse(olla);
+    final botonSecundario = OutlinedButton.styleFrom(
+      foregroundColor: textColor,
+      side: BorderSide(color: AppColors.border(context, alpha: 0.15)),
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+    );
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -125,9 +137,21 @@ class OllaCard extends StatelessWidget {
                   ],
                 ),
               ),
-              EstatusPill(
-                label: etiquetaEstatusOperativo(olla.estatusOperativo),
-                color: estatusColor,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  EstatusPill(
+                    label: etiquetaEstatusOperativo(olla.estatusOperativo),
+                    color: estatusColor,
+                  ),
+                  if (olla.enRuta) ...[
+                    const SizedBox(height: 4),
+                    const EstatusPill(
+                      label: 'En ruta',
+                      color: AppColors.accent,
+                    ),
+                  ],
+                ],
               ),
             ],
           ),
@@ -151,37 +175,38 @@ class OllaCard extends StatelessWidget {
               ),
               InfoPill(
                 icon: Icons.person_outline,
-                text: olla.conductorNombre ?? 'Sin operador',
+                text: olla.conductorAsignadoId == null
+                    ? 'Sin operador'
+                    : operadorNombre ?? 'Operador #${olla.conductorAsignadoId}',
                 mutedColor: mutedColor,
                 textColor: textColor,
               ),
             ],
           ),
-          if (onMover != null) ...[
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: movible ? onMover : null,
-                icon: const Icon(Icons.swap_horiz),
-                label: Text(
-                  movible
-                      ? 'Mover a otra planta'
-                      : 'En ruta — no se puede mover',
-                ),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: textColor,
-                  side: BorderSide(
-                    color: AppColors.border(context, alpha: 0.15),
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
-                  ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: onUbicacion,
+                  icon: const Icon(Icons.gps_fixed, color: AppColors.accent),
+                  label: const Text('Ubicación'),
+                  style: botonSecundario,
                 ),
               ),
-            ),
-          ],
+              if (onMover != null) ...[
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: movible ? onMover : null,
+                    icon: const Icon(Icons.swap_horiz),
+                    label: Text(movible ? 'Mover de planta' : 'En ruta'),
+                    style: botonSecundario,
+                  ),
+                ),
+              ],
+            ],
+          ),
         ],
       ),
     );
@@ -214,105 +239,134 @@ class _MoverOllaSheetState extends State<MoverOllaSheet> {
         .where((p) => p.id == widget.olla.plantaAsignadaId)
         .firstOrNull;
 
+    // The planta list scrolls on its own; header and button stay put.
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SheetHeader(
-              title: 'Mover ${widget.olla.numeroUnidad}',
-              subtitle:
-                  'Actualmente en ${origen?.nombre ?? '#${widget.olla.plantaAsignadaId}'}',
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Planta destino',
-              style: TextStyle(fontWeight: FontWeight.w700, color: textColor),
-            ),
-            const SizedBox(height: 8),
-            for (final p in destinos)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Material(
-                  color: _destino?.id == p.id
-                      ? AppColors.accent.withValues(alpha: 0.12)
-                      : AppColors.card(context),
-                  borderRadius: BorderRadius.circular(14),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(14),
-                    onTap: () => setState(() => _destino = p),
-                    child: Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SheetHeader(
+                title: 'Mover ${widget.olla.numeroUnidad}',
+                subtitle:
+                    'Actualmente en ${origen?.nombre ?? '#${widget.olla.plantaAsignadaId}'}',
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Planta destino',
+                style: TextStyle(fontWeight: FontWeight.w700, color: textColor),
+              ),
+              const SizedBox(height: 8),
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  padding: EdgeInsets.zero,
+                  children: [
+                    for (final p in destinos)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Material(
                           color: _destino?.id == p.id
-                              ? AppColors.accent
-                              : AppColors.border(context),
-                          width: _destino?.id == p.id ? 1.5 : 1,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.factory_outlined,
-                            color: _destino?.id == p.id
-                                ? AppColors.accent
-                                : mutedColor,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  p.nombre,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    color: textColor,
-                                  ),
+                              ? AppColors.accent.withValues(alpha: 0.12)
+                              : AppColors.card(context),
+                          borderRadius: BorderRadius.circular(14),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(14),
+                            onTap: () => setState(() => _destino = p),
+                            child: Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: _destino?.id == p.id
+                                      ? AppColors.accent
+                                      : AppColors.border(context),
+                                  width: _destino?.id == p.id ? 1.5 : 1,
                                 ),
-                                if (p.tipoPlantaNombre != null)
-                                  Text(
-                                    p.tipoPlantaNombre!,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: mutedColor,
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.factory_outlined,
+                                    color: _destino?.id == p.id
+                                        ? AppColors.accent
+                                        : mutedColor,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          p.nombre,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            color: textColor,
+                                          ),
+                                        ),
+                                        if (p.tipoPlantaNombre != null)
+                                          Text(
+                                            p.tipoPlantaNombre!,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: mutedColor,
+                                            ),
+                                          ),
+                                      ],
                                     ),
                                   ),
-                              ],
+                                  if (_destino?.id == p.id)
+                                    const Icon(
+                                      Icons.check_circle,
+                                      color: AppColors.accent,
+                                    ),
+                                ],
+                              ),
                             ),
                           ),
-                          if (_destino?.id == p.id)
-                            const Icon(
-                              Icons.check_circle,
-                              color: AppColors.accent,
-                            ),
-                        ],
+                        ),
                       ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _destino == null
+                      ? null
+                      : () => Navigator.of(context).pop(_destino),
+                  // The default disabled grey nearly vanishes on the dark sheet.
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accent,
+                    foregroundColor: AppColors.onAccent,
+                    disabledBackgroundColor: AppColors.border(
+                      context,
+                      alpha: 0.12,
                     ),
+                    disabledForegroundColor: textColor.withValues(alpha: 0.6),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: Text(
+                    _destino == null
+                        ? 'Elige una planta'
+                        : 'Mover a ${_destino!.nombre}',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _destino == null
-                    ? null
-                    : () => Navigator.of(context).pop(_destino),
-                style: botonPrimarioJp(),
-                child: Text(
-                  _destino == null
-                      ? 'Elige una planta'
-                      : 'Mover a ${_destino!.nombre}',
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

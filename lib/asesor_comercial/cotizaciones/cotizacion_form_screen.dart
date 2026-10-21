@@ -836,9 +836,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
             onPrimary: Colors.black,
           ),
         ),
-        child: Stepper(
-          type: StepperType.horizontal,
-          elevation: 0,
+        child: CustomStepper(
           currentStep: _currentStep,
           onStepTapped: (step) => setState(() => _currentStep = step),
           onStepContinue: () {

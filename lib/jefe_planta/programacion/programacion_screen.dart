@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
+import '../../auth/auth_service.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/app_feedback.dart';
 import '../../widgets/bottom_nav_bar.dart';
 import '../../widgets/header_icon_button.dart';
-import '../jefe_planta_mock.dart';
+import '../jefe_planta_service.dart';
 import '../jefe_planta_widgets.dart';
 import 'programacion_widgets.dart';
 
 /// "Programación" tab: the plant's production schedule for one day
 /// (operaciones `GET /programacion-produccion?fecha=&plantaId=`) as a
 /// timeline by hora de arranque, plus the pedidos still waiting to be
-/// programmed. Programming/reprogramming goes through [ProgramarSheet]
+/// programmed (the planta's `autorizado`/`parcial` pedidos, the web's
+/// rule). Programming/reprogramming goes through [ProgramarSheet]
 /// (`POST`/`PUT /programacion-produccion`); approve/cancel through
-/// `PATCH /programacion-produccion/{id}/estatus`. Design-only — runs on
-/// [JefePlantaMock].
+/// `PATCH /programacion-produccion/{id}/estatus`.
 class ProgramacionScreen extends StatefulWidget {
   const ProgramacionScreen({super.key});
 
@@ -26,6 +27,10 @@ class _ProgramacionScreenState extends State<ProgramacionScreen> {
   late List<DateTime> _dias;
   late Future<List<ProgramacionPedido>> _future;
   late Future<List<PedidoPlanta>> _porProgramar;
+  ContextoPlanta? _contexto;
+
+  /// Best-effort catalog for [ProgramarSheet] and the rows' names.
+  List<Dosificador> _dosificadores = const [];
 
   @override
   void initState() {
@@ -38,10 +43,34 @@ class _ProgramacionScreenState extends State<ProgramacionScreen> {
   }
 
   void _cargar() {
-    setState(() {
-      _future = JefePlantaMock.programacion(_dia);
-      _porProgramar = JefePlantaMock.pedidosPorProgramar();
+    final contexto = JefePlantaService.contexto().then((c) {
+      if (mounted && _contexto == null) setState(() => _contexto = c);
+      if (_dosificadores.isEmpty) _cargarDosificadores(c.miPlantaId);
+      return c;
     });
+    final dia = _dia;
+    setState(() {
+      _future = contexto.then(
+        (c) => JefePlantaService.programacion(dia, plantaId: c.miPlantaId),
+      );
+      _porProgramar = contexto.then(
+        (c) => JefePlantaService.pedidosPorProgramar(plantaId: c.miPlantaId),
+      );
+    });
+  }
+
+  String? _nombreDosificador(int? id) {
+    for (final d in _dosificadores) {
+      if (d.id == id) return d.nombre;
+    }
+    return null;
+  }
+
+  Future<void> _cargarDosificadores(int? plantaId) async {
+    try {
+      final lista = await JefePlantaService.dosificadores(plantaId: plantaId);
+      if (mounted) setState(() => _dosificadores = lista);
+    } catch (_) {}
   }
 
   Future<void> _refresh() async {
@@ -84,6 +113,7 @@ class _ProgramacionScreenState extends State<ProgramacionScreen> {
         fechaInicial: fila?.fechaProgramada ?? _dia,
         horaInicial: fila?.horaArranque,
         dosificadorInicial: fila?.dosificadorId,
+        dosificadores: _dosificadores,
         personalInicial: fila?.personalRequerido,
         editando: fila != null,
       ),
@@ -97,9 +127,10 @@ class _ProgramacionScreenState extends State<ProgramacionScreen> {
     final input = await _abrirProgramar(pedido, fila: fila);
     if (input == null || !mounted) return;
     try {
-      await JefePlantaMock.guardarProgramacion(
-        id: fila?.id,
-        pedido: pedido,
+      await JefePlantaService.guardarProgramacion(
+        actual: fila,
+        pedidoId: pedido.id,
+        plantaId: _contexto?.miPlantaId,
         fecha: input.fecha,
         horaArranque: input.horaArranque,
         dosificadorId: input.dosificadorId,
@@ -108,9 +139,13 @@ class _ProgramacionScreenState extends State<ProgramacionScreen> {
       if (!mounted) return;
       AppSnack.success(
         context,
-        '${pedido.folio} programado para ${fechaLarga(input.fecha)} a las ${input.horaArranque}',
+        input.horaArranque == null
+            ? '${pedido.folio} programado para ${fechaLarga(input.fecha)}'
+            : '${pedido.folio} programado para ${fechaLarga(input.fecha)} a las ${input.horaArranque}',
       );
       _cargar();
+    } on AuthException catch (e) {
+      if (mounted) AppSnack.error(context, e.message);
     } catch (_) {
       if (mounted) {
         AppSnack.error(context, 'No se pudo guardar la programación');
@@ -120,15 +155,24 @@ class _ProgramacionScreenState extends State<ProgramacionScreen> {
 
   Future<void> _cambiarEstatus(ProgramacionPedido fila, String estatus) async {
     try {
-      await JefePlantaMock.cambiarEstatus(fila.id, estatus);
+      final r = await JefePlantaService.cambiarEstatus(fila.id, estatus);
       if (!mounted) return;
-      AppSnack.success(
-        context,
-        estatus == estatusProgramacionAprobado
-            ? '${fila.pedido.folio} aprobado'
-            : '${fila.pedido.folio} cancelado',
-      );
+      if (estatus == estatusProgramacionAprobado && r.logisticaError != null) {
+        AppSnack.info(
+          context,
+          '${fila.pedido.folio} aprobado, pero la logística no se autorizó: ${r.logisticaError}',
+        );
+      } else {
+        AppSnack.success(
+          context,
+          estatus == estatusProgramacionAprobado
+              ? '${fila.pedido.folio} aprobado'
+              : '${fila.pedido.folio} cancelado',
+        );
+      }
       _cargar();
+    } on AuthException catch (e) {
+      if (mounted) AppSnack.error(context, e.message);
     } catch (_) {
       if (mounted) {
         AppSnack.error(context, 'No se pudo actualizar la programación');
@@ -180,7 +224,9 @@ class _ProgramacionScreenState extends State<ProgramacionScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SheetHeader(
-                title: '${fila.pedido.folio} · ${fila.horaArranque}',
+                title: fila.horaArranque == null
+                    ? fila.pedido.folio
+                    : '${fila.pedido.folio} · ${fila.horaArranque}',
                 subtitle:
                     '${fila.pedido.clienteNombre} — ${fila.pedido.obraNombre}',
               ),
@@ -251,6 +297,10 @@ class _ProgramacionScreenState extends State<ProgramacionScreen> {
       case 'aprobar':
         await _cambiarEstatus(fila, estatusProgramacionAprobado);
       case 'reprogramar':
+        if (fila.pedidoId == null) {
+          AppSnack.info(context, 'Esta fila no está ligada a un pedido');
+          return;
+        }
         await _programar(fila.pedido, fila: fila);
       case 'cancelar':
         await _confirmarCancelar(fila);
@@ -261,7 +311,6 @@ class _ProgramacionScreenState extends State<ProgramacionScreen> {
   Widget build(BuildContext context) {
     final textColor = AppColors.text(context);
     final mutedColor = AppColors.mutedText(context);
-    final miPlanta = JefePlantaMock.planta(JefePlantaMock.miPlantaId);
 
     return RefreshIndicator(
       onRefresh: _refresh,
@@ -276,15 +325,15 @@ class _ProgramacionScreenState extends State<ProgramacionScreen> {
           JefePlantaTabHeader(
             icon: Icons.event_note_outlined,
             title: 'Programación',
-            subtitle: miPlanta?.nombre ?? 'Tu planta',
+            subtitle: _contexto == null
+                ? 'Cargando planta…'
+                : _contexto!.miPlanta?.nombre ?? 'Todas las plantas',
             action: HeaderIconButton(
               icon: Icons.calendar_month_outlined,
               tooltip: 'Elegir fecha',
               onPressed: _elegirFecha,
             ),
           ),
-          const SizedBox(height: 12),
-          const DatosEjemploBanner(),
           const SizedBox(height: 16),
           SelectorDias(
             dias: _dias,
@@ -357,7 +406,9 @@ class _ProgramacionScreenState extends State<ProgramacionScreen> {
               if (snapshot.hasError) {
                 return JefePlantaMensaje(
                   icon: Icons.error_outline,
-                  mensaje: 'No se pudo cargar la programación',
+                  mensaje: snapshot.error is AuthException
+                      ? (snapshot.error as AuthException).message
+                      : 'No se pudo cargar la programación',
                   onRetry: _cargar,
                 );
               }
@@ -376,6 +427,9 @@ class _ProgramacionScreenState extends State<ProgramacionScreen> {
                   for (var i = 0; i < filas.length; i++)
                     ProgramacionTimelineItem(
                       fila: filas[i],
+                      dosificadorNombre: _nombreDosificador(
+                        filas[i].dosificadorId,
+                      ),
                       ultimo: i == filas.length - 1,
                       onTap: () => _acciones(filas[i]),
                     ),

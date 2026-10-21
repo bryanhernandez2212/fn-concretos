@@ -526,3 +526,152 @@ class ResumenCotizacionCard extends StatelessWidget {
     );
   }
 }
+
+class CustomStepper extends StatelessWidget {
+  final int currentStep;
+  final ValueChanged<int> onStepTapped;
+  final VoidCallback onStepContinue;
+  final VoidCallback onStepCancel;
+  final Widget Function(BuildContext, ControlsDetails) controlsBuilder;
+  final List<Step> steps;
+
+  const CustomStepper({
+    super.key,
+    required this.currentStep,
+    required this.onStepTapped,
+    required this.onStepContinue,
+    required this.onStepCancel,
+    required this.controlsBuilder,
+    required this.steps,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final mutedColor = isDark ? Colors.white54 : Colors.black54;
+    final fillColor = isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7);
+
+    return Column(
+      children: [
+        // Top Header Steps
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.02),
+                offset: const Offset(0, 4),
+                blurRadius: 10,
+              )
+            ],
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: List.generate(steps.length, (index) {
+              final isSelected = currentStep == index;
+              final isCompleted = index < currentStep;
+              final stepColor = isSelected ? AppColors.accent : (isCompleted ? AppColors.accent.withOpacity(0.5) : fillColor);
+              final stepLabelColor = isSelected ? AppColors.accent : (isCompleted ? textColor : mutedColor);
+
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => onStepTapped(index),
+                  behavior: HitTestBehavior.opaque,
+                  child: Column(
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOutCubic,
+                        height: 6,
+                        margin: EdgeInsets.only(right: index == steps.length - 1 ? 0 : 8),
+                        decoration: BoxDecoration(
+                          color: stepColor,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      AnimatedDefaultTextStyle(
+                        duration: const Duration(milliseconds: 200),
+                        style: TextStyle(
+                          fontSize: isSelected ? 12.5 : 11.5,
+                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                          color: stepLabelColor,
+                        ),
+                        child: steps[index].title,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+        
+        // Body with Animation
+        Expanded(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 400),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (child, animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0.02, 0),
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: child,
+                ),
+              );
+            },
+            child: SingleChildScrollView(
+              key: ValueKey(currentStep),
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Builder(
+                    builder: (context) {
+                      final titleWidget = steps[currentStep].title;
+                      String titleText = '';
+                      if (titleWidget is Text && titleWidget.data != null) {
+                        titleText = titleWidget.data!;
+                      }
+                      return Text(
+                        'Paso ${currentStep + 1} - $titleText',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: textColor,
+                          letterSpacing: -0.5,
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  steps[currentStep].content,
+                  const SizedBox(height: 32),
+                  controlsBuilder(
+                    context,
+                    ControlsDetails(
+                      currentStep: currentStep,
+                      stepIndex: currentStep,
+                      onStepContinue: onStepContinue,
+                      onStepCancel: onStepCancel,
+                    ),
+                  ),
+                  const SizedBox(height: 48), // extra bottom padding
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
