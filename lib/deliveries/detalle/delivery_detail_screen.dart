@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../administracion/administracion_service.dart';
+import '../../auth/roles.dart';
 import '../../auth/auth_service.dart';
 import '../../comercial/comercial_service.dart';
 import '../../operaciones/evidencia.dart';
@@ -78,6 +80,21 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   /// driver knows whether their phone is the one reporting position.
   Future<RastreoRemision>? _rastreoFuture;
 
+  /// Operador de bomba name lookups, memoized per idEmpleado so rebuilds
+  /// don't refetch. Best-effort: null on failure, and the card shows the id.
+  final _nombresEmpleado = <int, Future<String?>>{};
+
+  Future<String?> _nombreEmpleado(int id) => _nombresEmpleado.putIfAbsent(
+    id,
+    () async {
+      try {
+        return (await AdministracionService.obtenerEmpleado(id)).nombreCompleto;
+      } catch (_) {
+        return null;
+      }
+    },
+  );
+
   @override
   void initState() {
     super.initState();
@@ -139,14 +156,18 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   }
 
   /// Whether the remisión has genuinely reached [objetivo] or a later step
-  /// in [secuenciaHitos]. A blank/unrecognized `estatus` (nothing
+  /// in its `HitoEntrega.secuencia`. A blank/unrecognized `estatus` (nothing
   /// registered yet, or `con_atraso`/`con_incidencia`) never counts as
   /// having reached it — only a confirmed, recognized hito does.
   bool _hitoAlcanzado(RemisionResumen? detalle, HitoEntrega objetivo) {
     if (detalle == null) return false;
-    final current = HitoEntrega.fromBackendValue(detalle.estatus);
+    final current = HitoEntrega.fromBackendValue(
+      detalle.estatus,
+      soloBomba: detalle.esSoloBomba,
+    );
     if (current == null) return false;
-    return secuenciaHitos.indexOf(current) >= secuenciaHitos.indexOf(objetivo);
+    final secuencia = HitoEntrega.secuencia(soloBomba: detalle.esSoloBomba);
+    return secuencia.indexOf(current) >= secuencia.indexOf(objetivo);
   }
 
   /// True only once the delivery is genuinely done: hito reached
@@ -158,10 +179,16 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   /// salida de planta and the truck being fully unloaded and signed for, so
   /// the button has to stay reachable through all of that, not just until
   /// arrival.
-  bool _entregaCompleta(RemisionResumen? detalle, List<FirmaResponse>? firmas, List<ArchivoResponse>? archivos) {
+  bool _entregaCompleta(
+    RemisionResumen? detalle,
+    List<FirmaResponse>? firmas,
+    List<ArchivoResponse>? archivos,
+  ) {
     if (!_hitoAlcanzado(detalle, HitoEntrega.descargando)) return false;
     final firmada = _firmaMasReciente(firmas) != null;
-    final tieneEvidencia = (archivos ?? const <ArchivoResponse>[]).any((a) => a.tipoArchivo == 'foto_evidencia');
+    final tieneEvidencia = (archivos ?? const <ArchivoResponse>[]).any(
+      (a) => a.tipoArchivo == 'foto_evidencia',
+    );
     return firmada && tieneEvidencia;
   }
 
@@ -172,17 +199,41 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   /// "cargando en planta" actually means on the backend, since a blank
   /// `estatus` also resolves to `cargandoPlanta` (see
   /// `HitoEntrega.fromBackendValue`) even before `horaCarga` is set.
-  bool _puedeIniciarRuta(RemisionResumen? detalle, List<FirmaResponse>? firmas, List<ArchivoResponse>? archivos) =>
-      detalle != null && detalle.horaCarga != null && !_entregaCompleta(detalle, firmas, archivos);
+  ///
+  /// A solo-bomba remisión never loads at planta, so it never gets a
+  /// `horaCarga` — its route is available from the start, and starting it
+  /// is what registers its first hito (`salio_planta`).
+  bool _puedeIniciarRuta(
+    RemisionResumen? detalle,
+    List<FirmaResponse>? firmas,
+    List<ArchivoResponse>? archivos,
+  ) =>
+      detalle != null &&
+      (detalle.horaCarga != null || detalle.esSoloBomba) &&
+      !_entregaCompleta(detalle, firmas, archivos);
 
-  Future<void> _avanzarHito(HitoEntrega next) async {
+  Future<void> _avanzarHito(HitoEntrega next, RemisionResumen actual) async {
     final remisionId = widget.remision.remisionId;
     if (remisionId == null || _avanzando) return;
+
+    // On a remisión with bomba, `entregado` is also the end of bombeo, so
+    // the m³ bombeados get captured right here (optional; cancel aborts).
+    double? metrosBombeados;
+    if (next == HitoEntrega.entregado && actual.vehiculoBombaId != null) {
+      final captura = await showDialog<({double? metros})>(
+        context: context,
+        builder: (context) => const MetrosBombeadosDialog(),
+      );
+      if (captura == null || !mounted) return;
+      metrosBombeados = captura.metros;
+    }
+
     setState(() => _avanzando = true);
     try {
       final detalle = await OperacionesService.avanzarHito(
         remisionId,
         next.backendValue,
+        metrosBombeados: metrosBombeados,
       );
       if (mounted) setState(() => _detalleOverride = detalle);
     } on AuthException catch (e) {
@@ -196,9 +247,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
     Navigator.of(context)
         .push(
           MaterialPageRoute(
-            builder: (context) => RouteNavigationScreen(
-              remision: _remision,
-            ),
+            builder: (context) => RouteNavigationScreen(remision: _remision),
           ),
         )
         .then((_) => _refrescarDetalle());
@@ -277,9 +326,8 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
   void _abrirDosificacion() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => DosificacionScreen(
-          remisionFolio: _remision.folio,
-        ),
+        builder: (context) =>
+            DosificacionScreen(remisionFolio: _remision.folio),
       ),
     );
   }
@@ -364,7 +412,39 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                   );
                 },
               ),
-              if (remision.contactoNombre != null && remision.contactoNombre!.isNotEmpty) ...[
+              FutureBuilder<RemisionResumen?>(
+                future: _detalleFuture,
+                builder: (context, snapshot) {
+                  final detalle = _detalleOverride ?? snapshot.data;
+                  if (detalle == null || detalle.vehiculoBombaId == null) {
+                    return const SizedBox.shrink();
+                  }
+                  final conductorBombaId = detalle.conductorBombaId;
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: FutureBuilder<String?>(
+                      future: conductorBombaId == null
+                          ? null
+                          : _nombreEmpleado(conductorBombaId),
+                      builder: (context, nombreSnap) => BombeoInfoCard(
+                        unidad: detalle.vehiculoBombaNumeroUnidad,
+                        vehiculoBombaId: detalle.vehiculoBombaId,
+                        conductorBombaId: conductorBombaId,
+                        operadorNombre: nombreSnap.data,
+                        horaInicioBombeo: detalle.horaInicioBombeo,
+                        metrosABombear: detalle.volumen,
+                        metrosBombeados: detalle.metrosBombeados,
+                        cardColor: cardColor,
+                        borderColor: borderColor,
+                        textColor: textColor,
+                        mutedColor: mutedColor,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              if (remision.contactoNombre != null &&
+                  remision.contactoNombre!.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 ContactoCard(
                   nombre: remision.contactoNombre!,
@@ -387,7 +467,11 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                       return FutureBuilder<List<ArchivoResponse>>(
                         future: _archivosFuture,
                         builder: (context, archivoSnap) {
-                          if (!_puedeIniciarRuta(detalle, firmaSnap.data, archivoSnap.data)) {
+                          if (!_puedeIniciarRuta(
+                            detalle,
+                            firmaSnap.data,
+                            archivoSnap.data,
+                          )) {
                             return const SizedBox.shrink();
                           }
                           // Once the truck has already left planta at least
@@ -396,8 +480,13 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                           // is coming back to an in-progress delivery, e.g.
                           // after backing out of RouteNavigationScreen
                           // before arriving.
-                          final current = HitoEntrega.fromBackendValue(detalle!.estatus);
-                          final yaInicio = current != null && current != HitoEntrega.cargandoPlanta;
+                          final current = HitoEntrega.fromBackendValue(
+                            detalle!.estatus,
+                            soloBomba: detalle.esSoloBomba,
+                          );
+                          final yaInicio =
+                              current != null &&
+                              current != HitoEntrega.cargandoPlanta;
 
                           return FutureBuilder<RastreoRemision>(
                             future: _rastreoFuture,
@@ -416,7 +505,10 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
               ),
               if (remision.remisionId != null && puedeOperar) ...[
                 const SizedBox(height: 28),
-                DeliverySectionTitle(title: 'Avanzar hito de entrega', textColor: textColor),
+                DeliverySectionTitle(
+                  title: 'Avanzar hito de entrega',
+                  textColor: textColor,
+                ),
                 const SizedBox(height: 14),
                 FutureBuilder<RemisionResumen?>(
                   future: _detalleFuture,
@@ -445,7 +537,7 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                     return HitoStepperSection(
                       detalle: detalle,
                       avanzando: _avanzando,
-                      onAvanzar: _avanzarHito,
+                      onAvanzar: (next) => _avanzarHito(next, detalle),
                       cardColor: cardColor,
                       borderColor: borderColor,
                       textColor: textColor,
@@ -455,7 +547,10 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                 ),
               ],
               const SizedBox(height: 28),
-              DeliverySectionTitle(title: 'Evidencia de entrega', textColor: textColor),
+              DeliverySectionTitle(
+                title: 'Evidencia de entrega',
+                textColor: textColor,
+              ),
               const SizedBox(height: 14),
               FieldGroup(
                 cardColor: cardColor,
@@ -477,7 +572,10 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                         if (remision.remisionId == null || !puedeOperar) {
                           return const SizedBox.shrink();
                         }
-                        final habilitado = _hitoAlcanzado(detalle, HitoEntrega.descargando);
+                        final habilitado = _hitoAlcanzado(
+                          detalle,
+                          HitoEntrega.descargando,
+                        );
                         return Column(
                           children: [
                             FutureBuilder<List<FirmaResponse>>(
@@ -507,7 +605,8 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                                 final archivos =
                                     (snapshot.data ?? const <ArchivoResponse>[])
                                         .where(
-                                          (a) => a.tipoArchivo == 'foto_evidencia',
+                                          (a) =>
+                                              a.tipoArchivo == 'foto_evidencia',
                                         )
                                         .toList();
                                 return EvidenciaActionRow(
@@ -524,9 +623,10 @@ class _DeliveryDetailScreenState extends State<DeliveryDetailScreen> {
                         );
                       },
                     ),
-                    if (AuthService.rol == 'Operador de Bomba')
+                    if (AuthService.rol == rolOperadorBomba)
                       OperadorBombaRows(
-                        mostrarPrueba: remision.remisionId != null && puedeOperar,
+                        mostrarPrueba:
+                            remision.remisionId != null && puedeOperar,
                         onDosificacion: _abrirDosificacion,
                         onPruebaConcreto: _abrirPruebaConcreto,
                         borderColor: borderColor,

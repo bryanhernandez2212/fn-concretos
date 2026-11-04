@@ -65,11 +65,13 @@ class _TodasLasRutasScreenState extends State<TodasLasRutasScreen> {
         child: FutureBuilder<List<Remision>>(
           future: _future,
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
+            if (snapshot.connectionState == ConnectionState.done &&
+                snapshot.hasData) {
               _ultimaData = snapshot.data;
             }
             final tieneCache = _ultimaData != null;
-            final loading = snapshot.connectionState != ConnectionState.done && !tieneCache;
+            final loading =
+                snapshot.connectionState != ConnectionState.done && !tieneCache;
             final error = !loading && !tieneCache && snapshot.hasError;
             final rutas = _ultimaData ?? const <Remision>[];
 
@@ -105,7 +107,11 @@ class _TodasLasRutasScreenState extends State<TodasLasRutasScreen> {
                     padding: const EdgeInsets.all(40),
                     child: Column(
                       children: [
-                        Icon(Icons.local_shipping_outlined, size: 40, color: mutedColor),
+                        Icon(
+                          Icons.local_shipping_outlined,
+                          size: 40,
+                          color: mutedColor,
+                        ),
                         const SizedBox(height: 12),
                         Text(
                           'No tienes rutas asignadas hoy',
@@ -133,7 +139,8 @@ class _TodasLasRutasScreenState extends State<TodasLasRutasScreen> {
                       Navigator.of(context)
                           .push(
                             MaterialPageRoute(
-                              builder: (context) => DeliveryDetailScreen(remision: remision),
+                              builder: (context) =>
+                                  DeliveryDetailScreen(remision: remision),
                             ),
                           )
                           .then((_) => _refrescar());

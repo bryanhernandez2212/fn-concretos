@@ -79,7 +79,7 @@ class LiveTrackingSection extends StatelessWidget {
                 remisionId: remision.id,
                 folioRemision: remision.folioRemision,
                 conductorId: remision.conductorId,
-                volumen: remision.metrosCargados ?? remision.metrosSolicitados,
+                volumen: remision.volumen,
                 obraFuture: obraFuture,
                 isDark: isDark,
                 cardColor: cardColor,
@@ -186,7 +186,10 @@ class _LiveTrackingCardState extends State<LiveTrackingCard> {
       _eta = RouteEtaTracker(destino: _destino!);
       _asegurarMarcadorDestino();
       final ultima = _ruta?.ultimaUbicacion;
-      if (ultima != null) _actualizarEta(LatLng(latitude: ultima.latitud, longitude: ultima.longitud));
+      if (ultima != null)
+        _actualizarEta(
+          LatLng(latitude: ultima.latitud, longitude: ultima.longitud),
+        );
     });
   }
 
@@ -229,7 +232,8 @@ class _LiveTrackingCardState extends State<LiveTrackingCard> {
   Future<void> _asegurarMarcadorDestino() async {
     final controller = _mapController;
     final destino = _destino;
-    if (controller == null || destino == null || !tieneCoordenadas(destino)) return;
+    if (controller == null || destino == null || !tieneCoordenadas(destino))
+      return;
     if (_marcadorDestino != null || _agregandoDestino) return;
     _agregandoDestino = true;
     try {
@@ -241,7 +245,8 @@ class _LiveTrackingCardState extends State<LiveTrackingCard> {
           infoWindow: InfoWindow(title: 'Llegada', snippet: _destinoNombre),
         ),
       ]);
-      if (nuevos.isNotEmpty && nuevos.first != null) _marcadorDestino = nuevos.first;
+      if (nuevos.isNotEmpty && nuevos.first != null)
+        _marcadorDestino = nuevos.first;
     } catch (_) {
       // Best-effort — the map still works without the pin.
     } finally {
@@ -260,7 +265,11 @@ class _LiveTrackingCardState extends State<LiveTrackingCard> {
       await _rutaRestante.quitar(controller);
       return;
     }
-    await _rutaRestante.actualizar(controller, eta.rutaRestanteDesde(posicionActual), _accentYellow);
+    await _rutaRestante.actualizar(
+      controller,
+      eta.rutaRestanteDesde(posicionActual),
+      _accentYellow,
+    );
   }
 
   Future<void> _updateMapOverlays(RutaRemision ruta) async {
@@ -482,12 +491,22 @@ class _LiveTrackingCardState extends State<LiveTrackingCard> {
                     ),
                   ),
                   if (_eta?.progreso != null)
-                    Positioned(top: 10, bottom: 10, right: 10, child: RouteProgressBar(progreso: _eta!.progreso!)),
-                  if (_velocidadKmh != null || _eta?.duracionRestanteSegundos != null)
+                    Positioned(
+                      top: 10,
+                      bottom: 10,
+                      right: 10,
+                      child: RouteProgressBar(progreso: _eta!.progreso!),
+                    ),
+                  if (_velocidadKmh != null ||
+                      _eta?.duracionRestanteSegundos != null)
                     Positioned(
                       left: 10,
                       bottom: 10,
-                      child: SpeedEtaPill(velocidadKmh: _velocidadKmh, duracionRestanteSegundos: _eta?.duracionRestanteSegundos),
+                      child: SpeedEtaPill(
+                        velocidadKmh: _velocidadKmh,
+                        duracionRestanteSegundos:
+                            _eta?.duracionRestanteSegundos,
+                      ),
                     ),
                 ],
               ),
@@ -520,7 +539,10 @@ class RouteProgressBar extends StatelessWidget {
         child: FractionallySizedBox(
           heightFactor: progreso.clamp(0.0, 1.0),
           child: Container(
-            decoration: BoxDecoration(color: _accentYellow, borderRadius: BorderRadius.circular(3)),
+            decoration: BoxDecoration(
+              color: _accentYellow,
+              borderRadius: BorderRadius.circular(3),
+            ),
           ),
         ),
       ),
@@ -536,7 +558,11 @@ class SpeedEtaPill extends StatelessWidget {
   final double? velocidadKmh;
   final int? duracionRestanteSegundos;
 
-  const SpeedEtaPill({super.key, required this.velocidadKmh, required this.duracionRestanteSegundos});
+  const SpeedEtaPill({
+    super.key,
+    required this.velocidadKmh,
+    required this.duracionRestanteSegundos,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -546,7 +572,10 @@ class SpeedEtaPill extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(10)),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(10),
+      ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -555,7 +584,11 @@ class SpeedEtaPill extends StatelessWidget {
             const SizedBox(width: 4),
             Text(
               '${velocidad.round()} km/h',
-              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ],
           if (velocidad != null && duracion != null) const SizedBox(width: 10),
@@ -564,7 +597,11 @@ class SpeedEtaPill extends StatelessWidget {
             const SizedBox(width: 4),
             Text(
               'Llega en ${formatEta(duracion)}',
-              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ],
         ],

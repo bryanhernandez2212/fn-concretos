@@ -40,12 +40,20 @@ class _DosificacionScreenState extends State<DosificacionScreen> {
   }
 
   void _submit() {
-    final requeridos = [_cementoController, _arenaController, _gravaController, _aguaController];
+    final requeridos = [
+      _cementoController,
+      _arenaController,
+      _gravaController,
+      _aguaController,
+    ];
     if (requeridos.any((c) => c.text.trim().isEmpty)) {
       AppSnack.error(context, 'Captura al menos cemento, arena, grava y agua');
       return;
     }
-    AppSnack.success(context, 'Reporte de dosificación registrado (demostración)');
+    AppSnack.success(
+      context,
+      'Reporte de dosificación registrado (demostración)',
+    );
     Navigator.of(context).pop();
   }
 
@@ -53,7 +61,9 @@ class _DosificacionScreenState extends State<DosificacionScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black87;
-    final mutedColor = (isDark ? Colors.white : Colors.black).withValues(alpha: 0.55);
+    final mutedColor = (isDark ? Colors.white : Colors.black).withValues(
+      alpha: 0.55,
+    );
     final cardColor = isDark ? const Color(0xFF141414) : Colors.white;
     final borderColor = isDark
         ? Colors.white.withValues(alpha: 0.10)
@@ -80,17 +90,55 @@ class _DosificacionScreenState extends State<DosificacionScreen> {
             expand: true,
             child: Column(
               children: [
-                IngredienteField(controller: _cementoController, label: 'Cemento', unidad: 'kg', textColor: textColor, mutedColor: mutedColor),
+                IngredienteField(
+                  controller: _cementoController,
+                  label: 'Cemento',
+                  unidad: 'kg',
+                  textColor: textColor,
+                  mutedColor: mutedColor,
+                ),
                 const SizedBox(height: 14),
-                IngredienteField(controller: _arenaController, label: 'Arena', unidad: 'kg', textColor: textColor, mutedColor: mutedColor),
+                IngredienteField(
+                  controller: _arenaController,
+                  label: 'Arena',
+                  unidad: 'kg',
+                  textColor: textColor,
+                  mutedColor: mutedColor,
+                ),
                 const SizedBox(height: 14),
-                IngredienteField(controller: _gravaController, label: 'Grava', unidad: 'kg', textColor: textColor, mutedColor: mutedColor),
+                IngredienteField(
+                  controller: _gravaController,
+                  label: 'Grava',
+                  unidad: 'kg',
+                  textColor: textColor,
+                  mutedColor: mutedColor,
+                ),
                 const SizedBox(height: 14),
-                IngredienteField(controller: _aguaController, label: 'Agua', unidad: 'L', textColor: textColor, mutedColor: mutedColor),
+                IngredienteField(
+                  controller: _aguaController,
+                  label: 'Agua',
+                  unidad: 'L',
+                  textColor: textColor,
+                  mutedColor: mutedColor,
+                ),
                 const SizedBox(height: 14),
-                IngredienteField(controller: _aditivoController, label: 'Aditivo', unidad: 'L', textColor: textColor, mutedColor: mutedColor, requerido: false),
+                IngredienteField(
+                  controller: _aditivoController,
+                  label: 'Aditivo',
+                  unidad: 'L',
+                  textColor: textColor,
+                  mutedColor: mutedColor,
+                  requerido: false,
+                ),
                 const SizedBox(height: 14),
-                IngredienteField(controller: _aceleranteController, label: 'Acelerante', unidad: 'L', textColor: textColor, mutedColor: mutedColor, requerido: false),
+                IngredienteField(
+                  controller: _aceleranteController,
+                  label: 'Acelerante',
+                  unidad: 'L',
+                  textColor: textColor,
+                  mutedColor: mutedColor,
+                  requerido: false,
+                ),
               ],
             ),
           ),
@@ -104,9 +152,14 @@ class _DosificacionScreenState extends State<DosificacionScreen> {
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
-              child: const Text('Enviar reporte', style: TextStyle(fontWeight: FontWeight.w700)),
+              child: const Text(
+                'Enviar reporte',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
             ),
           ),
         ],

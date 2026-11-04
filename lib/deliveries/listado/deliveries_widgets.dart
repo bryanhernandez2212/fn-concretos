@@ -39,7 +39,11 @@ class RutasResumenCard extends StatelessWidget {
         children: [
           Text(
             '$value',
-            style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: color),
+            style: TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.w800,
+              color: color,
+            ),
           ),
           const SizedBox(height: 2),
           Text(
@@ -47,7 +51,11 @@ class RutasResumenCard extends StatelessWidget {
             textAlign: TextAlign.center,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: mutedColor),
+            style: TextStyle(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+              color: mutedColor,
+            ),
           ),
         ],
       ),
@@ -122,14 +130,24 @@ class RemisionCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       remision.obra,
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: textColor),
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: textColor,
+                      ),
                     ),
                   ),
-                  HitoChip(hito: remision.hitoActual),
+                  HitoChip(
+                    hito: remision.hitoActual,
+                    soloBomba: remision.soloBomba,
+                  ),
                 ],
               ),
               const SizedBox(height: 4),
-              Text(remision.cliente, style: TextStyle(fontSize: 13, color: mutedColor)),
+              Text(
+                remision.cliente,
+                style: TextStyle(fontSize: 13, color: mutedColor),
+              ),
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -148,11 +166,26 @@ class RemisionCard extends StatelessWidget {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  InfoPill(icon: Icons.access_time, text: remision.horaProgramada, mutedColor: mutedColor, textColor: textColor),
+                  InfoPill(
+                    icon: Icons.access_time,
+                    text: remision.horaProgramada,
+                    mutedColor: mutedColor,
+                    textColor: textColor,
+                  ),
                   const SizedBox(width: 8),
-                  InfoPill(icon: Icons.water_drop_outlined, text: '${remision.volumenM3} m³', mutedColor: mutedColor, textColor: textColor),
+                  InfoPill(
+                    icon: Icons.water_drop_outlined,
+                    text: '${remision.volumenM3} m³',
+                    mutedColor: mutedColor,
+                    textColor: textColor,
+                  ),
                   const SizedBox(width: 8),
-                  InfoPill(icon: Icons.grain, text: remision.tipoConcreto, mutedColor: mutedColor, textColor: textColor),
+                  InfoPill(
+                    icon: Icons.grain,
+                    text: remision.tipoConcreto,
+                    mutedColor: mutedColor,
+                    textColor: textColor,
+                  ),
                 ],
               ),
             ],
@@ -171,7 +204,10 @@ class RemisionCard extends StatelessWidget {
 class HitoChip extends StatelessWidget {
   final HitoEntrega? hito;
 
-  const HitoChip({super.key, required this.hito});
+  /// See `HitoEntrega.labelPara`.
+  final bool soloBomba;
+
+  const HitoChip({super.key, required this.hito, this.soloBomba = false});
 
   @override
   Widget build(BuildContext context) {
@@ -192,7 +228,7 @@ class HitoChip extends StatelessWidget {
       label = hito.label;
     } else {
       color = _accentYellow;
-      label = hito.label;
+      label = hito.labelPara(soloBomba: soloBomba);
     }
 
     return Container(
@@ -203,7 +239,11 @@ class HitoChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
       ),
     );
   }

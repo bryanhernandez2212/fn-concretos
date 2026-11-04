@@ -6,6 +6,7 @@ import '../profile/profile_screen.dart';
 import '../theme/app_colors.dart';
 import '../widgets/bottom_nav_bar.dart';
 import 'autorizaciones/autorizaciones_screen.dart';
+import 'conciliacion_agregados/conciliacion_agregados_screen.dart';
 import 'ordenes_compra/ordenes_compra_screen.dart';
 import 'rutas/rutas_activas_screen.dart';
 
@@ -38,11 +39,12 @@ class _DireccionHomeScreenState extends State<DireccionHomeScreen> {
   /// not Flutter's own canvas, so fading it to opacity 0 while inactive
   /// doesn't reliably hide it (it can keep rendering, or bleed through onto
   /// whichever tab IS visible) the way it does for ordinary widgets.
-  late final int _rutasTabIndex = _conCompras ? 2 : 1;
+  late final int _rutasTabIndex = _conCompras ? 3 : 2;
 
   late final List<Widget> _pages = [
     const AutorizacionesScreen(),
     if (_conCompras) const OrdenesCompraScreen(),
+    const ConciliacionAgregadosScreen(),
     const RutasActivasScreen(),
     const ProfileScreen(),
   ];
@@ -183,6 +185,11 @@ class _DireccionHomeScreenState extends State<DireccionHomeScreen> {
               selectedIcon: Icons.shopping_cart,
               label: 'Compras',
             ),
+          const NavItem(
+            icon: Icons.inventory_2_outlined,
+            selectedIcon: Icons.inventory_2,
+            label: 'Conciliados',
+          ),
           const NavItem(
             icon: Icons.map_outlined,
             selectedIcon: Icons.map,

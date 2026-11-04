@@ -49,7 +49,11 @@ class RouteNavBottomBar extends StatelessWidget {
   final bool arrived;
   final VoidCallback onFinish;
 
-  const RouteNavBottomBar({super.key, required this.arrived, required this.onFinish});
+  const RouteNavBottomBar({
+    super.key,
+    required this.arrived,
+    required this.onFinish,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -68,13 +72,21 @@ class RouteNavBottomBar extends StatelessWidget {
             ? ElevatedButton.icon(
                 onPressed: onFinish,
                 icon: const Icon(Icons.check_circle, color: Colors.black),
-                label: const Text('Ruta terminada', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                label: const Text(
+                  'Ruta terminada',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _accentYellow,
                   foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 12,
+                  ),
                   elevation: 2,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
               )
             : OutlinedButton(
@@ -83,10 +95,18 @@ class RouteNavBottomBar extends StatelessWidget {
                   backgroundColor: Colors.black.withValues(alpha: 0.55),
                   foregroundColor: Colors.white,
                   side: const BorderSide(color: Colors.white24),
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
-                child: const Text('Finalizar ruta', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                child: const Text(
+                  'Finalizar ruta',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                ),
               ),
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../widgets/notification_bell_button.dart';
+import 'package:url_launcher/link.dart';
 
 const _accentYellow = AppColors.accent;
 
@@ -67,7 +68,11 @@ class SettingsTile extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: textColor),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: textColor,
+                  ),
                 ),
               ),
               ?trailing,
@@ -78,7 +83,6 @@ class SettingsTile extends StatelessWidget {
     );
   }
 }
-
 
 /// Top-of-profile card: avatar (tap to view the photo, or to pick one when
 /// there's none yet; the camera badge always picks), name/puesto, and the
@@ -109,7 +113,9 @@ class ProfileHeaderCard extends StatelessWidget {
         ? Colors.white.withValues(alpha: 0.10)
         : Colors.black.withValues(alpha: 0.12);
     final onCardText = isDark ? Colors.white : Colors.black87;
-    final onCardMuted = isDark ? Colors.white.withValues(alpha: 0.6) : Colors.black.withValues(alpha: 0.55);
+    final onCardMuted = isDark
+        ? Colors.white.withValues(alpha: 0.6)
+        : Colors.black.withValues(alpha: 0.55);
     final fotoUrl = this.fotoUrl;
     final tieneFoto = fotoUrl != null && fotoUrl.isNotEmpty;
 
@@ -132,7 +138,13 @@ class ProfileHeaderCard extends StatelessWidget {
                     radius: 28,
                     backgroundColor: _accentYellow.withValues(alpha: 0.18),
                     backgroundImage: tieneFoto ? NetworkImage(fotoUrl) : null,
-                    child: !tieneFoto ? const Icon(Icons.person, size: 30, color: _accentYellow) : null,
+                    child: !tieneFoto
+                        ? const Icon(
+                            Icons.person,
+                            size: 30,
+                            color: _accentYellow,
+                          )
+                        : null,
                   ),
                   if (subiendoFoto)
                     const Positioned.fill(
@@ -141,7 +153,10 @@ class ProfileHeaderCard extends StatelessWidget {
                         child: SizedBox(
                           width: 20,
                           height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: _accentYellow),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: _accentYellow,
+                          ),
                         ),
                       ),
                     ),
@@ -157,7 +172,11 @@ class ProfileHeaderCard extends StatelessWidget {
                           shape: BoxShape.circle,
                           border: Border.all(color: cardColor, width: 2),
                         ),
-                        child: const Icon(Icons.camera_alt, size: 12, color: Colors.black),
+                        child: const Icon(
+                          Icons.camera_alt,
+                          size: 12,
+                          color: Colors.black,
+                        ),
                       ),
                     ),
                   ),
@@ -171,7 +190,11 @@ class ProfileHeaderCard extends StatelessWidget {
                 children: [
                   Text(
                     nombre,
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: onCardText),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: onCardText,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -198,7 +221,9 @@ class SettingsValueText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final onCardMuted = isDark ? Colors.white.withValues(alpha: 0.6) : Colors.black.withValues(alpha: 0.55);
+    final onCardMuted = isDark
+        ? Colors.white.withValues(alpha: 0.6)
+        : Colors.black.withValues(alpha: 0.55);
     return Text(value, style: TextStyle(color: onCardMuted, fontSize: 14));
   }
 }
@@ -223,7 +248,9 @@ class PreferencesSettingsGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final onCardMuted = isDark ? Colors.white.withValues(alpha: 0.6) : Colors.black.withValues(alpha: 0.55);
+    final onCardMuted = isDark
+        ? Colors.white.withValues(alpha: 0.6)
+        : Colors.black.withValues(alpha: 0.55);
 
     return SettingsGroup(
       children: [
@@ -357,7 +384,9 @@ class SecuritySettingsGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final onCardMuted = isDark ? Colors.white.withValues(alpha: 0.6) : Colors.black.withValues(alpha: 0.55);
+    final onCardMuted = isDark
+        ? Colors.white.withValues(alpha: 0.6)
+        : Colors.black.withValues(alpha: 0.55);
 
     return SettingsGroup(
       children: [
@@ -416,7 +445,9 @@ class SupportSettingsGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final onCardMuted = isDark ? Colors.white.withValues(alpha: 0.6) : Colors.black.withValues(alpha: 0.55);
+    final onCardMuted = isDark
+        ? Colors.white.withValues(alpha: 0.6)
+        : Colors.black.withValues(alpha: 0.55);
 
     return SettingsGroup(
       children: [
@@ -440,6 +471,48 @@ class SupportSettingsGroup extends StatelessWidget {
           title: 'Política de Privacidad',
           trailing: Icon(Icons.chevron_right, color: onCardMuted),
           onTap: () {},
+        ),
+      ],
+    );
+  }
+}
+
+class SolutionWs extends StatelessWidget {
+  const SolutionWs({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Center(
+          child: Link(
+            uri: Uri.parse("https://solucionesws.com"),
+            builder: (context, followLink) => InkWell(
+              onTap: followLink,
+              borderRadius: BorderRadius.circular(6.0),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8.0,
+                  vertical: 6.0,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      "Desarrollado por Soluciones WS",
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13.0,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4.0),
+                    Container(height: 1.5, width: 180.0, color: Colors.orange),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
       ],
     );
@@ -481,7 +554,11 @@ class LogoutButton extends StatelessWidget {
                 SizedBox(width: 10),
                 Text(
                   'Cerrar Sesión',
-                  style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w700, fontSize: 15),
+                  style: TextStyle(
+                    color: Colors.redAccent,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
                 ),
               ],
             ),
@@ -498,7 +575,11 @@ class LogoutButton extends StatelessWidget {
 // BackdropFilter/blur here: Impeller on iOS was rendering it as fully opaque
 // instead of see-through, so this sticks to plain alpha compositing.
 class AppearanceGlassMenu extends StatelessWidget {
-  const AppearanceGlassMenu({super.key, required this.selectedMode, required this.onSelected});
+  const AppearanceGlassMenu({
+    super.key,
+    required this.selectedMode,
+    required this.onSelected,
+  });
 
   /// The currently active theme mode (`themeNotifier.value`), rendered bold/accented.
   final ThemeMode selectedMode;
@@ -512,7 +593,9 @@ class AppearanceGlassMenu extends StatelessWidget {
     // tinted this white-on-dark/black-on-light instead, which looked like
     // it wasn't respecting the theme at all.
     final panelColor = isDark ? const Color(0xFF141414) : Colors.white;
-    final borderColor = isDark ? Colors.white.withValues(alpha: 0.10) : Colors.black.withValues(alpha: 0.12);
+    final borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.10)
+        : Colors.black.withValues(alpha: 0.12);
     final textColor = isDark ? Colors.white : Colors.black87;
 
     Widget item(ThemeMode mode, IconData icon, String label) {
@@ -523,7 +606,13 @@ class AppearanceGlassMenu extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
-              Icon(icon, size: 18, color: selected ? _accentYellow : textColor.withValues(alpha: 0.7)),
+              Icon(
+                icon,
+                size: 18,
+                color: selected
+                    ? _accentYellow
+                    : textColor.withValues(alpha: 0.7),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
@@ -558,7 +647,11 @@ class AppearanceGlassMenu extends StatelessWidget {
             children: [
               item(ThemeMode.light, Icons.light_mode_outlined, 'Claro'),
               item(ThemeMode.dark, Icons.dark_mode_outlined, 'Oscuro'),
-              item(ThemeMode.system, Icons.brightness_auto_outlined, 'Predeterminado del sistema'),
+              item(
+                ThemeMode.system,
+                Icons.brightness_auto_outlined,
+                'Predeterminado del sistema',
+              ),
             ],
           ),
         ),

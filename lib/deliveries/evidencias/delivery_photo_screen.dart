@@ -88,13 +88,18 @@ class _DeliveryPhotoScreenState extends State<DeliveryPhotoScreen> {
         final bytes = await photo.readAsBytes();
         final contentType = _contentTypeOf(photo);
         final extension = contentType.split('/').last;
-        final nombreArchivo = 'evidencia_${widget.remisionId}_${DateTime.now().millisecondsSinceEpoch}.$extension';
+        final nombreArchivo =
+            'evidencia_${widget.remisionId}_${DateTime.now().millisecondsSinceEpoch}.$extension';
         final presigned = await OperacionesService.presignedUploadUrl(
           carpeta: 'remision-evidencias',
           nombreArchivo: nombreArchivo,
           contentType: contentType,
         );
-        await OperacionesService.subirArchivoPresignado(presigned.uploadUrl, bytes, contentType);
+        await OperacionesService.subirArchivoPresignado(
+          presigned.uploadUrl,
+          bytes,
+          contentType,
+        );
         await OperacionesService.agregarArchivo(
           widget.remisionId,
           tipoArchivo: 'foto_evidencia',
@@ -120,7 +125,9 @@ class _DeliveryPhotoScreenState extends State<DeliveryPhotoScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final mutedColor = (isDark ? Colors.white : Colors.black).withValues(alpha: 0.55);
+    final mutedColor = (isDark ? Colors.white : Colors.black).withValues(
+      alpha: 0.55,
+    );
     final borderColor = isDark
         ? Colors.white.withValues(alpha: 0.10)
         : Colors.black.withValues(alpha: 0.12);
@@ -154,7 +161,11 @@ class _DeliveryPhotoScreenState extends State<DeliveryPhotoScreen> {
                   borderColor: borderColor,
                   onRemove: () => _removePhoto(photo),
                 ),
-              AddPhotoTile(borderColor: borderColor, mutedColor: mutedColor, onTap: _addPhoto),
+              AddPhotoTile(
+                borderColor: borderColor,
+                mutedColor: mutedColor,
+                onTap: _addPhoto,
+              ),
             ],
           ),
           const SizedBox(height: 24),
@@ -168,15 +179,23 @@ class _DeliveryPhotoScreenState extends State<DeliveryPhotoScreen> {
                 disabledBackgroundColor: _accentYellow.withValues(alpha: 0.5),
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
               child: _guardando
                   ? const SizedBox(
                       height: 18,
                       width: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.black),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Colors.black,
+                      ),
                     )
-                  : const Text('Guardar evidencia', style: TextStyle(fontWeight: FontWeight.w700)),
+                  : const Text(
+                      'Guardar evidencia',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
             ),
           ),
         ],

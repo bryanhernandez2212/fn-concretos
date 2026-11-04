@@ -23,6 +23,19 @@ class RemisionResumen {
   final int? vehiculoOllaId;
   final int? vehiculoBombaId;
 
+  /// Bombeo fields — only meaningful when [vehiculoBombaId] is set.
+  /// `conductorBombaId` is the Operador de Bomba's idEmpleado (what
+  /// `EntregasService` lists by for that role); `ordenTrabajoBombeoId` is
+  /// the turno de bombeo dispatch linked this remisión to when creating it
+  /// (the app can't change it). `horaInicioBombeo` is stamped by the
+  /// backend on the `descargando` hito; `horaEntrega` doubles as the end of
+  /// bombeo. `metrosBombeados` is what the operator typed on `entregado`.
+  final String? vehiculoBombaNumeroUnidad;
+  final int? conductorBombaId;
+  final int? ordenTrabajoBombeoId;
+  final DateTime? horaInicioBombeo;
+  final double? metrosBombeados;
+
   /// Timestamps the backend stamps as the remisión reaches each hito (not
   /// sent by the client — `OperacionesService.avanzarHito` only sends the
   /// `evento`). Null until that hito has actually happened.
@@ -43,6 +56,22 @@ class RemisionResumen {
   final double? metrosAcumuladosPedido;
   final double? metrosPendientesPedido;
 
+  /// A rented-pumping remisión: a pluma/bomba pumping concrete that never
+  /// left our planta, with no olla of ours assigned. It never passes through
+  /// planta, so its hito sequence skips `cargando_planta` (same rule as the
+  /// web, fnconcretos-front PR #185). "Olla + Pluma" is NOT solo bomba.
+  bool get esSoloBomba => vehiculoOllaId == null && vehiculoBombaId != null;
+
+  /// This remisión's own m³: `metrosCargados` once actually loaded, else the
+  /// planned `metrosSolicitados`. The web always sends `metrosCargados` on
+  /// create (as 0 when left blank, e.g. on a solo-bomba remisión), so a 0
+  /// counts as "not loaded" rather than as the volume.
+  double? get volumen {
+    final cargados = metrosCargados;
+    if (cargados != null && cargados > 0) return cargados;
+    return metrosSolicitados ?? cargados;
+  }
+
   const RemisionResumen({
     required this.id,
     required this.folioRemision,
@@ -51,6 +80,11 @@ class RemisionResumen {
     this.pedidoId,
     this.vehiculoOllaId,
     this.vehiculoBombaId,
+    this.vehiculoBombaNumeroUnidad,
+    this.conductorBombaId,
+    this.ordenTrabajoBombeoId,
+    this.horaInicioBombeo,
+    this.metrosBombeados,
     this.horaCarga,
     this.horaSalida,
     this.horaLlegadaObra,
@@ -66,18 +100,39 @@ class RemisionResumen {
       id: _parseInt(json['id']),
       folioRemision: json['folioRemision'] as String? ?? '',
       estatus: json['estatus'] as String? ?? '',
-      conductorId: json['conductorId'] == null ? null : _parseInt(json['conductorId']),
+      conductorId: json['conductorId'] == null
+          ? null
+          : _parseInt(json['conductorId']),
       pedidoId: json['pedidoId'] == null ? null : _parseInt(json['pedidoId']),
-      vehiculoOllaId: json['vehiculoOllaId'] == null ? null : _parseInt(json['vehiculoOllaId']),
-      vehiculoBombaId: json['vehiculoBombaId'] == null ? null : _parseInt(json['vehiculoBombaId']),
+      vehiculoOllaId: json['vehiculoOllaId'] == null
+          ? null
+          : _parseInt(json['vehiculoOllaId']),
+      vehiculoBombaId: json['vehiculoBombaId'] == null
+          ? null
+          : _parseInt(json['vehiculoBombaId']),
+      vehiculoBombaNumeroUnidad: json['vehiculoBombaNumeroUnidad'] as String?,
+      conductorBombaId: json['conductorBombaId'] == null
+          ? null
+          : _parseInt(json['conductorBombaId']),
+      ordenTrabajoBombeoId: json['ordenTrabajoBombeoId'] == null
+          ? null
+          : _parseInt(json['ordenTrabajoBombeoId']),
+      horaInicioBombeo: DateTime.tryParse(
+        json['horaInicioBombeo'] as String? ?? '',
+      ),
+      metrosBombeados: (json['metrosBombeados'] as num?)?.toDouble(),
       horaCarga: DateTime.tryParse(json['horaCarga'] as String? ?? ''),
       horaSalida: DateTime.tryParse(json['horaSalida'] as String? ?? ''),
-      horaLlegadaObra: DateTime.tryParse(json['horaLlegadaObra'] as String? ?? ''),
+      horaLlegadaObra: DateTime.tryParse(
+        json['horaLlegadaObra'] as String? ?? '',
+      ),
       horaEntrega: DateTime.tryParse(json['horaEntrega'] as String? ?? ''),
       metrosSolicitados: (json['metrosSolicitados'] as num?)?.toDouble(),
       metrosCargados: (json['metrosCargados'] as num?)?.toDouble(),
-      metrosAcumuladosPedido: (json['metrosAcumuladosPedido'] as num?)?.toDouble(),
-      metrosPendientesPedido: (json['metrosPendientesPedido'] as num?)?.toDouble(),
+      metrosAcumuladosPedido: (json['metrosAcumuladosPedido'] as num?)
+          ?.toDouble(),
+      metrosPendientesPedido: (json['metrosPendientesPedido'] as num?)
+          ?.toDouble(),
     );
   }
 }
@@ -99,7 +154,11 @@ class GpsPing {
   final double longitud;
   final String? timestampCaptura;
 
-  const GpsPing({required this.latitud, required this.longitud, required this.timestampCaptura});
+  const GpsPing({
+    required this.latitud,
+    required this.longitud,
+    required this.timestampCaptura,
+  });
 
   factory GpsPing.fromJson(Map<String, dynamic> json) {
     return GpsPing(
@@ -129,13 +188,17 @@ class RutaRemision {
   });
 
   factory RutaRemision.fromJson(Map<String, dynamic> json) {
-    final ultimaUbicacionJson = json['ultimaUbicacion'] as Map<String, dynamic>?;
+    final ultimaUbicacionJson =
+        json['ultimaUbicacion'] as Map<String, dynamic>?;
     return RutaRemision(
       remisionId: json['remisionId'] as int,
       folioRemision: json['folioRemision'] as String? ?? '',
       estatus: json['estatus'] as String? ?? '',
-      ultimaUbicacion: ultimaUbicacionJson == null ? null : GpsPing.fromJson(ultimaUbicacionJson),
-      historial: (json['historial'] as List<dynamic>?)
+      ultimaUbicacion: ultimaUbicacionJson == null
+          ? null
+          : GpsPing.fromJson(ultimaUbicacionJson),
+      historial:
+          (json['historial'] as List<dynamic>?)
               ?.map((e) => GpsPing.fromJson(e as Map<String, dynamic>))
               .toList() ??
           const [],

@@ -27,7 +27,11 @@ class SignatureScreen extends StatefulWidget {
   final int remisionId;
   final String remisionFolio;
 
-  const SignatureScreen({super.key, required this.remisionId, required this.remisionFolio});
+  const SignatureScreen({
+    super.key,
+    required this.remisionId,
+    required this.remisionFolio,
+  });
 
   @override
   State<SignatureScreen> createState() => _SignatureScreenState();
@@ -68,18 +72,25 @@ class _SignatureScreenState extends State<SignatureScreen> {
     });
 
     try {
-      final boundary = _signatureKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      final boundary =
+          _signatureKey.currentContext!.findRenderObject()
+              as RenderRepaintBoundary;
       final image = await boundary.toImage(pixelRatio: 2.0);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       final pngBytes = byteData!.buffer.asUint8List();
 
-      final nombreArchivo = 'firma_${widget.remisionId}_${DateTime.now().millisecondsSinceEpoch}.png';
+      final nombreArchivo =
+          'firma_${widget.remisionId}_${DateTime.now().millisecondsSinceEpoch}.png';
       final presigned = await OperacionesService.presignedUploadUrl(
         carpeta: 'remision-firmas',
         nombreArchivo: nombreArchivo,
         contentType: 'image/png',
       );
-      await OperacionesService.subirArchivoPresignado(presigned.uploadUrl, pngBytes, 'image/png');
+      await OperacionesService.subirArchivoPresignado(
+        presigned.uploadUrl,
+        pngBytes,
+        'image/png',
+      );
       final nombre = _nameController.text.trim();
       await OperacionesService.registrarFirma(
         widget.remisionId,
@@ -101,11 +112,15 @@ class _SignatureScreenState extends State<SignatureScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black87;
-    final mutedColor = (isDark ? Colors.white : Colors.black).withValues(alpha: 0.55);
+    final mutedColor = (isDark ? Colors.white : Colors.black).withValues(
+      alpha: 0.55,
+    );
     final borderColor = isDark
         ? Colors.white.withValues(alpha: 0.10)
         : Colors.black.withValues(alpha: 0.12);
-    final fillColor = isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.045);
+    final fillColor = isDark
+        ? Colors.white.withValues(alpha: 0.06)
+        : Colors.black.withValues(alpha: 0.045);
 
     return Scaffold(
       appBar: AppBar(
@@ -129,15 +144,31 @@ class _SignatureScreenState extends State<SignatureScreen> {
                 style: TextStyle(color: textColor),
                 decoration: InputDecoration(
                   labelText: 'Nombre de quien recibe',
-                  prefixIcon: const Icon(Icons.person_outline, size: 20, color: _accentYellow),
+                  prefixIcon: const Icon(
+                    Icons.person_outline,
+                    size: 20,
+                    color: _accentYellow,
+                  ),
                   filled: true,
                   fillColor: fillColor,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: _accentYellow, width: 1.5),
+                    borderSide: const BorderSide(
+                      color: _accentYellow,
+                      width: 1.5,
+                    ),
                   ),
                 ),
               ),
@@ -161,7 +192,13 @@ class _SignatureScreenState extends State<SignatureScreen> {
                           Container(color: Colors.white),
                           if (_strokes.isEmpty)
                             const Center(
-                              child: Text('Firme aquí', style: TextStyle(color: Colors.black26, fontSize: 16)),
+                              child: Text(
+                                'Firme aquí',
+                                style: TextStyle(
+                                  color: Colors.black26,
+                                  fontSize: 16,
+                                ),
+                              ),
                             ),
                           GestureDetector(
                             onPanStart: _onPanStart,
@@ -182,7 +219,11 @@ class _SignatureScreenState extends State<SignatureScreen> {
                 Text(
                   _errorText!,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    color: Colors.redAccent,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
               const SizedBox(height: 16),
@@ -195,8 +236,13 @@ class _SignatureScreenState extends State<SignatureScreen> {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: textColor,
                       side: BorderSide(color: borderColor),
-                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 16,
+                        horizontal: 20,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -206,18 +252,28 @@ class _SignatureScreenState extends State<SignatureScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _accentYellow,
                         foregroundColor: Colors.black,
-                        disabledBackgroundColor: _accentYellow.withValues(alpha: 0.5),
+                        disabledBackgroundColor: _accentYellow.withValues(
+                          alpha: 0.5,
+                        ),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
                       child: _submitting
                           ? const SizedBox(
                               height: 20,
                               width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.black),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Colors.black,
+                              ),
                             )
-                          : const Text('Aceptar firma', style: TextStyle(fontWeight: FontWeight.w700)),
+                          : const Text(
+                              'Aceptar firma',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
                     ),
                   ),
                 ],

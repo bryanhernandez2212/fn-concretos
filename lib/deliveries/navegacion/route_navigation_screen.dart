@@ -86,7 +86,8 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
 
   GoogleNavigationViewController? _viewController;
   StreamSubscription<OnArrivalEvent>? _arrivalSubscription;
-  StreamSubscription<RemainingTimeOrDistanceChangedEvent>? _remainingDistanceSubscription;
+  StreamSubscription<RemainingTimeOrDistanceChangedEvent>?
+  _remainingDistanceSubscription;
   Timer? _gpsTimer;
   bool _arrived = false;
   bool _proximoLlegarRegistrado = false;
@@ -122,20 +123,32 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
     if (permission == geo.LocationPermission.denied) {
       permission = await geo.Geolocator.requestPermission();
     }
-    final granted = permission == geo.LocationPermission.always || permission == geo.LocationPermission.whileInUse;
+    final granted =
+        permission == geo.LocationPermission.always ||
+        permission == geo.LocationPermission.whileInUse;
     if (!granted) {
-      if (mounted) setState(() => _errorText = 'Se necesita el permiso de ubicación para navegar.');
+      if (mounted)
+        setState(
+          () =>
+              _errorText = 'Se necesita el permiso de ubicación para navegar.',
+        );
       return;
     }
 
     if (!await GoogleMapsNavigator.areTermsAccepted()) {
-      await GoogleMapsNavigator.showTermsAndConditionsDialog('Navegación', 'FN Concretos');
+      await GoogleMapsNavigator.showTermsAndConditionsDialog(
+        'Navegación',
+        'FN Concretos',
+      );
     }
 
     try {
       await GoogleMapsNavigator.initializeNavigationSession();
     } catch (_) {
-      if (mounted) setState(() => _errorText = 'No se pudo iniciar la sesión de navegación.');
+      if (mounted)
+        setState(
+          () => _errorText = 'No se pudo iniciar la sesión de navegación.',
+        );
       return;
     }
 
@@ -153,7 +166,10 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
         waypoints: [
           NavigationWaypoint.withLatLngTarget(
             title: remision.obra,
-            target: LatLng(latitude: remision.destinoLat, longitude: remision.destinoLng),
+            target: LatLng(
+              latitude: remision.destinoLat,
+              longitude: remision.destinoLng,
+            ),
           ),
         ],
         displayOptions: NavigationDisplayOptions(showDestinationMarkers: true),
@@ -165,7 +181,8 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
         'RouteNavigationScreen: setDestinations status=$status '
         'destino=(${remision.destinoLat}, ${remision.destinoLng})',
       );
-      if (mounted) setState(() => _errorText = 'No se pudo calcular la ruta a la obra.');
+      if (mounted)
+        setState(() => _errorText = 'No se pudo calcular la ruta a la obra.');
       return;
     }
 
@@ -201,7 +218,8 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
     // creates one itself, so no remisionId means nothing to post GPS/hitos
     // to.
     final remisionId = remision.remisionId;
-    if (remisionId != null && AuthService.permisos.contains(permisoOperarRemisiones)) {
+    if (remisionId != null &&
+        AuthService.permisos.contains(permisoOperarRemisiones)) {
       // A Samsara-tracked unit already gets its positions registered by the
       // backend — sending the phone's too would interleave two streams on
       // the same route. Hitos below still come from this screen either way.
@@ -227,28 +245,34 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
     // Unlike the GPS ping/hitos above, the lock-screen "Live Update" is a
     // pure UX nicety independent of permisoOperarRemisiones/remisionId —
     // the driver is navigating either way, so it starts regardless.
-    NavigationLiveUpdate.start(folio: remision.folio, destino: remision.obra, remisionId: remision.remisionId);
-    _remainingDistanceSubscription = GoogleMapsNavigator.setOnRemainingTimeOrDistanceChangedListener(
-      (event) {
-        NavigationLiveUpdate.update(
-          folio: remision.folio,
-          destino: remision.obra,
-          remisionId: remision.remisionId,
-          remainingDistanceMetros: event.remainingDistance,
-          remainingTimeSeconds: event.remainingTime,
-        );
-        if (!_proximoLlegarRegistrado && event.remainingDistance <= _proximoLlegarDistanciaMetros) {
-          _proximoLlegarRegistrado = true;
-          _registrarHito(HitoEntrega.proximoLlegar);
-        }
-      },
-      // The event otherwise fires on every 1m/1s change (the plugin's own
-      // defaults) — throttled coarser since both the hito check and the
-      // live-update notification are fine reacting to 50m/10s jumps rather
-      // than a continuous stream.
-      remainingDistanceThresholdMeters: 50,
-      remainingTimeThresholdSeconds: 10,
+    NavigationLiveUpdate.start(
+      folio: remision.folio,
+      destino: remision.obra,
+      remisionId: remision.remisionId,
     );
+    _remainingDistanceSubscription =
+        GoogleMapsNavigator.setOnRemainingTimeOrDistanceChangedListener(
+          (event) {
+            NavigationLiveUpdate.update(
+              folio: remision.folio,
+              destino: remision.obra,
+              remisionId: remision.remisionId,
+              remainingDistanceMetros: event.remainingDistance,
+              remainingTimeSeconds: event.remainingTime,
+            );
+            if (!_proximoLlegarRegistrado &&
+                event.remainingDistance <= _proximoLlegarDistanciaMetros) {
+              _proximoLlegarRegistrado = true;
+              _registrarHito(HitoEntrega.proximoLlegar);
+            }
+          },
+          // The event otherwise fires on every 1m/1s change (the plugin's own
+          // defaults) — throttled coarser since both the hito check and the
+          // live-update notification are fine reacting to 50m/10s jumps rather
+          // than a continuous stream.
+          remainingDistanceThresholdMeters: 50,
+          remainingTimeThresholdSeconds: 10,
+        );
   }
 
   /// Best-effort: a failed ping just means the next one 15s later tries
@@ -272,7 +296,9 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
   /// failure is surfaced instead of silently retried.
   Future<void> _registrarHito(HitoEntrega hito) async {
     final remisionId = widget.remision.remisionId;
-    if (remisionId == null || !AuthService.permisos.contains(permisoOperarRemisiones)) return;
+    if (remisionId == null ||
+        !AuthService.permisos.contains(permisoOperarRemisiones))
+      return;
     try {
       await OperacionesService.avanzarHito(remisionId, hito.backendValue);
     } on AuthException catch (e) {
@@ -317,13 +343,24 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
         icon: Container(
           width: 56,
           height: 56,
-          decoration: BoxDecoration(shape: BoxShape.circle, color: _accentYellow.withValues(alpha: 0.15)),
-          child: const Icon(Icons.warning_amber_rounded, color: _accentYellow, size: 28),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: _accentYellow.withValues(alpha: 0.15),
+          ),
+          child: const Icon(
+            Icons.warning_amber_rounded,
+            color: _accentYellow,
+            size: 28,
+          ),
         ),
         title: const Text(
           '¿Salir de la navegación?',
           textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 17),
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w700,
+            fontSize: 17,
+          ),
         ),
         content: const Text(
           'Se detendrá la guía de navegación en curso. El progreso de la entrega ya registrado no se perderá.',
@@ -336,7 +373,10 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
             onPressed: () => Navigator.of(context).pop(false),
             child: const Text(
               'Cancelar',
-              style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: Colors.white70,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           ElevatedButton(
@@ -345,9 +385,14 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
               backgroundColor: _accentYellow,
               foregroundColor: Colors.black,
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-            child: const Text('Salir', style: TextStyle(fontWeight: FontWeight.w700)),
+            child: const Text(
+              'Salir',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
           ),
         ],
       ),
@@ -387,7 +432,8 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
                     // equivalent in this SDK version.
                     controller.setNavigationTripProgressBarEnabled(true);
                   },
-                  initialNavigationUIEnabledPreference: NavigationUIEnabledPreference.automatic,
+                  initialNavigationUIEnabledPreference:
+                      NavigationUIEnabledPreference.automatic,
                   initialForceNightMode: NavigationForceNightMode.forceNight,
                   initialNavigationHeaderStylingOptions: _navigationHeaderStyle,
                   // Removing this entirely (padding: null) was tried when the
@@ -401,7 +447,9 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
                   // needs a real non-zero padding value to lay itself out
                   // against, degenerate otherwise — even though nothing of
                   // ours occupies this reserved space anymore.
-                  initialPadding: EdgeInsets.only(bottom: 96 + MediaQuery.of(context).padding.bottom),
+                  initialPadding: EdgeInsets.only(
+                    bottom: 96 + MediaQuery.of(context).padding.bottom,
+                  ),
                 ),
               )
             else
@@ -423,7 +471,10 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
             ),
             Align(
               alignment: Alignment.bottomCenter,
-              child: RouteNavBottomBar(arrived: _arrived, onFinish: _finalizarRuta),
+              child: RouteNavBottomBar(
+                arrived: _arrived,
+                onFinish: _finalizarRuta,
+              ),
             ),
           ],
         ),

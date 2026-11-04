@@ -29,13 +29,49 @@ enum HitoEntrega {
   /// than `null`. Returns `null` for anything else that isn't one of the 8
   /// known hito values — notably `con_atraso`, which is a computed status
   /// override, not a hito.
-  static HitoEntrega? fromBackendValue(String value) {
-    if (value.isEmpty || value == 'programado') return HitoEntrega.cargandoPlanta;
+  ///
+  /// A [soloBomba] remisión (`RemisionResumen.esSoloBomba`) is the exception:
+  /// it never loads at planta, so not started yet means nothing happened at
+  /// all — blank/`programado`/a stray `cargando_planta` all resolve to `null`
+  /// there (see [sinIniciar]).
+  static HitoEntrega? fromBackendValue(String value, {bool soloBomba = false}) {
+    if (sinIniciar(value, soloBomba: soloBomba)) return null;
+    if (value.isEmpty || value == 'programado')
+      return HitoEntrega.cargandoPlanta;
     for (final hito in HitoEntrega.values) {
       if (hito.backendValue == value) return hito;
     }
     return null;
   }
+
+  /// Whether a solo-bomba remisión hasn't registered any hito yet — tells
+  /// that `null` from [fromBackendValue] apart from an unrecognized estatus.
+  static bool sinIniciar(String value, {required bool soloBomba}) =>
+      soloBomba &&
+      (value.isEmpty || value == 'programado' || value == 'cargando_planta');
+
+  /// The sequential steps (excluding [conIncidencia]) a remisión goes
+  /// through: all 7, or 6 for a solo-bomba remisión, which never sends
+  /// `cargando_planta` and starts at `salio_planta`.
+  static List<HitoEntrega> secuencia({required bool soloBomba}) =>
+      soloBomba ? _secuencia.sublist(1) : _secuencia;
+
+  static const _secuencia = [
+    HitoEntrega.cargandoPlanta,
+    HitoEntrega.salioPlanta,
+    HitoEntrega.enCamino,
+    HitoEntrega.proximoLlegar,
+    HitoEntrega.enObra,
+    HitoEntrega.descargando,
+    HitoEntrega.entregado,
+  ];
+
+  /// [label], except `salio_planta` on a solo-bomba remisión reads "Salió
+  /// hacia la obra" — it never was at planta. Same event, same payload.
+  String labelPara({required bool soloBomba}) =>
+      soloBomba && this == HitoEntrega.salioPlanta
+      ? 'Salió hacia la obra'
+      : label;
 
   /// "Out of plant, not yet finished" — same set `OperacionesService.remisionesEnRuta`
   /// narrows to for `direccion/RutasActivasScreen`'s fleet-wide map, reused
@@ -83,6 +119,10 @@ class Remision {
   /// one yet (see `deliveries/entregas_service.dart`).
   final HitoEntrega? hitoActual;
 
+  /// See `RemisionResumen.esSoloBomba` — drives the 6-step hito sequence
+  /// and lets "Iniciar ruta" show without a `horaCarga`.
+  final bool soloBomba;
+
   /// The real Remisión backing this delivery, if `EntregasService` found one
   /// already created for the pedido (by planta/producción). Null means no
   /// Remisión exists yet, so there's nothing to `POST /remisiones/{id}/gps`
@@ -124,6 +164,7 @@ class Remision {
     required this.volumenPedidoEntregado,
     required this.volumenPedidoPendiente,
     required this.hitoActual,
+    this.soloBomba = false,
     required this.remisionId,
     required this.destinoLat,
     required this.destinoLng,
@@ -152,9 +193,12 @@ class Remision {
       tipoConcreto: tipoConcreto,
       volumenM3: volumenM3,
       volumenPedidoTotal: volumenPedidoTotal,
-      volumenPedidoEntregado: volumenPedidoEntregado ?? this.volumenPedidoEntregado,
-      volumenPedidoPendiente: volumenPedidoPendiente ?? this.volumenPedidoPendiente,
+      volumenPedidoEntregado:
+          volumenPedidoEntregado ?? this.volumenPedidoEntregado,
+      volumenPedidoPendiente:
+          volumenPedidoPendiente ?? this.volumenPedidoPendiente,
       hitoActual: hitoActual,
+      soloBomba: soloBomba,
       remisionId: remisionId,
       destinoLat: destinoLat,
       destinoLng: destinoLng,

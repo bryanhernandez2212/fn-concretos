@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../auth/auth_service.dart';
+import '../auth/roles.dart';
 import '../comercial/comercial_service.dart';
 import '../comercial/pedido.dart';
 import '../operaciones/operaciones_service.dart';
@@ -49,6 +50,11 @@ class ResumenEntregasDia {
 ///    and the specific contacto resolved for this obra+cliente pairing for
 ///    the detail screen's WhatsApp button).
 ///
+/// An Operador de Bomba is linked to a remisión by `conductorBombaId`, not
+/// `conductorId`, so for that role step 2 is a single
+/// `remisiones?conductorBombaId=` call (server-filtered, not date-scoped)
+/// grouped by pedido and intersected with the day's programación.
+///
 /// A pedido programmed for today with no Remisión yet has no way to know
 /// which conductor it belongs to, so it's skipped until planta/producción
 /// creates one — this app never creates a Remisión itself (see vistas.md).
@@ -59,73 +65,103 @@ class EntregasService {
     final dia = fecha ?? DateTime.now();
     final fechaStr = _fechaStr(dia);
 
-    final programacion = await OperacionesService.programacionDelDia(fechaStr);
     final idEmpleado = AuthService.idEmpleado;
+    final esBomba = AuthService.rol == rolOperadorBomba;
+
+    final iniciales = await Future.wait<Object>([
+      OperacionesService.programacionDelDia(fechaStr),
+      if (esBomba && idEmpleado != null)
+        OperacionesService.remisionesPorConductorBomba(idEmpleado),
+    ]);
+    final programacion = iniciales[0] as List<ProgramacionProduccion>;
+    final bombaPorPedido = <int, List<RemisionResumen>>{};
+    if (iniciales.length > 1) {
+      for (final r in iniciales[1] as List<RemisionResumen>) {
+        final pedidoId = r.pedidoId;
+        if (pedidoId != null) (bombaPorPedido[pedidoId] ??= []).add(r);
+      }
+    }
 
     // The programación is the whole plant's, so most pedidos in it aren't
     // this conductor's. Every lookup below runs in parallel: one request
     // after another made load time grow with the size of the plant's day.
     // `Future.wait` keeps the programación's order.
-    final porPedido = await Future.wait(programacion.map((item) async {
-      final remisiones = await OperacionesService.remisionesPorPedido(item.pedidoId);
-      final propias = remisiones.where((r) => r.conductorId == idEmpleado).toList();
-      if (propias.isEmpty) {
-        debugPrint(
-          'EntregasService: pedido ${item.pedidoId} programado hoy pero sin remisión '
-          'para conductorId=$idEmpleado (remisiones encontradas: '
-          '${remisiones.map((r) => 'id=${r.id} conductorId=${r.conductorId}').toList()})',
-        );
-        return const <Remision>[];
-      }
+    final porPedido = await Future.wait(
+      programacion.map((item) async {
+        final List<RemisionResumen> propias;
+        if (esBomba) {
+          propias = bombaPorPedido[item.pedidoId] ?? const [];
+          if (propias.isEmpty) return const <Remision>[];
+        } else {
+          final remisiones = await OperacionesService.remisionesPorPedido(
+            item.pedidoId,
+          );
+          propias = remisiones
+              .where((r) => r.conductorId == idEmpleado)
+              .toList();
+          if (propias.isEmpty) {
+            debugPrint(
+              'EntregasService: pedido ${item.pedidoId} programado hoy pero sin remisión '
+              'para conductorId=$idEmpleado (remisiones encontradas: '
+              '${remisiones.map((r) => 'id=${r.id} conductorId=${r.conductorId}').toList()})',
+            );
+            return const <Remision>[];
+          }
+        }
 
-      final pedido = await ComercialService.obtenerPedido(item.pedidoId);
-      // `Future.wait` (not a record's `.wait`) so a failure surfaces as the
-      // original `AuthException` rather than a `ParallelWaitError`.
-      final detalles = await Future.wait<Object?>([
-        ComercialService.obtenerObra(pedido.obraId),
-        ComercialService.contactoParaEntrega(
-          obraId: pedido.obraId,
-          clienteId: pedido.clienteId,
-        ),
-      ]);
-      final obra = detalles[0] as Obra;
-      final contacto = detalles[1] as ClienteContacto?;
-
-      // The same conductor can have more than one remisión on the same
-      // pedido — e.g. the olla can't carry the whole volume in one trip, so
-      // they make several. Each is its own delivery run (own hito, own
-      // horaCarga/horaEntrega), so each gets its own `Remision` entry rather
-      // than collapsing to just one — otherwise an already-entregada trip
-      // could shadow a still-active one for the same pedido (or vice versa)
-      // depending on array order, hiding whichever didn't get picked.
-      return [
-        for (final remisionPropia in propias)
-          Remision(
-            folio: pedido.folio,
-            cliente: pedido.clienteNombre,
-            obra: obra.nombre,
-            direccion: obra.direccion,
-            horaProgramada: item.horaArranque,
-            tipoConcreto: pedido.tipoServicio,
-            // This remisión's own volume — not the pedido's total, since a
-            // pedido can be split across several remisiones.
-            volumenM3: remisionPropia.metrosCargados ?? remisionPropia.metrosSolicitados ?? pedido.volumenSolicitadoM3,
-            volumenPedidoTotal: pedido.volumenSolicitadoM3,
-            volumenPedidoEntregado: pedido.volumenEntregadoM3,
-            volumenPedidoPendiente: pedido.volumenPendienteM3,
-            hitoActual: HitoEntrega.fromBackendValue(remisionPropia.estatus),
-            remisionId: remisionPropia.id,
-            destinoLat: obra.latitud,
-            destinoLng: obra.longitud,
-            pedidoId: pedido.id,
-            clienteId: pedido.clienteId,
+        final pedido = await ComercialService.obtenerPedido(item.pedidoId);
+        // `Future.wait` (not a record's `.wait`) so a failure surfaces as the
+        // original `AuthException` rather than a `ParallelWaitError`.
+        final detalles = await Future.wait<Object?>([
+          ComercialService.obtenerObra(pedido.obraId),
+          ComercialService.contactoParaEntrega(
             obraId: pedido.obraId,
-            contactoNombre: contacto?.nombre,
-            contactoCargo: contacto?.cargo,
-            telefono: contacto?.telefono,
+            clienteId: pedido.clienteId,
           ),
-      ];
-    }));
+        ]);
+        final obra = detalles[0] as Obra;
+        final contacto = detalles[1] as ClienteContacto?;
+
+        // The same conductor can have more than one remisión on the same
+        // pedido — e.g. the olla can't carry the whole volume in one trip, so
+        // they make several. Each is its own delivery run (own hito, own
+        // horaCarga/horaEntrega), so each gets its own `Remision` entry rather
+        // than collapsing to just one — otherwise an already-entregada trip
+        // could shadow a still-active one for the same pedido (or vice versa)
+        // depending on array order, hiding whichever didn't get picked.
+        return [
+          for (final remisionPropia in propias)
+            Remision(
+              folio: pedido.folio,
+              cliente: pedido.clienteNombre,
+              obra: obra.nombre,
+              direccion: obra.direccion,
+              horaProgramada: item.horaArranque,
+              tipoConcreto: pedido.tipoServicio,
+              // This remisión's own volume — not the pedido's total, since a
+              // pedido can be split across several remisiones.
+              volumenM3: remisionPropia.volumen ?? pedido.volumenSolicitadoM3,
+              volumenPedidoTotal: pedido.volumenSolicitadoM3,
+              volumenPedidoEntregado: pedido.volumenEntregadoM3,
+              volumenPedidoPendiente: pedido.volumenPendienteM3,
+              hitoActual: HitoEntrega.fromBackendValue(
+                remisionPropia.estatus,
+                soloBomba: remisionPropia.esSoloBomba,
+              ),
+              soloBomba: remisionPropia.esSoloBomba,
+              remisionId: remisionPropia.id,
+              destinoLat: obra.latitud,
+              destinoLng: obra.longitud,
+              pedidoId: pedido.id,
+              clienteId: pedido.clienteId,
+              obraId: pedido.obraId,
+              contactoNombre: contacto?.nombre,
+              contactoCargo: contacto?.cargo,
+              telefono: contacto?.telefono,
+            ),
+        ];
+      }),
+    );
     return porPedido.expand((e) => e).toList();
   }
 
@@ -137,7 +173,9 @@ class EntregasService {
   /// fleet-wide than the full per-driver list would be. For today, it also
   /// counts every remisión currently en ruta even if its pedido isn't in
   /// today's programación, so the count matches the trucks on the map.
-  static Future<ResumenEntregasDia> resumenFlotaDelDia({DateTime? fecha}) async {
+  static Future<ResumenEntregasDia> resumenFlotaDelDia({
+    DateTime? fecha,
+  }) async {
     final dia = fecha ?? DateTime.now();
     final fechaStr = _fechaStr(dia);
 
@@ -149,9 +187,13 @@ class EntregasService {
       if (esHoy) OperacionesService.remisionesEnRuta(),
     ]);
     final programacion = iniciales[0] as List<ProgramacionProduccion>;
-    final remisionesEnRuta = esHoy ? iniciales[1] as List<RemisionResumen> : const <RemisionResumen>[];
+    final remisionesEnRuta = esHoy
+        ? iniciales[1] as List<RemisionResumen>
+        : const <RemisionResumen>[];
     final porPedido = await Future.wait(
-      programacion.map((item) => OperacionesService.remisionesPorPedido(item.pedidoId)),
+      programacion.map(
+        (item) => OperacionesService.remisionesPorPedido(item.pedidoId),
+      ),
     );
 
     var entregadas = 0;
@@ -203,7 +245,9 @@ class EntregasService {
   /// remisión (or its pedido/obra) can no longer be resolved — the caller
   /// just skips navigating rather than showing a broken detail screen.
   static Future<Remision?> remisionPorId(int remisionId) async {
-    final remisionResumen = await OperacionesService.remisionDetalle(remisionId);
+    final remisionResumen = await OperacionesService.remisionDetalle(
+      remisionId,
+    );
     final pedidoId = remisionResumen.pedidoId;
     if (pedidoId == null) return null;
 
@@ -221,11 +265,15 @@ class EntregasService {
       direccion: obra.direccion,
       horaProgramada: '',
       tipoConcreto: pedido.tipoServicio,
-      volumenM3: remisionResumen.metrosCargados ?? remisionResumen.metrosSolicitados ?? pedido.volumenSolicitadoM3,
+      volumenM3: remisionResumen.volumen ?? pedido.volumenSolicitadoM3,
       volumenPedidoTotal: pedido.volumenSolicitadoM3,
       volumenPedidoEntregado: pedido.volumenEntregadoM3,
       volumenPedidoPendiente: pedido.volumenPendienteM3,
-      hitoActual: HitoEntrega.fromBackendValue(remisionResumen.estatus),
+      hitoActual: HitoEntrega.fromBackendValue(
+        remisionResumen.estatus,
+        soloBomba: remisionResumen.esSoloBomba,
+      ),
+      soloBomba: remisionResumen.esSoloBomba,
       remisionId: remisionResumen.id,
       destinoLat: obra.latitud,
       destinoLng: obra.longitud,

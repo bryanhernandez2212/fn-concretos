@@ -4,6 +4,7 @@ import '../config/http_client.dart' as http;
 import '../auth/auth_service.dart';
 import '../config/api_config.dart';
 import 'evidencia.dart';
+import 'orden_trabajo_bombeo.dart';
 import 'produccion.dart';
 import 'remision_tracking.dart';
 import 'vehiculo.dart';
@@ -33,6 +34,16 @@ class OperacionesService {
 
   static Future<List<RemisionResumen>> remisionesPorPedido(int pedidoId) async {
     final data = await _get('/remisiones?pedidoId=$pedidoId');
+    return (data as List<dynamic>)
+        .map((e) => RemisionResumen.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Every remisión where [conductorBombaId] (an idEmpleado) is the
+  /// assigned Operador de Bomba — `GET /remisiones?conductorBombaId=`. Not
+  /// date-scoped; callers narrow it themselves.
+  static Future<List<RemisionResumen>> remisionesPorConductorBomba(int conductorBombaId) async {
+    final data = await _get('/remisiones?conductorBombaId=$conductorBombaId');
     return (data as List<dynamic>)
         .map((e) => RemisionResumen.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -117,15 +128,88 @@ class OperacionesService {
   /// the updated remisión from the response — the source of truth (new
   /// `estatus` and whichever `hora*` timestamp the backend just stamped),
   /// not an optimistic local guess.
+  ///
+  /// [metrosBombeados] only goes with `entregado` on a remisión that has a
+  /// bomba (`vehiculoBombaId`) — `entregado` also marks the end of bombeo.
   static Future<RemisionResumen> avanzarHito(
     int remisionId,
-    String evento,
-  ) async {
+    String evento, {
+    double? metrosBombeados,
+  }) async {
     final data = await _patch('/remisiones/$remisionId/hitos', {
       'evento': evento,
+      if (metrosBombeados != null) 'metrosBombeados': metrosBombeados,
     });
     debugPrint('OperacionesService.avanzarHito raw: ${jsonEncode(data)}'); // TEMP debug
     return RemisionResumen.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// The Operador de Bomba's open turno, if any —
+  /// `GET /ordenes-trabajo-bombeo?conductorBombaId=&estatus=abierto`.
+  static Future<OrdenTrabajoBombeo?> turnoBombeoAbierto(int conductorBombaId) async {
+    final data = await _get('/ordenes-trabajo-bombeo?conductorBombaId=$conductorBombaId&estatus=abierto');
+    final turnos = (data as List<dynamic>)
+        .map((e) => OrdenTrabajoBombeo.fromJson(e as Map<String, dynamic>))
+        .where((t) => t.abierto)
+        .toList();
+    return turnos.isEmpty ? null : turnos.first;
+  }
+
+  /// Opens a turno de bombeo. The backend answers 409 (with a readable
+  /// Spanish `message`) when that bomba already has one open, and generates
+  /// the folio itself.
+  static Future<OrdenTrabajoBombeo> abrirTurnoBombeo({
+    required int vehiculoBombaId,
+    required int conductorBombaId,
+    required String fecha,
+    double? horometroInicio,
+    String? auxiliarNombre,
+    String? clienteNombre,
+    String? direccionObra,
+    String? entreCalles,
+    String? telefono,
+    String? solicitadoPor,
+    String? observaciones,
+  }) async {
+    final data = await _post('/ordenes-trabajo-bombeo', {
+      'vehiculoBombaId': vehiculoBombaId,
+      'conductorBombaId': conductorBombaId,
+      'fecha': fecha,
+      if (horometroInicio != null) 'horometroInicio': horometroInicio,
+      if (auxiliarNombre != null) 'auxiliarNombre': auxiliarNombre,
+      if (clienteNombre != null) 'clienteNombre': clienteNombre,
+      if (direccionObra != null) 'direccionObra': direccionObra,
+      if (entreCalles != null) 'entreCalles': entreCalles,
+      if (telefono != null) 'telefono': telefono,
+      if (solicitadoPor != null) 'solicitadoPor': solicitadoPor,
+      if (observaciones != null) 'observaciones': observaciones,
+    });
+    return OrdenTrabajoBombeo.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// Closes a turno. `volumenPorCobrar` is computed by the backend from the
+  /// linked remisiones' `metrosBombeados`, so it's never sent.
+  /// `encargadoObraNombre` is free text, not a firma.
+  static Future<OrdenTrabajoBombeo> cerrarTurnoBombeo(
+    int id, {
+    double? horometroFin,
+    double? precioPorM3,
+    double? importeRecibo,
+    required bool tieneRecibo,
+    String? folioRecibo,
+    String? encargadoObraNombre,
+    String? observaciones,
+  }) async {
+    final data = await _patch('/ordenes-trabajo-bombeo/$id/cerrar', {
+      if (horometroFin != null) 'horometroFin': horometroFin,
+      if (precioPorM3 != null) 'precioPorM3': precioPorM3,
+      if (importeRecibo != null) 'importeRecibo': importeRecibo,
+      'tieneRecibo': tieneRecibo,
+      if (folioRecibo != null) 'folioRecibo': folioRecibo,
+      if (encargadoObraNombre != null) 'encargadoObraNombre': encargadoObraNombre,
+      if (observaciones != null) 'observaciones': observaciones,
+    });
+    return OrdenTrabajoBombeo.fromJson(data as Map<String, dynamic>);
   }
 
   /// Registers a "prueba de concreto fresco" (slump/temperature/unit-mass

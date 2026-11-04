@@ -12,13 +12,21 @@ class EvidenciaFotosScreen extends StatelessWidget {
   final String remisionFolio;
   final List<ArchivoResponse> archivos;
 
-  const EvidenciaFotosScreen({super.key, required this.remisionFolio, required this.archivos});
+  const EvidenciaFotosScreen({
+    super.key,
+    required this.remisionFolio,
+    required this.archivos,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final mutedColor = (isDark ? Colors.white : Colors.black).withValues(alpha: 0.55);
-    final borderColor = isDark ? Colors.white.withValues(alpha: 0.10) : Colors.black.withValues(alpha: 0.12);
+    final mutedColor = (isDark ? Colors.white : Colors.black).withValues(
+      alpha: 0.55,
+    );
+    final borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.10)
+        : Colors.black.withValues(alpha: 0.12);
 
     return Scaffold(
       appBar: AppBar(
@@ -32,7 +40,12 @@ class EvidenciaFotosScreen extends StatelessWidget {
         children: [
           Text(
             '${archivos.length} fotos guardadas',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: mutedColor, letterSpacing: 0.3),
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: mutedColor,
+              letterSpacing: 0.3,
+            ),
           ),
           const SizedBox(height: 10),
           EvidenciaThumbnailStrip(archivos: archivos, borderColor: borderColor),

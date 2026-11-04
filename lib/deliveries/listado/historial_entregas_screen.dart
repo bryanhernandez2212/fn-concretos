@@ -18,7 +18,8 @@ class HistorialEntregasScreen extends StatefulWidget {
   const HistorialEntregasScreen({super.key});
 
   @override
-  State<HistorialEntregasScreen> createState() => _HistorialEntregasScreenState();
+  State<HistorialEntregasScreen> createState() =>
+      _HistorialEntregasScreenState();
 }
 
 class _HistorialEntregasScreenState extends State<HistorialEntregasScreen> {
@@ -37,7 +38,8 @@ class _HistorialEntregasScreenState extends State<HistorialEntregasScreen> {
   }
 
   static DateTime _soloFecha(DateTime d) => DateTime(d.year, d.month, d.day);
-  static DateTime _diaAnterior(DateTime d) => _soloFecha(d.subtract(const Duration(days: 1)));
+  static DateTime _diaAnterior(DateTime d) =>
+      _soloFecha(d.subtract(const Duration(days: 1)));
 
   void _seleccionar(DateTime fecha) {
     setState(() {
@@ -57,7 +59,10 @@ class _HistorialEntregasScreenState extends State<HistorialEntregasScreen> {
         final base = Theme.of(context);
         return Theme(
           data: base.copyWith(
-            colorScheme: base.colorScheme.copyWith(primary: _accentYellow, onPrimary: Colors.black),
+            colorScheme: base.colorScheme.copyWith(
+              primary: _accentYellow,
+              onPrimary: Colors.black,
+            ),
           ),
           child: child!,
         );
@@ -71,13 +76,17 @@ class _HistorialEntregasScreenState extends State<HistorialEntregasScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black87;
-    final mutedColor = (isDark ? Colors.white : Colors.black).withValues(alpha: 0.55);
+    final mutedColor = (isDark ? Colors.white : Colors.black).withValues(
+      alpha: 0.55,
+    );
     final cardColor = isDark ? const Color(0xFF141414) : Colors.white;
     final borderColor = isDark
         ? Colors.white.withValues(alpha: 0.08)
         : Colors.black.withValues(alpha: 0.08);
 
-    final fechaLabel = _capitalizada(DateFormat("EEEE d 'de' MMMM 'de' y", 'es').format(_fecha));
+    final fechaLabel = _capitalizada(
+      DateFormat("EEEE d 'de' MMMM 'de' y", 'es').format(_fecha),
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -97,7 +106,10 @@ class _HistorialEntregasScreenState extends State<HistorialEntregasScreen> {
                   borderRadius: BorderRadius.circular(16),
                   onTap: _pickDate,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 16,
+                    ),
                     decoration: BoxDecoration(
                       color: cardColor,
                       borderRadius: BorderRadius.circular(16),
@@ -112,7 +124,11 @@ class _HistorialEntregasScreenState extends State<HistorialEntregasScreen> {
                             shape: BoxShape.circle,
                             color: _accentYellow.withValues(alpha: 0.18),
                           ),
-                          child: const Icon(Icons.calendar_month_outlined, size: 20, color: _accentYellow),
+                          child: const Icon(
+                            Icons.calendar_month_outlined,
+                            size: 20,
+                            color: _accentYellow,
+                          ),
                         ),
                         const SizedBox(width: 14),
                         Expanded(
@@ -121,12 +137,19 @@ class _HistorialEntregasScreenState extends State<HistorialEntregasScreen> {
                             children: [
                               Text(
                                 fechaLabel,
-                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: textColor),
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color: textColor,
+                                ),
                               ),
                               const SizedBox(height: 2),
                               Text(
                                 'Toca para elegir otra fecha',
-                                style: TextStyle(fontSize: 12.5, color: mutedColor),
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  color: mutedColor,
+                                ),
                               ),
                             ],
                           ),
@@ -153,7 +176,11 @@ class _HistorialEntregasScreenState extends State<HistorialEntregasScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.error_outline, size: 40, color: mutedColor),
+                          Icon(
+                            Icons.error_outline,
+                            size: 40,
+                            color: mutedColor,
+                          ),
                           const SizedBox(height: 12),
                           Text(
                             snapshot.error is AuthException
@@ -176,7 +203,11 @@ class _HistorialEntregasScreenState extends State<HistorialEntregasScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.event_busy_outlined, size: 40, color: mutedColor),
+                          Icon(
+                            Icons.event_busy_outlined,
+                            size: 40,
+                            color: mutedColor,
+                          ),
                           const SizedBox(height: 12),
                           Text(
                             'No tuviste entregas asignadas ese día',
@@ -201,7 +232,10 @@ class _HistorialEntregasScreenState extends State<HistorialEntregasScreen> {
                         mutedColor: mutedColor,
                         onTap: () {
                           Navigator.of(context).push(
-                            MaterialPageRoute(builder: (context) => DeliveryDetailScreen(remision: remision)),
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  DeliveryDetailScreen(remision: remision),
+                            ),
                           );
                         },
                       ),
@@ -218,4 +252,5 @@ class _HistorialEntregasScreenState extends State<HistorialEntregasScreen> {
   }
 }
 
-String _capitalizada(String texto) => texto.isEmpty ? texto : '${texto[0].toUpperCase()}${texto.substring(1)}';
+String _capitalizada(String texto) =>
+    texto.isEmpty ? texto : '${texto[0].toUpperCase()}${texto.substring(1)}';

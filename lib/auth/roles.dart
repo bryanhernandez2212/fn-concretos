@@ -47,6 +47,11 @@ const catalogoRoles = [
 /// form (see `deliveries/detalle/delivery_detail_screen.dart`).
 const rolesConAppMovil = {'Operador de Olla', 'Operador de Bomba'};
 
+/// The bomba operator rides the same Remisión flow as the olla driver, but
+/// is linked to it by `conductorBombaId` instead of `conductorId`, and also
+/// gets the "Turno de bombeo" tab.
+const rolOperadorBomba = 'Operador de Bomba';
+
 Rol? rolPorNombre(String? nombre) {
   for (final rol in catalogoRoles) {
     if (rol.nombre == nombre) return rol;

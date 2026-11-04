@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/link.dart';
 import '../../asesor_comercial/asesor_comercial_home_screen.dart';
 import '../../asesor_comercial/asesor_comercial_service.dart';
 import '../../comercial/comercial_service.dart';
@@ -324,9 +325,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 // Recordar sesión
                 InkWell(
                   borderRadius: BorderRadius.circular(6.0),
-                  onTap: () => setState(
-                    () => _rememberSession = !_rememberSession,
-                  ),
+                  onTap: () =>
+                      setState(() => _rememberSession = !_rememberSession),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 2.0),
                     child: Row(
@@ -418,8 +418,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.accent,
                       foregroundColor: Colors.black,
-                      disabledBackgroundColor:
-                          AppColors.accent.withValues(alpha: 0.5),
+                      disabledBackgroundColor: AppColors.accent.withValues(
+                        alpha: 0.5,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14.0),
                       ),
@@ -469,8 +470,42 @@ class _LoginScreenState extends State<LoginScreen> {
                       '¿Olvidaste tu contraseña?',
                       style: TextStyle(
                         color: Colors.white70,
-                        fontSize: 13.0,
+                        fontSize: 14.0,
                         fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+                Center(
+                  child: Link(
+                    uri: Uri.parse("https://solucionesws.com"),
+                    builder: (context, followLink) => InkWell(
+                      onTap: followLink,
+                      borderRadius: BorderRadius.circular(6.0),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8.0,
+                          vertical: 6.0,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              "Desarrollado por Soluciones WS",
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13.0,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 4.0),
+                            Container(
+                              height: 1.5,
+                              width: 180.0,
+                              color: Colors.orange,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

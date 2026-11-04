@@ -37,13 +37,25 @@ class PhotoSourceSheet extends StatelessWidget {
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_camera_outlined, color: _accentYellow),
-              title: Text('Tomar foto', style: TextStyle(color: textColor, fontWeight: FontWeight.w600)),
+              leading: const Icon(
+                Icons.photo_camera_outlined,
+                color: _accentYellow,
+              ),
+              title: Text(
+                'Tomar foto',
+                style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
+              ),
               onTap: () => Navigator.of(context).pop(ImageSource.camera),
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library_outlined, color: _accentYellow),
-              title: Text('Elegir de galería', style: TextStyle(color: textColor, fontWeight: FontWeight.w600)),
+              leading: const Icon(
+                Icons.photo_library_outlined,
+                color: _accentYellow,
+              ),
+              title: Text(
+                'Elegir de galería',
+                style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
+              ),
               onTap: () => Navigator.of(context).pop(ImageSource.gallery),
             ),
           ],
@@ -86,7 +98,10 @@ class PhotoThumb extends StatelessWidget {
             onTap: onRemove,
             child: Container(
               padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+              decoration: const BoxDecoration(
+                color: Colors.black54,
+                shape: BoxShape.circle,
+              ),
               child: const Icon(Icons.close, size: 14, color: Colors.white),
             ),
           ),
@@ -101,7 +116,12 @@ class AddPhotoTile extends StatelessWidget {
   final Color mutedColor;
   final VoidCallback onTap;
 
-  const AddPhotoTile({super.key, required this.borderColor, required this.mutedColor, required this.onTap});
+  const AddPhotoTile({
+    super.key,
+    required this.borderColor,
+    required this.mutedColor,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -117,7 +137,14 @@ class AddPhotoTile extends StatelessWidget {
             children: [
               Icon(Icons.add_a_photo_outlined, color: mutedColor, size: 28),
               const SizedBox(height: 6),
-              Text('Agregar foto', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: mutedColor)),
+              Text(
+                'Agregar foto',
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: mutedColor,
+                ),
+              ),
             ],
           ),
         ),
@@ -131,16 +158,17 @@ class DottedBorderBox extends StatelessWidget {
   final Color borderColor;
   final Widget child;
 
-  const DottedBorderBox({super.key, required this.borderColor, required this.child});
+  const DottedBorderBox({
+    super.key,
+    required this.borderColor,
+    required this.child,
+  });
 
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
       painter: _DashedBorderPainter(color: borderColor),
-      child: Container(
-        alignment: Alignment.center,
-        child: child,
-      ),
+      child: Container(alignment: Alignment.center, child: child),
     );
   }
 }
@@ -156,19 +184,26 @@ class _DashedBorderPainter extends CustomPainter {
       ..color = color
       ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke;
-    final rrect = RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(16));
+    final rrect = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      const Radius.circular(16),
+    );
     final path = Path()..addRRect(rrect);
     const dashWidth = 6.0;
     const dashSpace = 4.0;
     for (final metric in path.computeMetrics()) {
       var distance = 0.0;
       while (distance < metric.length) {
-        canvas.drawPath(metric.extractPath(distance, distance + dashWidth), paint);
+        canvas.drawPath(
+          metric.extractPath(distance, distance + dashWidth),
+          paint,
+        );
         distance += dashWidth + dashSpace;
       }
     }
   }
 
   @override
-  bool shouldRepaint(covariant _DashedBorderPainter oldDelegate) => oldDelegate.color != color;
+  bool shouldRepaint(covariant _DashedBorderPainter oldDelegate) =>
+      oldDelegate.color != color;
 }

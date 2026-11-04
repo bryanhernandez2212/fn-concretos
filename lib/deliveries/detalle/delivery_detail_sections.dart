@@ -8,18 +8,6 @@ import '../../widgets/field_group.dart';
 import 'delivery_detail_widgets.dart';
 import '../remision.dart';
 
-/// The 7-step sequential progression, excluding [HitoEntrega.conIncidencia]
-/// (an exception state, not a step to render in a linear stepper).
-const secuenciaHitos = [
-  HitoEntrega.cargandoPlanta,
-  HitoEntrega.salioPlanta,
-  HitoEntrega.enCamino,
-  HitoEntrega.proximoLlegar,
-  HitoEntrega.enObra,
-  HitoEntrega.descargando,
-  HitoEntrega.entregado,
-];
-
 const _accentYellow = AppColors.accent;
 
 /// Bold section heading used between `DeliveryDetailScreen`'s sections
@@ -28,7 +16,11 @@ class DeliverySectionTitle extends StatelessWidget {
   final String title;
   final Color textColor;
 
-  const DeliverySectionTitle({super.key, required this.title, required this.textColor});
+  const DeliverySectionTitle({
+    super.key,
+    required this.title,
+    required this.textColor,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -79,10 +71,7 @@ class RouteSection extends StatelessWidget {
           width: double.infinity,
           child: ElevatedButton.icon(
             onPressed: onPressed,
-            icon: const Icon(
-              Icons.navigation,
-              color: Colors.black,
-            ),
+            icon: const Icon(Icons.navigation, color: Colors.black),
             label: Text(
               yaInicio ? 'Regresar a la ruta' : 'Iniciar ruta',
               style: const TextStyle(fontWeight: FontWeight.w700),
@@ -104,8 +93,9 @@ class RouteSection extends StatelessWidget {
 }
 
 /// Body of the "Avanzar hito de entrega" section once the Remisión detail has
-/// loaded: horarios card plus either the linear [secuenciaHitos] stepper with
-/// its "Avanzar a ..." button, or — for an unrecognized estatus — just the raw
+/// loaded: horarios card plus either the linear `HitoEntrega.secuencia`
+/// stepper (6 steps for a solo-bomba remisión, 7 otherwise) with its
+/// "Avanzar a ..." button, or — for an unrecognized estatus — just the raw
 /// status text.
 class HitoStepperSection extends StatelessWidget {
   final RemisionResumen detalle;
@@ -129,11 +119,21 @@ class HitoStepperSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final soloBomba = detalle.esSoloBomba;
+    final secuencia = HitoEntrega.secuencia(soloBomba: soloBomba);
     final horarios = <(String, DateTime?)>[
       ('Cargó en planta', detalle.horaCarga),
-      ('Salida de planta', detalle.horaSalida),
+      (
+        soloBomba ? 'Salida hacia la obra' : 'Salida de planta',
+        detalle.horaSalida,
+      ),
       ('Llegada a obra', detalle.horaLlegadaObra),
-      ('Entrega', detalle.horaEntrega),
+      ('Inicio de bombeo', detalle.horaInicioBombeo),
+      // `entregado` also marks the end of bombeo on a remisión with bomba.
+      (
+        detalle.vehiculoBombaId != null ? 'Entrega · fin de bombeo' : 'Entrega',
+        detalle.horaEntrega,
+      ),
     ].where((h) => h.$2 != null).toList();
 
     // A blank estatus resolves to `cargandoPlanta` (see
@@ -141,8 +141,15 @@ class HitoStepperSection extends StatelessWidget {
     // a genuinely unrecognized status (`con_atraso`, etc).
     final current = HitoEntrega.fromBackendValue(
       detalle.estatus,
+      soloBomba: soloBomba,
     );
-    if (current == null) {
+    // A solo-bomba remisión that hasn't left yet is also null, but it's a
+    // known state: nothing done, next step is the first of [secuencia].
+    final sinIniciar = HitoEntrega.sinIniciar(
+      detalle.estatus,
+      soloBomba: soloBomba,
+    );
+    if (current == null && !sinIniciar) {
       debugPrint(
         'DeliveryDetailScreen: unrecognized estatus="${detalle.estatus}"',
       );
@@ -169,10 +176,7 @@ class HitoStepperSection extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               child: Text(
                 detalle.estatus,
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: textColor,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w700, color: textColor),
               ),
             ),
           ),
@@ -181,7 +185,7 @@ class HitoStepperSection extends StatelessWidget {
     }
 
     final isFinal = current == HitoEntrega.entregado;
-    final currentIndex = secuenciaHitos.indexOf(current);
+    final currentIndex = current == null ? -1 : secuencia.indexOf(current);
 
     return Column(
       children: [
@@ -201,11 +205,12 @@ class HitoStepperSection extends StatelessWidget {
           padding: EdgeInsets.zero,
           child: Column(
             children: [
-              for (final hito in secuenciaHitos)
+              for (final hito in secuencia)
                 HitoRow(
                   hito: hito,
+                  label: hito.labelPara(soloBomba: soloBomba),
                   current: current,
-                  isLast: hito == secuenciaHitos.last,
+                  isLast: hito == secuencia.last,
                   textColor: textColor,
                   mutedColor: mutedColor,
                 ),
@@ -218,15 +223,11 @@ class HitoStepperSection extends StatelessWidget {
           child: ElevatedButton(
             onPressed: isFinal || avanzando
                 ? null
-                : () => onAvanzar(
-                    secuenciaHitos[currentIndex + 1],
-                  ),
+                : () => onAvanzar(secuencia[currentIndex + 1]),
             style: ElevatedButton.styleFrom(
               backgroundColor: _accentYellow,
               foregroundColor: Colors.black,
-              disabledBackgroundColor: _accentYellow.withValues(
-                alpha: 0.3,
-              ),
+              disabledBackgroundColor: _accentYellow.withValues(alpha: 0.3),
               padding: const EdgeInsets.symmetric(vertical: 16),
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -245,10 +246,8 @@ class HitoStepperSection extends StatelessWidget {
                 : Text(
                     isFinal
                         ? 'Entrega finalizada'
-                        : 'Avanzar a "${secuenciaHitos[currentIndex + 1].label}"',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w700,
-                    ),
+                        : 'Avanzar a "${secuencia[currentIndex + 1].labelPara(soloBomba: soloBomba)}"',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
           ),
         ),
@@ -317,7 +316,9 @@ class EvidenciaActionRow extends StatelessWidget {
       textColor: textColor,
       mutedColor: mutedColor,
       enabled: habilitado,
-      statusLabel: archivos.isNotEmpty ? (archivos.length == 1 ? '1 foto' : '${archivos.length} fotos') : null,
+      statusLabel: archivos.isNotEmpty
+          ? (archivos.length == 1 ? '1 foto' : '${archivos.length} fotos')
+          : null,
       statusColor: archivos.isNotEmpty ? AppColors.success : null,
       onTap: onTap,
     );

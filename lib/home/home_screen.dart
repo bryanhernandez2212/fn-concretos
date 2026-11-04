@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../auth/auth_service.dart';
+import '../auth/roles.dart';
+import '../deliveries/turno_bombeo/turno_bombeo_screen.dart';
 import '../profile/profile_screen.dart';
 import '../deliveries/listado/deliveries_screen.dart';
 import '../vehicle/vehicle_screen.dart';
@@ -15,10 +18,14 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   bool _navCompact = false;
 
-  final List<Widget> _pages = const [
-    DeliveriesScreen(),
-    VehicleScreen(),
-    ProfileScreen(),
+  /// Operador de Bomba also gets the "Turno de bombeo" tab.
+  final bool _esBomba = AuthService.rol == rolOperadorBomba;
+
+  late final List<Widget> _pages = [
+    const DeliveriesScreen(),
+    if (_esBomba) const TurnoBombeoScreen(),
+    const VehicleScreen(),
+    const ProfileScreen(),
   ];
 
   @override
@@ -75,18 +82,24 @@ class _HomeScreenState extends State<HomeScreen> {
             _currentIndex = index;
           });
         },
-        items: const [
-          NavItem(
+        items: [
+          const NavItem(
             icon: Icons.local_shipping_outlined,
             selectedIcon: Icons.local_shipping,
             label: 'Entregas',
           ),
-          NavItem(
+          if (_esBomba)
+            const NavItem(
+              icon: Icons.timer_outlined,
+              selectedIcon: Icons.timer,
+              label: 'Turno',
+            ),
+          const NavItem(
             icon: Icons.build_outlined,
             selectedIcon: Icons.build,
             label: 'Vehículo',
           ),
-          NavItem(
+          const NavItem(
             icon: Icons.person_outline,
             selectedIcon: Icons.person,
             label: 'Perfil',

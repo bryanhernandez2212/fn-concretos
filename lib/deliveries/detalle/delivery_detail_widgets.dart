@@ -106,7 +106,7 @@ class SummaryCard extends StatelessWidget {
             mutedColor: mutedColor,
           ),
           const SizedBox(height: 8),
-          //metros entregados 
+          //metros entregados
           DetailLine(
             icon: Icons.check_circle_outline,
             text: 'm³ entregados ${remision.volumenPedidoEntregado} m³',
@@ -121,7 +121,6 @@ class SummaryCard extends StatelessWidget {
             textColor: textColor,
             mutedColor: mutedColor,
           ),
-          
         ],
       ),
     );
@@ -228,6 +227,9 @@ class HorariosCard extends StatelessWidget {
 class HitoRow extends StatelessWidget {
   final HitoEntrega hito;
 
+  /// Usually `hito.label`; see `HitoEntrega.labelPara`.
+  final String label;
+
   /// Null means nothing has been registered yet (a blank `estatus`) — every
   /// row renders as pending, none done/current.
   final HitoEntrega? current;
@@ -238,6 +240,7 @@ class HitoRow extends StatelessWidget {
   const HitoRow({
     super.key,
     required this.hito,
+    required this.label,
     required this.current,
     required this.isLast,
     required this.textColor,
@@ -254,7 +257,9 @@ class HitoRow extends StatelessWidget {
     // done (green, checked) the same as every earlier one.
     final isDone = current != null && hito.index <= current.index;
     final isCurrent = current != null && hito.index == current.index;
-    final circleColor = isDone ? AppColors.success : mutedColor.withValues(alpha: 0.3);
+    final circleColor = isDone
+        ? AppColors.success
+        : mutedColor.withValues(alpha: 0.3);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -288,7 +293,7 @@ class HitoRow extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.only(top: 2),
               child: Text(
-                hito.label,
+                label,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
@@ -445,6 +450,216 @@ class EvidenciaThumbnailStrip extends StatelessWidget {
               ),
             ),
           ),
+      ],
+    );
+  }
+}
+
+/// Bombeo data for a remisión that carries a bomba (`vehiculoBombaId`):
+/// unit, operator, when bombeo started (backend-stamped on `descargando`)
+/// and the m³ captured on `entregado`. Each row only appears once its value
+/// exists. [operadorNombre] falls back to the raw id while it resolves or if
+/// the lookup fails.
+class BombeoInfoCard extends StatelessWidget {
+  final String? unidad;
+  final int? vehiculoBombaId;
+  final int? conductorBombaId;
+  final String? operadorNombre;
+  final DateTime? horaInicioBombeo;
+
+  /// The m³ this bomba is going to pump — the remisión's own volume
+  /// (`RemisionResumen.volumen`). Null hides the row.
+  final double? metrosABombear;
+  final double? metrosBombeados;
+  final Color cardColor;
+  final Color borderColor;
+  final Color textColor;
+  final Color mutedColor;
+
+  const BombeoInfoCard({
+    super.key,
+    required this.unidad,
+    required this.vehiculoBombaId,
+    required this.conductorBombaId,
+    required this.operadorNombre,
+    required this.horaInicioBombeo,
+    this.metrosABombear,
+    required this.metrosBombeados,
+    required this.cardColor,
+    required this.borderColor,
+    required this.textColor,
+    required this.mutedColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final unidadTexto = (unidad != null && unidad!.isNotEmpty)
+        ? unidad!
+        : '#$vehiculoBombaId';
+    final operador = (operadorNombre != null && operadorNombre!.isNotEmpty)
+        ? operadorNombre!
+        : (conductorBombaId != null ? 'Empleado #$conductorBombaId' : null);
+
+    return FieldGroup(
+      cardColor: cardColor,
+      borderColor: borderColor,
+      expand: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.precision_manufacturing_outlined,
+                size: 18,
+                color: _accentYellow,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Servicio de bombeo',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: textColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          DetailLine(
+            icon: Icons.local_shipping_outlined,
+            text: 'Bomba $unidadTexto',
+            textColor: textColor,
+            mutedColor: mutedColor,
+          ),
+          if (operador != null) ...[
+            const SizedBox(height: 8),
+            DetailLine(
+              icon: Icons.person_outline,
+              text: 'Operador de bomba: $operador',
+              textColor: textColor,
+              mutedColor: mutedColor,
+            ),
+          ],
+          if (metrosABombear != null) ...[
+            const SizedBox(height: 8),
+            DetailLine(
+              icon: Icons.water_drop_outlined,
+              text: 'm³ a bombear: $metrosABombear m³',
+              textColor: textColor,
+              mutedColor: mutedColor,
+            ),
+          ],
+          if (horaInicioBombeo != null) ...[
+            const SizedBox(height: 8),
+            DetailLine(
+              icon: Icons.play_circle_outline,
+              text:
+                  'Bombeo iniciado a las ${HorariosCard._formatHora(horaInicioBombeo!)}',
+              textColor: textColor,
+              mutedColor: mutedColor,
+            ),
+          ],
+          if (metrosBombeados != null) ...[
+            const SizedBox(height: 8),
+            DetailLine(
+              icon: Icons.water_drop_outlined,
+              text: 'm³ bombeados: $metrosBombeados m³',
+              textColor: textColor,
+              mutedColor: mutedColor,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Asks for the m³ bombeados before sending `entregado` on a remisión with a
+/// bomba. Pops `null` on cancel, or a record whose `metros` is null when the
+/// operator left the (optional) field blank.
+class MetrosBombeadosDialog extends StatefulWidget {
+  const MetrosBombeadosDialog({super.key});
+
+  @override
+  State<MetrosBombeadosDialog> createState() => _MetrosBombeadosDialogState();
+}
+
+class _MetrosBombeadosDialogState extends State<MetrosBombeadosDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _confirmar() {
+    if (!_formKey.currentState!.validate()) return;
+    final texto = _controller.text.replaceAll(',', '.').trim();
+    Navigator.of(
+      context,
+    ).pop((metros: texto.isEmpty ? null : double.parse(texto)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.surfaceAlt(context),
+      title: const Text('Marcar como entregado'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Esta remisión lleva bomba. Captura los m³ bombeados (opcional).',
+              style: TextStyle(
+                fontSize: 13.5,
+                color: AppColors.mutedText(context),
+              ),
+            ),
+            const SizedBox(height: 14),
+            TextFormField(
+              controller: _controller,
+              autofocus: true,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                labelText: 'm³ bombeados',
+                suffixText: 'm³',
+              ),
+              validator: (v) {
+                final t = (v ?? '').replaceAll(',', '.').trim();
+                if (t.isEmpty) return null;
+                final n = double.tryParse(t);
+                return n == null || n < 0 ? 'Cantidad inválida' : null;
+              },
+              onFieldSubmitted: (_) => _confirmar(),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+        ElevatedButton(
+          onPressed: _confirmar,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _accentYellow,
+            foregroundColor: AppColors.onAccent,
+            elevation: 0,
+          ),
+          child: const Text(
+            'Entregado',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
       ],
     );
   }

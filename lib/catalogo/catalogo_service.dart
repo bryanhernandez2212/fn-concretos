@@ -2,6 +2,7 @@ import 'dart:convert';
 import '../config/http_client.dart' as http;
 import '../auth/auth_service.dart';
 import '../config/api_config.dart';
+import 'conciliacion_agregados.dart';
 import 'elemento_constructivo.dart';
 import 'planta.dart';
 import 'producto.dart';
@@ -66,11 +67,174 @@ class CatalogoService {
     };
   }
 
+  // -------------------------------------------------------------------
+  // Materiales (arena, grava, agua)
+  // -------------------------------------------------------------------
+
+  static Future<List<MaterialAgregado>> materiales() async {
+    final data = await _get('/materiales');
+    return (data as List<dynamic>)
+        .map((e) => MaterialAgregado.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  static Future<MaterialAgregado> material(int id) async {
+    final data = await _get('/materiales/$id');
+    return MaterialAgregado.fromJson(data as Map<String, dynamic>);
+  }
+
+  static Future<MaterialAgregado> crearMaterial({
+    required String nombre,
+    required String unidad,
+    String? descripcion,
+  }) async {
+    final body = <String, dynamic>{'nombre': nombre, 'unidad': unidad};
+    if (descripcion != null && descripcion.isNotEmpty) {
+      body['descripcion'] = descripcion;
+    }
+    final data = await _post('/materiales', body);
+    return MaterialAgregado.fromJson(data as Map<String, dynamic>);
+  }
+
+  static Future<MaterialAgregado> actualizarMaterial(
+    int id, {
+    required String nombre,
+    required String unidad,
+    String? descripcion,
+  }) async {
+    final body = <String, dynamic>{'nombre': nombre, 'unidad': unidad};
+    if (descripcion != null) body['descripcion'] = descripcion;
+    final data = await _put('/materiales/$id', body);
+    return MaterialAgregado.fromJson(data as Map<String, dynamic>);
+  }
+
+  // -------------------------------------------------------------------
+  // Insumos (refacciones / consumibles de parque vehicular)
+  // -------------------------------------------------------------------
+
+  static Future<List<InsumoAgregado>> insumos() async {
+    final data = await _get('/insumos');
+    return (data as List<dynamic>)
+        .map((e) => InsumoAgregado.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  static Future<InsumoAgregado> insumo(int id) async {
+    final data = await _get('/insumos/$id');
+    return InsumoAgregado.fromJson(data as Map<String, dynamic>);
+  }
+
+  static Future<InsumoAgregado> crearInsumo({
+    required String nombre,
+    required String unidad,
+    String? categoria,
+    String? descripcion,
+  }) async {
+    final body = <String, dynamic>{'nombre': nombre, 'unidad': unidad};
+    if (categoria != null && categoria.isNotEmpty) {
+      body['categoria'] = categoria;
+    }
+    if (descripcion != null && descripcion.isNotEmpty) {
+      body['descripcion'] = descripcion;
+    }
+    final data = await _post('/insumos', body);
+    return InsumoAgregado.fromJson(data as Map<String, dynamic>);
+  }
+
+  static Future<InsumoAgregado> actualizarInsumo(
+    int id, {
+    required String nombre,
+    required String unidad,
+    String? categoria,
+    String? descripcion,
+  }) async {
+    final body = <String, dynamic>{'nombre': nombre, 'unidad': unidad};
+    if (categoria != null) body['categoria'] = categoria;
+    if (descripcion != null) body['descripcion'] = descripcion;
+    final data = await _put('/insumos/$id', body);
+    return InsumoAgregado.fromJson(data as Map<String, dynamic>);
+  }
+
+  // -------------------------------------------------------------------
+  // Servicios (mantenimiento, grúa, lavado)
+  // -------------------------------------------------------------------
+
+  static Future<List<ServicioAgregado>> servicios() async {
+    final data = await _get('/servicios');
+    return (data as List<dynamic>)
+        .map((e) => ServicioAgregado.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  static Future<ServicioAgregado> servicio(int id) async {
+    final data = await _get('/servicios/$id');
+    return ServicioAgregado.fromJson(data as Map<String, dynamic>);
+  }
+
+  static Future<ServicioAgregado> crearServicio({
+    required String nombre,
+    String? descripcion,
+  }) async {
+    final body = <String, dynamic>{'nombre': nombre};
+    if (descripcion != null && descripcion.isNotEmpty) {
+      body['descripcion'] = descripcion;
+    }
+    final data = await _post('/servicios', body);
+    return ServicioAgregado.fromJson(data as Map<String, dynamic>);
+  }
+
+  static Future<ServicioAgregado> actualizarServicio(
+    int id, {
+    required String nombre,
+    String? descripcion,
+  }) async {
+    final body = <String, dynamic>{'nombre': nombre};
+    if (descripcion != null) body['descripcion'] = descripcion;
+    final data = await _put('/servicios/$id', body);
+    return ServicioAgregado.fromJson(data as Map<String, dynamic>);
+  }
+
+  // -------------------------------------------------------------------
+  // HTTP helpers
+  // -------------------------------------------------------------------
+
   static Future<dynamic> _get(String path) async {
     final headers = await AuthService.authHeaders();
     final http.Response response;
     try {
       response = await http.get(Uri.parse('$_baseUrl$path'), headers: headers);
+    } catch (_) {
+      throw AuthException('No se pudo conectar con el servidor');
+    }
+    return _handleResponse(response);
+  }
+
+  static Future<dynamic> _post(String path, Map<String, dynamic> body) async {
+    final headers = await AuthService.authHeaders();
+    headers['Content-Type'] = 'application/json';
+    final http.Response response;
+    try {
+      response = await http.post(
+        Uri.parse('$_baseUrl$path'),
+        headers: headers,
+        body: jsonEncode(body),
+      );
+    } catch (_) {
+      throw AuthException('No se pudo conectar con el servidor');
+    }
+    return _handleResponse(response);
+  }
+
+  static Future<dynamic> _put(String path, Map<String, dynamic> body) async {
+    final headers = await AuthService.authHeaders();
+    headers['Content-Type'] = 'application/json';
+    final http.Response response;
+    try {
+      response = await http.put(
+        Uri.parse('$_baseUrl$path'),
+        headers: headers,
+        body: jsonEncode(body),
+      );
     } catch (_) {
       throw AuthException('No se pudo conectar con el servidor');
     }

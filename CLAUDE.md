@@ -36,10 +36,10 @@ The app routes by role/permission and talks to six real backend microservices. A
 
 `lib/` is organized by feature folder. Large features split into sub-area folders:
 
-- `direccion/`: `autorizaciones/`, `pedidos/`, `rutas/`, `live_tracking/`, `ordenes_compra/`
+- `direccion/`: `autorizaciones/`, `pedidos/`, `rutas/`, `live_tracking/`, `ordenes_compra/`, `conciliacion_agregados/`
 - `asesor_comercial/`: `visitas/`, `cotizaciones/`, `pedidos/`, `clientes_obras/`, `comisiones/`, `solicitudes_diseno/`
 - `jefe_planta/`: `programacion/`, `ollas/`, `solicitudes/`
-- `deliveries/`: `listado/`, `detalle/`, `evidencias/`, `pruebas_campo/`, `navegacion/`
+- `deliveries/`: `listado/`, `detalle/`, `evidencias/`, `pruebas_campo/`, `navegacion/`, `turno_bombeo/`
 - `auth/`: `login/`, `recuperar_password/`, `biometria/`
 
 Each feature's home shell and shared service/DTO sit at the feature root.
@@ -58,13 +58,13 @@ Large screens keep their State in the screen file. Self-contained UI moves into 
 - The only cross-screen state is `main.dart`'s `themeNotifier` (`ValueNotifier<ThemeMode>`, default dark), the static session fields on `AuthService`, and `main.dart`'s `navigatorKey` (for push/notification taps). Keep to the "static field, no package" pattern.
 - Startup goes `SplashScreen`, which plays `splash.mp4` while `AuthService.restoreSession()` runs in parallel. The user then goes to either `LoginScreen` or `destinationForSession()` (`auth/login/login_screen.dart`). If biometrics are enabled, a restored session goes through `BiometricLockScreen` first.
 - Routing, in order:
-  1. A role in `roles.dart`'s `rolesConAppMovil` (`Operador de Olla`/`Operador de Bomba`) goes to `home/HomeScreen`: Entregas / Vehículo / Perfil.
-  2. The permission `pedidos.autorizar_credito` goes to `DireccionHomeScreen`: Autorizaciones / Compras (only with `ordenes_compra.autorizar`) / Rutas / Perfil.
+  1. A role in `roles.dart`'s `rolesConAppMovil` (`Operador de Olla`/`Operador de Bomba`) goes to `home/HomeScreen`: Entregas / Turno (Operador de Bomba only) / Vehículo / Perfil.
+  2. The permission `pedidos.autorizar_credito` goes to `DireccionHomeScreen`: Autorizaciones / Compras (only with `ordenes_compra.autorizar`) / Conciliados / Rutas / Perfil.
   3. The permission `pedidos.autorizar_logistica` goes to `JefePlantaHomeScreen` (role "Jefe de Planta", rol_id 11): Programación / Ollas / Solicitudes / Perfil. It's checked after Dirección on purpose.
   4. The permission `agenda.administrar` goes to `AsesorComercialHomeScreen`: Visitas / Cotizaciones / Pedidos / Comisiones (hidden if `miAsesor()` returns a 404) / Perfil.
   5. Everyone else goes to `RoleUnavailableScreen`.
 - Dirección, Jefe de Planta and Asesor routing is by **permission, not role name** on purpose, because the backend can move permissions between roles. `catalogoRoles` in `roles.dart` only mirrors role names and descriptions for display.
-- The shells keep every tab mounted and cross-fade between them (`AnimatedOpacity`+`AnimatedScale`, not `IndexedStack`). Scrollable tabs pad by `BottomNavBar.clearance(context)`.
+- The shells keep every tab mounted and cross-fade between them (`AnimatedOpacity`+`AnimatedScale`, not `IndexedStack`). Exception: Dirección's Rutas tab is swapped for a `SizedBox.shrink()` while inactive, because a faded Google Maps platform view can still render or bleed through (and it would keep polling GPS). Scrollable tabs pad by `BottomNavBar.clearance(context)`.
 - Top header rows: a tab's own action button (a `HeaderIconButton`) goes **before** the `NotificationBellButton`. Dirección hides that header row on Rutas, because Rutas has its own `AppBar`.
 
 ### Backend services
@@ -97,10 +97,11 @@ Services import `config/http_client.dart` `as http`, never `package:http` direct
   - Obra/visita creation flow: `ClientePickerScreen`, then `ObraFormScreen` (interactive pin picker; native reverse-geocode through the `geocoding` package, not the Google Geocoding API), then `VisitaFormScreen`. "Al instante" chains into check-in; "Programar" doesn't.
   - Check-in photos upload through **operaciones'** presigned URL, because comercial has no upload endpoint.
   - Obra maps stay in the app. An external "open in Google Maps" hand-off was tried and rejected.
-- **catalogo** (`catalogo/catalogo_service.dart`) provides read-only plantas, productos (`q=`), per-planta precios and elementos constructivos, for cotizaciones.
+- **catalogo** (`catalogo/catalogo_service.dart`) provides read-only plantas, productos (`q=`), per-planta precios and elementos constructivos, for cotizaciones. It also has list/detail/`POST`/`PUT` for `/materiales`, `/insumos` and `/servicios` (DTOs in `catalogo/conciliacion_agregados.dart`), used by Dirección's Conciliados tab.
 - **finanzas** (`finanzas/finanzas_service.dart`):
   - Comisiones: Proyección (`/comisiones-periodo/proyeccion`, computed on the fly) must carry the "esto es una PROYECCIÓN" disclaimer. Historial is processed cortes. `asesorId` is `Asesor.id`, not the auth id.
   - Órdenes de compra: list, detail, bitácora, autorizar and rechazar only. Dirección's list filters client-side with `OrdenCompra.porAutorizar`. That estatus value is **unverified** against live data.
+  - Conciliación de agregados (DTOs in `finanzas/conciliacion_proveedor.dart`): `/conciliaciones-proveedor` (list by `proveedorId`, open for a periodo, `/{id}/detalle` get/add, `PATCH /{id}/estatus`) and `/vales-entrada-material` (list, register).
   - Production URLs (`fnconcretos.app/api/...`) returned 502 on 2026-09-24, so the app stays on the sandbox.
 - **operaciones** (`operaciones/operaciones_service.dart`) covers programación de producción, remisiones, the hito state machine, GPS, firma/archivos/evidencias (presigned uploads), pruebas de concreto, and vehiculos/mantenimientos/pendientes/documentos/modelos 3D.
   - Write gates: `permisoOperarRemisiones` (`remisiones.operar`) and `permisoReportarPendienteVehiculo`. The caller checks these before calling.
@@ -109,6 +110,7 @@ Services import `config/http_client.dart` `as http`, never `package:http` direct
 
 ### Feature notes
 
+- **Dirección Conciliados** (`direccion/conciliacion_agregados/`) has three sections: Entrada de Mercancía (catalogo materiales/insumos/servicios, editable), Conciliación de Proveedores (vales vs. comprobante de pago per periodo) and Vales de Entrada (arena/grava/agua). The tab isn't gated by a permission.
 - **Jefe de Planta** (`jefe_planta/jefe_planta_service.dart`) does its own HTTP to operaciones, finanzas, comercial and administración, the way `AsesorComercialService` does. The jefe's planta is `plantaId` from `GET /empleados/{idEmpleado}`, cached with the planta catalog in `JefePlantaService.contexto()`. If it's null, the tabs show every planta.
   - Programación: `GET /programacion-produccion?fecha=&plantaId=`, with each row's pedido joined from comercial `GET /pedidos/{id}`. "Por programar" is the web's rule (`GET /pedidos?plantaId=` with `estatusGeneral` `autorizado`/`parcial`) minus pedidos that already have a programación that isn't `cancelada`/`concluido` (unfiltered `GET /programacion-produccion`), because `POST` answers 409 for those. Only the fecha is required. Hora, dosificador and personal are optional. Dosificadores come from **administración** `GET /dosificadores?plantaId=` (active only, best-effort; a saved id missing from the catalog shows as `Dosificador #id`). Approving (`PATCH …/estatus`) also authorizes the pedido's logística and may return `logisticaError`, which the screen shows.
   - Ollas: `GET /vehiculos?grupo=Mix/Ollas&plantaId=`, excluding `baja`. A unit is "en ruta" (and can't be moved) when a `/remisiones?estatus=…` row (repeated `estatus` params: the web's "En ruta" set incl. `con_atraso`, plus `cargando_planta`; deliberately not filtered by planta, since an olla can serve another planta's remisión) has it as `vehiculoOllaId`. Moving is `PATCH /vehiculos/{id}/planta` `{plantaAsignadaId}`, gated by `vehiculos.cambiar_planta`; the backend answers 409 for an olla en ruta. `estatusOperativo` is `operando`/`parada`/`en_reparacion`/`accidentada`. The header's map button opens `ollas/mapa_ollas_screen.dart`: the tab's ollas at their last fix from operaciones `GET /vehiculos/ubicaciones` (called **unfiltered** and joined by id, because `?plantaId=` drops some of the planta's ollas), re-polled every 15s with gliding `VehicleMarkerIcon`s. Fixes older than 30 min are drawn grey as "sin señal reciente".
@@ -128,6 +130,8 @@ Services import `config/http_client.dart` `as http`, never `package:http` direct
   - `RouteNavigationScreen` auto-registers `salioPlanta`, then `enCamino`, then `proximoLlegar` at 1 km remaining.
   - Firma and evidencia rows unlock at `descargando`. Only one firma is allowed (the backend returns 409 on a second), after which the row becomes view-only.
   - Still mock: `DosificacionScreen`.
+  - **Operador de Bomba** (`rolOperadorBomba`) uses the same Remisión/hito flow, but ownership is `conductorBombaId`: `entregasDelDia` makes one `GET /remisiones?conductorBombaId=` call and intersects it with the programación. On a remisión with `vehiculoBombaId`, `entregado` (which is also "fin de bombeo") first asks for optional `metrosBombeados`. The backend stamps `horaInicioBombeo` on `descargando`.
+  - The bomba role gets an extra "Turno" tab (`deliveries/turno_bombeo/`) for `/ordenes-trabajo-bombeo`: open (the backend generates the folio and answers 409 when the bomba already has an open turno), list, close (the backend computes `volumenPorCobrar`). The turno's remisiones are filtered on the client by `ordenTrabajoBombeoId`. Dispatch links a remisión to a turno when creating it, and the app can't change that link.
 - **RouteNavigationScreen** quirks (confirmed on device):
   - `setNavigationUIEnabled(true)` must be called after `startGuidance()`, because `automatic` only checks at view creation.
   - The bottom `RouteNavBottomBar` must stay in the `Stack`. Without it, the platform view collapses. It is transparent so the native chrome shows through.

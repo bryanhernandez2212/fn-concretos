@@ -18,7 +18,8 @@ import 'profile_widgets.dart';
 
 /// Treats an empty/blank string as absent, so a field `administracion-service`
 /// left blank falls back to '—' the same way a null one would.
-String? _nombreOVacio(String? value) => (value == null || value.trim().isEmpty) ? null : value;
+String? _nombreOVacio(String? value) =>
+    (value == null || value.trim().isEmpty) ? null : value;
 
 String _themeModeLabel(ThemeMode mode) {
   switch (mode) {
@@ -65,9 +66,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       if (activar) {
         final etiqueta = Platform.isIOS ? 'Face ID' : 'tu biometría';
-        final autenticado = await BiometricService.autenticar('Confirma tu identidad para activar $etiqueta');
+        final autenticado = await BiometricService.autenticar(
+          'Confirma tu identidad para activar $etiqueta',
+        );
         if (!autenticado) {
-          if (mounted) AppSnack.error(context, 'No se pudo verificar tu identidad');
+          if (mounted)
+            AppSnack.error(context, 'No se pudo verificar tu identidad');
           return;
         }
         await AuthService.habilitarBiometria();
@@ -116,14 +120,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ? 'image/png'
           : (path.endsWith('.heic') ? 'image/heic' : 'image/jpeg');
       final extension = contentType.split('/').last;
-      final nombreArchivo = 'perfil_${empleado.id}_${DateTime.now().millisecondsSinceEpoch}.$extension';
+      final nombreArchivo =
+          'perfil_${empleado.id}_${DateTime.now().millisecondsSinceEpoch}.$extension';
 
       final presigned = await AdministracionService.presignedUploadUrl(
         carpeta: 'empleados-fotos',
         nombreArchivo: nombreArchivo,
         contentType: contentType,
       );
-      await OperacionesService.subirArchivoPresignado(presigned.uploadUrl, bytes, contentType);
+      await OperacionesService.subirArchivoPresignado(
+        presigned.uploadUrl,
+        bytes,
+        contentType,
+      );
       final actualizado = await AdministracionService.actualizarFotoPerfil(
         empleado.id,
         empleado,
@@ -193,15 +202,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _verFoto(String fotoUrl) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => EvidenciaViewerScreen(url: fotoUrl, label: 'Foto de perfil'),
+        builder: (context) =>
+            EvidenciaViewerScreen(url: fotoUrl, label: 'Foto de perfil'),
       ),
     );
   }
 
   Future<void> _abrirMfa() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => const MfaScreen()),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => const MfaScreen()));
     if (mounted) setState(() {});
   }
 
@@ -219,14 +229,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final fotoUrl = _empleado?.fotoPerfilUrl;
 
     return ListView(
-      padding: EdgeInsets.fromLTRB(20, 20, 20, BottomNavBar.clearance(context) + 16),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        20,
+        20,
+        BottomNavBar.clearance(context) + 16,
+      ),
       children: [
         // Profile summary
         ProfileHeaderCard(
           fotoUrl: fotoUrl,
           subiendoFoto: _subiendoFoto,
-          nombre: _nombreOVacio(_empleado?.nombreCompleto) ?? AuthService.username ?? 'Usuario',
-          puesto: _nombreOVacio(_empleado?.puestoNombre) ?? AuthService.rol ?? '',
+          nombre:
+              _nombreOVacio(_empleado?.nombreCompleto) ??
+              AuthService.username ??
+              'Usuario',
+          puesto:
+              _nombreOVacio(_empleado?.puestoNombre) ?? AuthService.rol ?? '',
           onPickPhoto: _pickPhoto,
           onViewPhoto: () => _verFoto(fotoUrl!),
         ),
@@ -235,7 +254,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         // Preferencias
         PreferencesSettingsGroup(
           notificationsEnabled: _notificationsEnabled,
-          onNotificationsChanged: (value) => setState(() => _notificationsEnabled = value),
+          onNotificationsChanged: (value) =>
+              setState(() => _notificationsEnabled = value),
           themeModeLabel: _themeModeLabel(themeNotifier.value),
           onAppearanceTap: _showAppearanceMenu,
         ),
@@ -260,13 +280,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
         // Seguridad
         SecuritySettingsGroup(
           biometriaDisponible: _biometriaDisponible,
-          biometriaTitulo: Platform.isIOS ? 'Inicio rápido con Face ID' : 'Inicio rápido con biometría',
+          biometriaTitulo: Platform.isIOS
+              ? 'Inicio rápido con Face ID'
+              : 'Inicio rápido con biometría',
           cambiandoBiometria: _cambiandoBiometria,
           biometriaHabilitada: AuthService.biometricHabilitado,
           onBiometriaChanged: _cambiarBiometria,
           mfaHabilitado: AuthService.mfaHabilitado,
           onChangePassword: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => const ChangePasswordScreen()),
+            MaterialPageRoute(
+              builder: (context) => const ChangePasswordScreen(),
+            ),
           ),
           onMfa: _abrirMfa,
         ),
@@ -278,6 +302,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         // Cerrar sesión
         LogoutButton(onTap: _cerrarSesion),
+
+        //Soluciones WS
+        SolutionWs(),
       ],
     );
   }

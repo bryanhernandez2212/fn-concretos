@@ -48,8 +48,14 @@ class _PruebaConcretoScreenState extends State<PruebaConcretoScreen> {
     final temperatura = double.tryParse(_temperaturaController.text.trim());
     final rendimiento = double.tryParse(_rendimientoController.text.trim());
 
-    if (revenimiento.isEmpty || masaUnitaria == null || temperatura == null || rendimiento == null) {
-      AppSnack.error(context, 'Captura revenimiento, masa unitaria, temperatura y rendimiento');
+    if (revenimiento.isEmpty ||
+        masaUnitaria == null ||
+        temperatura == null ||
+        rendimiento == null) {
+      AppSnack.error(
+        context,
+        'Captura revenimiento, masa unitaria, temperatura y rendimiento',
+      );
       return;
     }
 
@@ -85,7 +91,9 @@ class _PruebaConcretoScreenState extends State<PruebaConcretoScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : Colors.black87;
-    final mutedColor = (isDark ? Colors.white : Colors.black).withValues(alpha: 0.55);
+    final mutedColor = (isDark ? Colors.white : Colors.black).withValues(
+      alpha: 0.55,
+    );
     final cardColor = isDark ? const Color(0xFF141414) : Colors.white;
     final borderColor = isDark
         ? Colors.white.withValues(alpha: 0.10)
@@ -127,7 +135,9 @@ class _PruebaConcretoScreenState extends State<PruebaConcretoScreen> {
                   unidad: 'kg/m³',
                   textColor: textColor,
                   mutedColor: mutedColor,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                 ),
                 const SizedBox(height: 14),
                 PruebaTextField(
@@ -136,7 +146,10 @@ class _PruebaConcretoScreenState extends State<PruebaConcretoScreen> {
                   unidad: '°C',
                   textColor: textColor,
                   mutedColor: mutedColor,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                    signed: true,
+                  ),
                 ),
                 const SizedBox(height: 14),
                 PruebaTextField(
@@ -145,7 +158,9 @@ class _PruebaConcretoScreenState extends State<PruebaConcretoScreen> {
                   unidad: 'm³',
                   textColor: textColor,
                   mutedColor: mutedColor,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                 ),
                 const SizedBox(height: 14),
                 PruebaTextField(
@@ -168,11 +183,23 @@ class _PruebaConcretoScreenState extends State<PruebaConcretoScreen> {
                 foregroundColor: Colors.black,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
               child: _enviando
-                  ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.black))
-                  : const Text('Enviar prueba', style: TextStyle(fontWeight: FontWeight.w700)),
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        color: Colors.black,
+                      ),
+                    )
+                  : const Text(
+                      'Enviar prueba',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
             ),
           ),
         ],

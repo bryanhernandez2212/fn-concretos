@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../auth/roles.dart';
 import '../auth/auth_service.dart';
 import '../vehicle/vehiculo_service.dart';
 import 'operaciones_service.dart';
@@ -72,7 +73,7 @@ class RastreoGpsService {
   static Future<RastreoRemision> paraRemision(int remisionId) async {
     try {
       final remision = await OperacionesService.remisionDetalle(remisionId);
-      final esBomba = AuthService.rol == 'Operador de Bomba';
+      final esBomba = AuthService.rol == rolOperadorBomba;
       final vehiculoId = esBomba
           ? (remision.vehiculoBombaId ?? remision.vehiculoOllaId)
           : (remision.vehiculoOllaId ?? remision.vehiculoBombaId);

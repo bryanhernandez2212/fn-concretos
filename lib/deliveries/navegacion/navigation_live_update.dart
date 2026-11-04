@@ -85,7 +85,9 @@ class NavigationLiveUpdate {
   /// `onNewIntent` instead of a fresh launch — `MainActivity` pushes it
   /// straight to Dart through this handler rather than Dart having to poll
   /// for it. No-op on iOS/other platforms (nothing ever calls it there).
-  static void registerNotificationTapListener(void Function(int remisionId) onTap) {
+  static void registerNotificationTapListener(
+    void Function(int remisionId) onTap,
+  ) {
     if (!Platform.isAndroid) return;
     _channel.setMethodCallHandler((call) async {
       if (call.method == 'onNotificationTap') {

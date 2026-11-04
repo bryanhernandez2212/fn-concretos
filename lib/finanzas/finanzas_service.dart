@@ -2,7 +2,9 @@ import 'dart:convert';
 import '../config/http_client.dart' as http;
 import '../auth/auth_service.dart';
 import '../config/api_config.dart';
+import '../jefe_planta/jefe_planta_service.dart' show Proveedor;
 import 'comision.dart';
+import 'conciliacion_proveedor.dart';
 import 'facturacion.dart';
 import 'orden_compra.dart';
 
@@ -143,6 +145,133 @@ class FinanzasService {
       'cotizacionId': cotizacionId,
       if (vendedorId != null) 'vendedorId': vendedorId,
     });
+  }
+
+  // ---------------------------------------------------------------------
+  // Conciliación de proveedores (`conciliacion-proveedor-controller`)
+  // ---------------------------------------------------------------------
+
+  /// Active proveedores list (`GET /proveedores?estatus=activo`).
+  static Future<List<Proveedor>> proveedores() async {
+    final data = await _get('/proveedores?estatus=activo');
+    return (data as List<dynamic>)
+        .map((e) => Proveedor.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// `GET /conciliaciones-proveedor?proveedorId=`
+  static Future<List<ConciliacionProveedor>> conciliacionesProveedor({
+    required int proveedorId,
+  }) async {
+    final data = await _get('/conciliaciones-proveedor?proveedorId=$proveedorId');
+    return (data as List<dynamic>)
+        .map((e) => ConciliacionProveedor.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// `POST /conciliaciones-proveedor` — abre una conciliación para un periodo.
+  static Future<ConciliacionProveedor> abrirConciliacionProveedor({
+    required int proveedorId,
+    required String periodoInicio,
+    required String periodoFin,
+  }) async {
+    final data = await _post('/conciliaciones-proveedor', {
+      'proveedorId': proveedorId,
+      'periodoInicio': periodoInicio,
+      'periodoFin': periodoFin,
+    });
+    return ConciliacionProveedor.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// `GET /conciliaciones-proveedor/{id}/detalle`
+  static Future<List<ConciliacionDetalle>> detalleConciliacionProveedor(int id) async {
+    final data = await _get('/conciliaciones-proveedor/$id/detalle');
+    return (data as List<dynamic>)
+        .map((e) => ConciliacionDetalle.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// `PATCH /conciliaciones-proveedor/{id}/estatus`
+  static Future<ConciliacionProveedor> cambiarEstatusConciliacionProveedor(
+    int id, {
+    required String estatus,
+  }) async {
+    final data = await _patch('/conciliaciones-proveedor/$id/estatus', {
+      'estatus': estatus,
+    });
+    return ConciliacionProveedor.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// `POST /conciliaciones-proveedor/{id}/detalle`
+  static Future<ConciliacionDetalle> agregarDetalleConciliacionProveedor(
+    int id, {
+    int? valeId,
+    int? entradaId,
+    String? estatus,
+    double? diferenciaMonto,
+    String? observaciones,
+  }) async {
+    final data = await _post('/conciliaciones-proveedor/$id/detalle', {
+      if (valeId != null) 'valeId': valeId,
+      if (entradaId != null) 'entradaId': entradaId,
+      if (estatus != null) 'estatus': estatus,
+      if (diferenciaMonto != null) 'diferenciaMonto': diferenciaMonto,
+      if (observaciones != null) 'observaciones': observaciones,
+    });
+    return ConciliacionDetalle.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// `GET /vales-entrada-material`
+  static Future<List<ValeEntradaMaterial>> valesEntradaMaterial({
+    int? proveedorId,
+    String? estatus,
+    int? plantaId,
+    int? ordenCompraId,
+  }) async {
+    final params = <String, String>{
+      if (proveedorId != null) 'proveedorId': '$proveedorId',
+      if (estatus != null && estatus.isNotEmpty) 'estatus': estatus,
+      if (plantaId != null) 'plantaId': '$plantaId',
+      if (ordenCompraId != null) 'ordenCompraId': '$ordenCompraId',
+    };
+    final query = params.isNotEmpty ? '?${Uri(queryParameters: params).query}' : '';
+    final data = await _get('/vales-entrada-material$query');
+    return (data as List<dynamic>)
+        .map((e) => ValeEntradaMaterial.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// `POST /vales-entrada-material` — registra un vale de entrada de material.
+  static Future<ValeEntradaMaterial> registrarValeEntradaMaterial(
+    Map<String, dynamic> body,
+  ) async {
+    final data = await _post('/vales-entrada-material', body);
+    return ValeEntradaMaterial.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// `PATCH /vales-entrada-material/{id}/estatus`
+  static Future<ValeEntradaMaterial> cambiarEstatusValeEntradaMaterial(
+    int id, {
+    required String estatus,
+  }) async {
+    final data = await _patch('/vales-entrada-material/$id/estatus', {
+      'estatus': estatus,
+    });
+    return ValeEntradaMaterial.fromJson(data as Map<String, dynamic>);
+  }
+
+  /// `GET /entradas-mercancia`
+  static Future<List<EntradaMercanciaResumen>> entradasMercancia({
+    int? proveedorId,
+  }) async {
+    final params = <String, String>{
+      if (proveedorId != null) 'proveedorId': '$proveedorId',
+    };
+    final query = params.isNotEmpty ? '?${Uri(queryParameters: params).query}' : '';
+    final data = await _get('/entradas-mercancia$query');
+    return (data as List<dynamic>)
+        .map((e) => EntradaMercanciaResumen.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   static Future<dynamic> _post(String path, [Map<String, dynamic>? body]) async {
