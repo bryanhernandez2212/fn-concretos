@@ -10,6 +10,7 @@ import '../widgets/bottom_nav_bar.dart';
 import '../widgets/notification_bell_button.dart';
 import '../widgets/rastreo_info_card.dart';
 import 'vehicle.dart';
+import 'vehicle_combustible_screen.dart';
 import 'vehicle_documents_screen.dart';
 import 'vehicle_pendientes_screen.dart';
 import 'vehicle_pending_screen.dart';
@@ -427,6 +428,17 @@ class _ReportesTab extends StatelessWidget {
           title: 'Reportar pendiente del vehículo',
           subtitle: 'Falla mecánica, llanta o mantenimiento',
           onTap: () => onReportar(null),
+        ),
+        const SizedBox(height: 12),
+        card(
+          icon: Icons.local_gas_station_outlined,
+          title: 'Combustible',
+          subtitle: 'Registrar y ver cargas',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => VehicleCombustibleScreen(vehiculo: vehiculo!),
+            ),
+          ),
         ),
         const SizedBox(height: 12),
         FutureBuilder<List<VehiculoDocumentoResumen>>(

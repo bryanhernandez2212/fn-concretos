@@ -228,3 +228,38 @@ class VehiculoPendienteResumen {
     );
   }
 }
+
+/// One `VehiculoCombustibleResponse`: a fuel load the operator registered.
+/// `samsaraFuelPercent` is resolved by the backend at capture time, and only
+/// for vehicles whose `origenGps` is `samsara`, so it's null otherwise.
+class VehiculoCombustibleResumen {
+  final int id;
+  final DateTime? fechaHora;
+  final double litrosCargados;
+  final double? odometroKm;
+  final String? evidenciaUrl;
+  final double? samsaraFuelPercent;
+
+  const VehiculoCombustibleResumen({
+    required this.id,
+    required this.fechaHora,
+    required this.litrosCargados,
+    required this.odometroKm,
+    required this.evidenciaUrl,
+    required this.samsaraFuelPercent,
+  });
+
+  factory VehiculoCombustibleResumen.fromJson(Map<String, dynamic> json) {
+    return VehiculoCombustibleResumen(
+      id: json['id'] as int,
+      // Backend sends UTC; show it in the device's local time.
+      fechaHora: DateTime.tryParse(
+        json['fechaHora'] as String? ?? '',
+      )?.toLocal(),
+      litrosCargados: (json['litrosCargados'] as num?)?.toDouble() ?? 0,
+      odometroKm: (json['odometroKm'] as num?)?.toDouble(),
+      evidenciaUrl: json['evidenciaUrl'] as String?,
+      samsaraFuelPercent: (json['samsaraFuelPercent'] as num?)?.toDouble(),
+    );
+  }
+}

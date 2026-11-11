@@ -445,6 +445,36 @@ class OperacionesService {
     });
   }
 
+  /// `GET /vehiculos/{id}/combustible` — fuel loads, most recent first.
+  static Future<List<VehiculoCombustibleResumen>> combustibleVehiculo(
+    int vehiculoId,
+  ) async {
+    final data = await _get('/vehiculos/$vehiculoId/combustible');
+    return (data as List<dynamic>)
+        .map((e) => VehiculoCombustibleResumen.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// `POST /vehiculos/{id}/combustible`. Only [litrosCargados] is required.
+  /// The backend fills `samsaraFuelPercent` itself for Samsara vehicles, so
+  /// the app never sends it. [evidenciaUrl] is a `publicUrl` from
+  /// [presignedUploadUrl].
+  static Future<VehiculoCombustibleResumen> registrarCombustible(
+    int vehiculoId, {
+    required double litrosCargados,
+    double? odometroKm,
+    DateTime? fechaHora,
+    String? evidenciaUrl,
+  }) async {
+    final data = await _post('/vehiculos/$vehiculoId/combustible', {
+      'litrosCargados': litrosCargados,
+      if (odometroKm != null) 'odometroKm': odometroKm,
+      if (fechaHora != null) 'fechaHora': fechaHora.toUtc().toIso8601String(),
+      if (evidenciaUrl != null) 'evidenciaUrl': evidenciaUrl,
+    });
+    return VehiculoCombustibleResumen.fromJson(data as Map<String, dynamic>);
+  }
+
   static Future<dynamic> _get(String path) async {
     final headers = await AuthService.authHeaders();
     final http.Response response;
