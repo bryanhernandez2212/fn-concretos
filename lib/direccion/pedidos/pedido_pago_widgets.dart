@@ -184,7 +184,7 @@ class FormaPagoCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.receipt_long_outlined, size: 22, color: AppColors.accent),
+          Icon(Icons.receipt_long_outlined, size: 22, color: AppColors.accentFg(context)),
           const SizedBox(width: 12),
           Expanded(
             child: Text(

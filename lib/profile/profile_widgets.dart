@@ -256,7 +256,7 @@ class PreferencesSettingsGroup extends StatelessWidget {
       children: [
         SettingsTile(
           icon: Icons.notifications_none,
-          iconColor: _accentYellow,
+          iconColor: AppColors.accentFg(context),
           title: 'Notificaciones',
           trailing: Switch(
             value: notificationsEnabled,
@@ -265,7 +265,7 @@ class PreferencesSettingsGroup extends StatelessWidget {
         ),
         SettingsTile(
           icon: isDark ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
-          iconColor: _accentYellow,
+          iconColor: AppColors.accentFg(context),
           title: 'Apariencia',
           trailing: Builder(
             builder: (tileContext) => InkWell(
@@ -318,37 +318,37 @@ class PersonalDataSettingsGroup extends StatelessWidget {
       children: [
         SettingsTile(
           icon: Icons.badge_outlined,
-          iconColor: _accentYellow,
+          iconColor: AppColors.accentFg(context),
           title: 'Usuario',
           trailing: SettingsValueText(usuario ?? '—'),
         ),
         SettingsTile(
           icon: Icons.work_outline,
-          iconColor: _accentYellow,
+          iconColor: AppColors.accentFg(context),
           title: 'Rol',
           trailing: SettingsValueText(rol ?? '—'),
         ),
         SettingsTile(
           icon: Icons.mail_outline,
-          iconColor: _accentYellow,
+          iconColor: AppColors.accentFg(context),
           title: 'Correo',
           trailing: SettingsValueText(correo ?? '—'),
         ),
         SettingsTile(
           icon: Icons.badge_outlined,
-          iconColor: _accentYellow,
+          iconColor: AppColors.accentFg(context),
           title: 'Puesto',
           trailing: SettingsValueText(puesto ?? '—'),
         ),
         SettingsTile(
           icon: Icons.apartment_outlined,
-          iconColor: _accentYellow,
+          iconColor: AppColors.accentFg(context),
           title: 'Área',
           trailing: SettingsValueText(area ?? '—'),
         ),
         SettingsTile(
           icon: Icons.phone_outlined,
-          iconColor: _accentYellow,
+          iconColor: AppColors.accentFg(context),
           title: 'Teléfono',
           trailing: SettingsValueText(telefono ?? '—'),
         ),
@@ -393,7 +393,7 @@ class SecuritySettingsGroup extends StatelessWidget {
         if (biometriaDisponible)
           SettingsTile(
             icon: Icons.face_retouching_natural,
-            iconColor: _accentYellow,
+            iconColor: AppColors.accentFg(context),
             title: biometriaTitulo,
             trailing: cambiandoBiometria
                 ? const SizedBox(
@@ -408,14 +408,14 @@ class SecuritySettingsGroup extends StatelessWidget {
           ),
         SettingsTile(
           icon: Icons.lock_outline,
-          iconColor: _accentYellow,
+          iconColor: AppColors.accentFg(context),
           title: 'Cambiar contraseña',
           trailing: Icon(Icons.chevron_right, color: onCardMuted),
           onTap: onChangePassword,
         ),
         SettingsTile(
           icon: Icons.shield_outlined,
-          iconColor: _accentYellow,
+          iconColor: AppColors.accentFg(context),
           title: 'Verificación en dos pasos',
           trailing: Row(
             mainAxisSize: MainAxisSize.min,

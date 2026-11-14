@@ -5,10 +5,11 @@ import 'asesor_comercial_service.dart';
 import 'comisiones/comisiones_screen.dart';
 import 'cotizaciones/cotizaciones_screen.dart';
 import 'pedidos/pedidos_screen.dart';
+import 'programacion/programacion_asesor_screen.dart';
 import 'visitas/visitas_screen.dart';
 
 /// App shell for the Asesor Comercial role: Visitas, Cotizaciones, Pedidos,
-/// Comisiones and Perfil. There used to be an "Agenda" tab too, dropped
+/// Programación (read-only previa/programación), Comisiones and Perfil. There used to be an "Agenda" tab too, dropped
 /// since there was nothing to do there — no screen ever created an `AgendaActividad`, the
 /// tab only ever listed/marked existing ones (and nothing populated it
 /// either), so it was a dead end rather than a useful view; `Visita`
@@ -36,7 +37,7 @@ class _AsesorComercialHomeScreenState extends State<AsesorComercialHomeScreen> {
   bool _navCompact = false;
   bool _mostrarComisiones = true;
 
-  static const _comisionesIndex = 3;
+  static const _comisionesIndex = 4;
 
   @override
   void initState() {
@@ -66,6 +67,7 @@ class _AsesorComercialHomeScreenState extends State<AsesorComercialHomeScreen> {
     const VisitasScreen(),
     const CotizacionesScreen(),
     const PedidosScreen(),
+    const ProgramacionAsesorScreen(),
     if (_mostrarComisiones) const ComisionesScreen(),
     const ProfileScreen(),
   ];
@@ -125,6 +127,7 @@ class _AsesorComercialHomeScreenState extends State<AsesorComercialHomeScreen> {
           const NavItem(icon: Icons.place_outlined, selectedIcon: Icons.place, label: 'Visitas'),
           const NavItem(icon: Icons.receipt_long_outlined, selectedIcon: Icons.receipt_long, label: 'Cotizaciones'),
           const NavItem(icon: Icons.assignment_outlined, selectedIcon: Icons.assignment, label: 'Pedidos'),
+          const NavItem(icon: Icons.event_note_outlined, selectedIcon: Icons.event_note, label: 'Programación'),
           if (_mostrarComisiones)
             const NavItem(
               icon: Icons.account_balance_wallet_outlined,

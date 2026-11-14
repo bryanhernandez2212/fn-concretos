@@ -125,14 +125,20 @@ class AsesorComercialService {
   }
 
   /// `GET /pedidos?asesorId=` — unlike `/cotizaciones`, pedidos do filter
-  /// by asesor server-side.
+  /// by asesor server-side. The result is also checked here, so another
+  /// asesor's pedido never shows up even if the backend stops honoring the
+  /// param (unknown params are ignored silently). A row that carries no
+  /// `asesorId` can't be checked and is kept.
   static Future<List<Pedido>> misPedidos({required int asesorId, String? estatusGeneral}) async {
     final params = {
       'asesorId': '$asesorId',
       if (estatusGeneral != null) 'estatusGeneral': estatusGeneral,
     };
     final data = await _get('/pedidos?${Uri(queryParameters: params).query}');
-    return (data as List<dynamic>).map((e) => Pedido.fromJson(e as Map<String, dynamic>)).toList();
+    return (data as List<dynamic>)
+        .map((e) => Pedido.fromJson(e as Map<String, dynamic>))
+        .where((p) => p.asesorId == null || p.asesorId == asesorId)
+        .toList();
   }
 
   static Future<Cotizacion> obtenerCotizacion(int id) async {

@@ -41,7 +41,7 @@ class JefePlantaTabHeader extends StatelessWidget {
             shape: BoxShape.circle,
             color: AppColors.accent.withValues(alpha: 0.18),
           ),
-          child: Icon(icon, color: AppColors.accent),
+          child: Icon(icon, color: AppColors.accentFg(context)),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -314,6 +314,6 @@ InputDecoration campoJp(
   ),
   focusedBorder: OutlineInputBorder(
     borderRadius: BorderRadius.circular(14),
-    borderSide: const BorderSide(color: AppColors.accent, width: 1.5),
+    borderSide: BorderSide(color: AppColors.accentFg(context), width: 1.5),
   ),
 );

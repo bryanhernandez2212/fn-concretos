@@ -181,7 +181,7 @@ class _SolicitudFormScreenState extends State<SolicitudFormScreen> {
               expand: true,
               child: Row(
                 children: [
-                  const Icon(Icons.factory_outlined, color: AppColors.accent),
+                  Icon(Icons.factory_outlined, color: AppColors.accentFg(context)),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(

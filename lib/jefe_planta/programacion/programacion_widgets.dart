@@ -528,7 +528,7 @@ class _ProgramarSheetState extends State<ProgramarSheet> {
               padding: const EdgeInsets.all(14),
               child: Row(
                 children: [
-                  Icon(icon, color: AppColors.accent, size: 20),
+                  Icon(icon, color: AppColors.accentFg(context), size: 20),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(

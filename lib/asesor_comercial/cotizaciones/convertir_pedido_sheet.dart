@@ -225,7 +225,7 @@ class _ConvertirPedidoSheetState extends State<ConvertirPedidoSheet> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.accent.withValues(alpha: 0.18)),
-                  child: const Icon(Icons.assignment_turned_in_outlined, color: AppColors.accent),
+                  child: Icon(Icons.assignment_turned_in_outlined, color: AppColors.accentFg(context)),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -261,7 +261,7 @@ class _ConvertirPedidoSheetState extends State<ConvertirPedidoSheet> {
                   padding: const EdgeInsets.all(16),
                   child: Row(
                     children: [
-                      const Icon(Icons.event_outlined, size: 20, color: AppColors.accent),
+                      Icon(Icons.event_outlined, size: 20, color: AppColors.accentFg(context)),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
@@ -493,14 +493,14 @@ class _Campo extends StatelessWidget {
         hintStyle: TextStyle(color: mutedColor),
         suffixText: suffix,
         suffixStyle: TextStyle(color: mutedColor),
-        prefixIcon: Icon(icon, color: enabled ? AppColors.accent : mutedColor),
+        prefixIcon: Icon(icon, color: enabled ? AppColors.accentFg(context) : mutedColor),
         filled: true,
         fillColor: enabled ? fillColor : fillColor.withValues(alpha: 0.03),
         contentPadding: const EdgeInsets.all(16),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: AppColors.accent, width: 1.5),
+          borderSide: BorderSide(color: AppColors.accentFg(context), width: 1.5),
         ),
       ),
     );
@@ -660,7 +660,7 @@ class _OpcionPago extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Icon(icon, size: 20, color: seleccionada ? AppColors.accent : mutedColor),
+              Icon(icon, size: 20, color: seleccionada ? AppColors.accentFg(context) : mutedColor),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(

@@ -109,7 +109,7 @@ class _VisitasScreenState extends State<VisitasScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.event_available_outlined, color: _accentYellow),
+              leading: Icon(Icons.event_available_outlined, color: AppColors.accentFg(context)),
               title: Text('Registrar visita', style: TextStyle(color: textColor, fontWeight: FontWeight.w700)),
               subtitle: Text('Para un cliente y obra que ya existen', style: TextStyle(color: mutedColor, fontSize: 12.5)),
               onTap: () {
@@ -118,7 +118,7 @@ class _VisitasScreenState extends State<VisitasScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.add_location_alt_outlined, color: _accentYellow),
+              leading: Icon(Icons.add_location_alt_outlined, color: AppColors.accentFg(context)),
               title: Text('Agregar obra', style: TextStyle(color: textColor, fontWeight: FontWeight.w700)),
               subtitle: Text('Da de alta un cliente y/u obra nuevos', style: TextStyle(color: mutedColor, fontSize: 12.5)),
               onTap: () {
@@ -209,7 +209,7 @@ class _VisitasScreenState extends State<VisitasScreen> {
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(shape: BoxShape.circle, color: _accentYellow.withValues(alpha: 0.18)),
-                child: const Icon(Icons.place_outlined, color: _accentYellow),
+                child: Icon(Icons.place_outlined, color: AppColors.accentFg(context)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -243,7 +243,7 @@ class _VisitasScreenState extends State<VisitasScreen> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(shape: BoxShape.circle, color: _accentYellow.withValues(alpha: 0.18)),
-                    child: const Icon(Icons.calendar_month_outlined, size: 20, color: _accentYellow),
+                    child: Icon(Icons.calendar_month_outlined, size: 20, color: AppColors.accentFg(context)),
                   ),
                   const SizedBox(width: 14),
                   Expanded(

@@ -108,7 +108,7 @@ class _ComisionesScreenState extends State<ComisionesScreen> {
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(shape: BoxShape.circle, color: _accentYellow.withValues(alpha: 0.18)),
-                child: const Icon(Icons.account_balance_wallet_outlined, color: _accentYellow),
+                child: Icon(Icons.account_balance_wallet_outlined, color: AppColors.accentFg(context)),
               ),
               const SizedBox(width: 12),
               Expanded(

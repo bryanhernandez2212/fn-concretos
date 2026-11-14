@@ -211,7 +211,7 @@ class _PartidaCardState extends State<PartidaCard> {
                     ),
                     child: Text(
                       '${index + 1}',
-                      style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.accent, fontSize: 13),
+                      style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.accentFg(context), fontSize: 13),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -226,7 +226,7 @@ class _PartidaCardState extends State<PartidaCard> {
                     const SizedBox(width: 8),
                     Text(
                       '\$${importeEstimado(item).toStringAsFixed(2)}',
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.accent),
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.accentFg(context)),
                     ),
                   ],
                   const SizedBox(width: 8),
@@ -411,7 +411,7 @@ class _PartidaCardState extends State<PartidaCard> {
                   ),
                   Text(
                     '\$${importeEstimado(item).toStringAsFixed(2)}',
-                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.accent),
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.accentFg(context)),
                   ),
                 ],
               ),
@@ -512,7 +512,7 @@ class ResumenCotizacionCard extends StatelessWidget {
               ),
               Text(
                 '\$${total.toStringAsFixed(2)}',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.accent),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.accentFg(context)),
               ),
             ],
           ),

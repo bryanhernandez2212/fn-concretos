@@ -367,7 +367,7 @@ class _RegistrarCombustibleSheetState
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: _accentYellow, width: 1.5),
+        borderSide: BorderSide(color: AppColors.accentFg(context), width: 1.5),
       ),
     );
 

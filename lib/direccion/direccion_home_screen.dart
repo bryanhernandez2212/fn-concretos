@@ -78,7 +78,7 @@ class _DireccionHomeScreenState extends State<DireccionHomeScreen> {
           width: 56,
           height: 56,
           decoration: BoxDecoration(shape: BoxShape.circle, color: _accentYellow.withValues(alpha: 0.15)),
-          child: const Icon(Icons.shield_outlined, color: _accentYellow, size: 28),
+          child: Icon(Icons.shield_outlined, color: AppColors.accentFg(context), size: 28),
         ),
         title: Text(
           'Verificación en dos pasos requerida',

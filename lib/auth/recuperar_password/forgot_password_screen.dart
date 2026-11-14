@@ -103,7 +103,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 color: _accentYellow.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
-              child: Icon(_step == 0 ? Icons.mail_outline : Icons.lock_reset, color: _accentYellow, size: 40),
+              child: Icon(_step == 0 ? Icons.mail_outline : Icons.lock_reset, color: AppColors.accentFg(context), size: 40),
             ),
           ),
           const SizedBox(height: 24),

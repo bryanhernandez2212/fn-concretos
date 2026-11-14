@@ -28,7 +28,7 @@ class _PasswordFieldState extends State<PasswordField> {
       style: TextStyle(color: textColor),
       decoration: InputDecoration(
         labelText: widget.label,
-        prefixIcon: Icon(Icons.lock_outline, size: 20, color: _accentYellow),
+        prefixIcon: Icon(Icons.lock_outline, size: 20, color: AppColors.accentFg(context)),
         suffixIcon: IconButton(
           icon: Icon(_obscureText ? Icons.visibility_outlined : Icons.visibility_off_outlined, size: 20),
           onPressed: () => setState(() => _obscureText = !_obscureText),
@@ -40,7 +40,7 @@ class _PasswordFieldState extends State<PasswordField> {
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _accentYellow, width: 1.5),
+          borderSide: BorderSide(color: AppColors.accentFg(context), width: 1.5),
         ),
       ),
     );

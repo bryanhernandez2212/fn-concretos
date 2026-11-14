@@ -33,7 +33,7 @@ class AuthField extends StatelessWidget {
       style: TextStyle(color: textColor),
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, size: 20, color: _accentYellow),
+        prefixIcon: Icon(icon, size: 20, color: AppColors.accentFg(context)),
         filled: true,
         fillColor: fillColor,
         contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
@@ -41,7 +41,7 @@ class AuthField extends StatelessWidget {
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _accentYellow, width: 1.5),
+          borderSide: BorderSide(color: AppColors.accentFg(context), width: 1.5),
         ),
       ),
     );

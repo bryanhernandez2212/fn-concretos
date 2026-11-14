@@ -88,7 +88,7 @@ class _MfaScreenState extends State<MfaScreen> {
                 color: _accentYellow.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.shield_outlined, color: _accentYellow, size: 40),
+              child: Icon(Icons.shield_outlined, color: AppColors.accentFg(context), size: 40),
             ),
           ),
           const SizedBox(height: 24),

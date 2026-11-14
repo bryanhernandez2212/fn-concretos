@@ -56,7 +56,11 @@ class EstatusChip extends StatelessWidget {
       ),
       child: Text(
         estatusLabel(estatus),
-        style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: color),
+        style: TextStyle(
+          fontSize: 11.5,
+          fontWeight: FontWeight.w700,
+          color: color == AppColors.accent ? AppColors.accentFg(context) : color,
+        ),
       ),
     );
   }

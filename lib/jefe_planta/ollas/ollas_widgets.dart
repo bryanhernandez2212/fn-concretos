@@ -189,7 +189,7 @@ class OllaCard extends StatelessWidget {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: onUbicacion,
-                  icon: const Icon(Icons.gps_fixed, color: AppColors.accent),
+                  icon: Icon(Icons.gps_fixed, color: AppColors.accentFg(context)),
                   label: const Text('Ubicación'),
                   style: botonSecundario,
                 ),

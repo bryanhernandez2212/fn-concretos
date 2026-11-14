@@ -121,7 +121,7 @@ class _DetailSectionState extends State<DetailSection> {
                           shape: BoxShape.circle,
                           color: _accentYellow.withValues(alpha: 0.15),
                         ),
-                        child: Icon(widget.icon, color: _accentYellow, size: 20),
+                        child: Icon(widget.icon, color: AppColors.accentFg(context), size: 20),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -224,7 +224,7 @@ class NavCard extends StatelessWidget {
                   shape: BoxShape.circle,
                   color: _accentYellow.withValues(alpha: 0.15),
                 ),
-                child: Icon(icon, color: _accentYellow),
+                child: Icon(icon, color: AppColors.accentFg(context)),
               ),
               const SizedBox(width: 14),
               Expanded(

@@ -54,11 +54,11 @@ const tipoServicioOpciones = {'directo': 'Directo', 'bomba': 'Bomba'};
 
 String tipoServicioLabel(String? tipoServicio) => tipoServicioOpciones[tipoServicio] ?? tipoServicio ?? '';
 
-/// The descuento limit that doesn't require `cotizaciones.aplicar_descuento_especial`
-/// depends on whether the cotización requires factura, per the team: up to 5%
-/// sin factura/efectivo, 11-12% con factura.
-String limiteDescuentoTexto(bool requiereFactura) =>
-    requiereFactura ? 'Con factura: 8-11%' : 'Sin factura: 0-5%';
+/// Descuento global range the form accepts (percent, inclusive) when a
+/// descuento is entered at all. Client-side check only; the backend still
+/// enforces its own limit.
+const descuentoMinimoPct = 5.0;
+const descuentoMaximoPct = 10.0;
 
 /// Mirrors `CotizacionItemResponse` from `comercial-service` — one línea
 /// (partida) of a Cotizacion. The backend requires at least one of these per

@@ -140,7 +140,7 @@ class _VisitaFormScreenState extends State<VisitaFormScreen> {
       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: AppColors.accent, width: 1.5),
+        borderSide: BorderSide(color: AppColors.accentFg(context), width: 1.5),
       ),
     );
   }

@@ -55,7 +55,7 @@ class PruebaTextField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _accentYellow, width: 1.5),
+          borderSide: BorderSide(color: AppColors.accentFg(context), width: 1.5),
         ),
       ),
     );

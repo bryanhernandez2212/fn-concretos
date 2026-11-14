@@ -169,7 +169,7 @@ class _AgregadoCard extends StatelessWidget {
                       shape: BoxShape.circle,
                       color: AppColors.accent.withValues(alpha: 0.14),
                     ),
-                    child: Icon(icon, color: AppColors.accent, size: 18),
+                    child: Icon(icon, color: AppColors.accentFg(context), size: 18),
                   ),
                   const SizedBox(width: 12),
                   Expanded(

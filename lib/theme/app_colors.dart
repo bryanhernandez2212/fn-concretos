@@ -27,6 +27,14 @@ class AppColors {
   /// crept into `profile_screen.dart`/`placeholder_content.dart`).
   static const accent = Color(0xFFFFCC00);
 
+  /// [accent] darkened for light mode only, for yellow drawn as a
+  /// foreground on a light surface (icons, text, focus borders), where the
+  /// bright brand yellow washes out against white. Solid yellow fills
+  /// (buttons, selected chips, the nav circle) keep [accent] with black on
+  /// top, which reads fine in both themes.
+  static Color accentFg(BuildContext context) =>
+      _isDark(context) ? accent : const Color(0xFF8A6800);
+
   /// Text/icon color on top of a solid [accent] fill (active nav-bar
   /// circle, primary buttons) — plain black reads best on this yellow.
   static const onAccent = Colors.black;
@@ -68,15 +76,18 @@ class AppColors {
   // explicitly).
   // ---------------------------------------------------------------------
 
-  static bool _isDark(BuildContext context) => Theme.of(context).brightness == Brightness.dark;
+  static bool _isDark(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark;
 
   /// Card/container surface.
-  static Color card(BuildContext context) => _isDark(context) ? const Color(0xFF141414) : Colors.white;
+  static Color card(BuildContext context) =>
+      _isDark(context) ? const Color(0xFF141414) : Colors.white;
 
   /// Slightly different dark-mode surface used by AppBars, bottom sheets,
   /// and the bottom nav bar's tint — one shade lighter than [card] so
   /// stacked surfaces still read as distinct layers.
-  static Color surfaceAlt(BuildContext context) => _isDark(context) ? const Color(0xFF1E1E1E) : Colors.white;
+  static Color surfaceAlt(BuildContext context) =>
+      _isDark(context) ? const Color(0xFF1E1E1E) : Colors.white;
 
   /// Card border. [alpha] varies a bit by call site in the wild (0.08 for
   /// list-style cards, 0.10-0.12 for elevated ones) — pass whichever the
@@ -85,7 +96,8 @@ class AppColors {
       (_isDark(context) ? Colors.white : Colors.black).withValues(alpha: alpha);
 
   /// Primary on-card text.
-  static Color text(BuildContext context) => _isDark(context) ? Colors.white : Colors.black87;
+  static Color text(BuildContext context) =>
+      _isDark(context) ? Colors.white : Colors.black87;
 
   /// Secondary/muted on-card text (subtitles, hints, timestamps).
   static Color mutedText(BuildContext context, {double alpha = 0.55}) =>

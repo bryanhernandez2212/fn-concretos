@@ -115,7 +115,7 @@ class _PedidosScreenState extends State<PedidosScreen> {
                     width: 46,
                     height: 46,
                     decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.accent.withValues(alpha: 0.18)),
-                    child: const Icon(Icons.assignment_outlined, color: AppColors.accent),
+                    child: Icon(Icons.assignment_outlined, color: AppColors.accentFg(context)),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -156,7 +156,7 @@ class _PedidosScreenState extends State<PedidosScreen> {
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppColors.accent, width: 1.5),
+                    borderSide: BorderSide(color: AppColors.accentFg(context), width: 1.5),
                   ),
                 ),
               ),

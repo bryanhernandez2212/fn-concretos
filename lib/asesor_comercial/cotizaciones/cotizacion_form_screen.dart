@@ -605,6 +605,20 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
       return;
     }
 
+    final descuentoTexto = _descuentoController.text.trim();
+    if (descuentoTexto.isNotEmpty) {
+      final descuento = double.tryParse(descuentoTexto);
+      if (descuento == null ||
+          descuento < descuentoMinimoPct ||
+          descuento > descuentoMaximoPct) {
+        AppSnack.error(
+          context,
+          'El descuento debe ser un número de ${descuentoMinimoPct.toInt()} a ${descuentoMaximoPct.toInt()}',
+        );
+        return;
+      }
+    }
+
     setState(() => _enviando = true);
     try {
       final tipoServicio = _tipoServicio;
@@ -1300,7 +1314,7 @@ class _CotizacionFormScreenState extends State<CotizacionFormScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Un descuento mayor al límite (${limiteDescuentoTexto(_requiereFactura)}) requiere autorización.',
+                    'Si aplicas descuento, debe ser de ${descuentoMinimoPct.toInt()}% a ${descuentoMaximoPct.toInt()}%.',
                     style: TextStyle(fontSize: 11.5, color: mutedColor),
                   ),
                   const SizedBox(height: 8),

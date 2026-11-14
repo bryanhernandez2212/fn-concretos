@@ -38,7 +38,7 @@ class StepHeader extends StatelessWidget {
                 ? const Icon(Icons.check, size: 15, color: AppColors.onAccent)
                 : Text(
                     '$numero',
-                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: _accentYellow),
+                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: AppColors.accentFg(context)),
                   ),
           ),
           const SizedBox(width: 10),
@@ -87,7 +87,7 @@ class EvidenciaOptionTile extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, color: _accentYellow, size: 28),
+                Icon(icon, color: AppColors.accentFg(context), size: 28),
                 const SizedBox(height: 8),
                 Text(
                   label,

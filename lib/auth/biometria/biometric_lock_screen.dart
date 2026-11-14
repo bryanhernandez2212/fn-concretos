@@ -64,7 +64,7 @@ class _BiometricLockScreenState extends State<BiometricLockScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.face_retouching_natural, size: 64, color: AppColors.accent),
+                Icon(Icons.face_retouching_natural, size: 64, color: AppColors.accentFg(context)),
                 const SizedBox(height: 20),
                 Text(
                   AuthService.username != null ? 'Hola, ${AuthService.username}' : 'Bienvenido de nuevo',

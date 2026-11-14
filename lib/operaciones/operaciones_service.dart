@@ -87,6 +87,30 @@ class OperacionesService {
         .toList();
   }
 
+  /// Read-only lookup of previa/programación rows via `GET
+  /// /programacion-produccion`, optionally narrowed by `pedidoId`,
+  /// `cotizacionId` or `estatus`. With no filter it returns every row (the
+  /// multi-fecha view the asesor's Programación tab narrows client-side).
+  static Future<List<ProgramacionFila>> programacionesDe({
+    int? pedidoId,
+    int? cotizacionId,
+    String? estatus,
+  }) async {
+    final params = {
+      'pedidoId': ?pedidoId?.toString(),
+      'cotizacionId': ?cotizacionId?.toString(),
+      'estatus': ?estatus,
+    };
+    final query = Uri(queryParameters: params).query;
+    final data = await _get(
+      '/programacion-produccion${query.isEmpty ? '' : '?$query'}',
+    );
+    return (data as List<dynamic>)
+        .whereType<Map<String, dynamic>>()
+        .map(ProgramacionFila.fromJson)
+        .toList();
+  }
+
   static Future<List<AsignacionResumen>> asignacionesPorPedido(
     int pedidoId,
   ) async {

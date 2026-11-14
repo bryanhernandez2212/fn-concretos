@@ -186,7 +186,7 @@ class _VehiclePendingScreenState extends State<VehiclePendingScreen> {
                 enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: _accentYellow, width: 1.5),
+                  borderSide: BorderSide(color: AppColors.accentFg(context), width: 1.5),
                 ),
               ),
               items: [
@@ -195,7 +195,7 @@ class _VehiclePendingScreenState extends State<VehiclePendingScreen> {
                     value: tipo,
                     child: Row(
                       children: [
-                        Icon(tipo.icon, size: 20, color: _accentYellow),
+                        Icon(tipo.icon, size: 20, color: AppColors.accentFg(context)),
                         const SizedBox(width: 12),
                         Text(tipo.label),
                       ],
@@ -231,7 +231,7 @@ class _VehiclePendingScreenState extends State<VehiclePendingScreen> {
                 enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: _accentYellow, width: 1.5),
+                  borderSide: BorderSide(color: AppColors.accentFg(context), width: 1.5),
                 ),
               ),
             ),

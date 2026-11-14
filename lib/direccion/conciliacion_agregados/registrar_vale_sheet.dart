@@ -159,7 +159,7 @@ class _RegistrarValeSheetState extends State<RegistrarValeSheet> {
               ),
               Row(
                 children: [
-                  const Icon(Icons.receipt_long, color: AppColors.accent, size: 24),
+                  Icon(Icons.receipt_long, color: AppColors.accentFg(context), size: 24),
                   const SizedBox(width: 10),
                   Text(
                     'Registrar Vale de Entrada',

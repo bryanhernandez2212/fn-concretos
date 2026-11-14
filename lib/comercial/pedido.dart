@@ -6,6 +6,9 @@ class Pedido {
 
   /// The cotización this pedido was converted from, if any.
   final int? cotizacionId;
+
+  /// The asesor who owns this pedido (`PedidoResponse.asesorId`).
+  final int? asesorId;
   final int clienteId;
   final int obraId;
   final String clienteNombre;
@@ -39,6 +42,7 @@ class Pedido {
     required this.id,
     required this.folio,
     this.cotizacionId,
+    this.asesorId,
     required this.clienteId,
     required this.obraId,
     required this.clienteNombre,
@@ -73,6 +77,7 @@ class Pedido {
       id: _parseInt(json['id']),
       folio: json['folio'] as String? ?? '',
       cotizacionId: _parseIntOrNull(json['cotizacionId']),
+      asesorId: _parseIntOrNull(json['asesorId']),
       clienteId: _parseInt(json['clienteId']),
       obraId: _parseInt(json['obraId']),
       clienteNombre: json['clienteNombre'] as String? ?? 'Cliente sin nombre',

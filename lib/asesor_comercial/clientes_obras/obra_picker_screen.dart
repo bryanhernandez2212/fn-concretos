@@ -94,7 +94,7 @@ class _ObraPickerScreenState extends State<ObraPickerScreen> {
                 enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
-                  borderSide: const BorderSide(color: AppColors.accent, width: 1.5),
+                  borderSide: BorderSide(color: AppColors.accentFg(context), width: 1.5),
                 ),
                 prefixIcon: Icon(Icons.search, color: mutedColor),
                 suffixIcon: IconButton(icon: const Icon(Icons.arrow_forward), onPressed: _buscar),

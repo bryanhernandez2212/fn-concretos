@@ -34,7 +34,7 @@ class RoleUnavailableScreen extends StatelessWidget {
                     color: _accentYellow.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.smartphone_outlined, color: _accentYellow, size: 40),
+                  child: Icon(Icons.smartphone_outlined, color: AppColors.accentFg(context), size: 40),
                 ),
                 const SizedBox(height: 24),
                 Text(
@@ -47,7 +47,7 @@ class RoleUnavailableScreen extends StatelessWidget {
                   Text(
                     rol.nombre,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: _accentYellow),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.accentFg(context)),
                   ),
                   const SizedBox(height: 4),
                   Text(

@@ -101,7 +101,7 @@ class _ConciliacionProveedorDetailScreenState
                       ),
                     ),
                     trailing: seleccionado
-                        ? const Icon(Icons.check, color: AppColors.accent)
+                        ? Icon(Icons.check, color: AppColors.accentFg(context))
                         : null,
                     onTap: () => Navigator.of(ctx).pop(op.$1),
                   );

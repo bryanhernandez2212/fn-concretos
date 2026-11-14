@@ -348,7 +348,7 @@ class ActionRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           child: Row(
             children: [
-              Icon(icon, size: 20, color: enabled ? _accentYellow : mutedColor),
+              Icon(icon, size: 20, color: enabled ? AppColors.accentFg(context) : mutedColor),
               const SizedBox(width: 14),
               Expanded(
                 child: Text(

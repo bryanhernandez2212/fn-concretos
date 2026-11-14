@@ -278,7 +278,7 @@ class _ConciliacionAgregadosScreenState
                       ),
                     ),
                     trailing: seleccionado
-                        ? const Icon(Icons.check, color: AppColors.accent)
+                        ? Icon(Icons.check, color: AppColors.accentFg(context))
                         : null,
                     onTap: () => Navigator.of(ctx).pop(op.$1),
                   );
@@ -344,7 +344,7 @@ class _ConciliacionAgregadosScreenState
                   shape: BoxShape.circle,
                   color: _accentYellow.withValues(alpha: 0.18),
                 ),
-                child: const Icon(Icons.inventory_2_outlined, color: _accentYellow),
+                child: Icon(Icons.inventory_2_outlined, color: AppColors.accentFg(context)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -555,7 +555,7 @@ class _ConciliacionAgregadosScreenState
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 14, color: active ? _accentYellow : mutedColor),
+              Icon(icon, size: 14, color: active ? AppColors.accentFg(context) : mutedColor),
               const SizedBox(width: 4),
               Text(
                 label,
@@ -819,7 +819,7 @@ class _ConciliacionAgregadosScreenState
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.business_outlined, size: 22, color: _accentYellow),
+                  Icon(Icons.business_outlined, size: 22, color: AppColors.accentFg(context)),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(

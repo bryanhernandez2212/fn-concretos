@@ -5,12 +5,15 @@ import '../../catalogo/catalogo_service.dart';
 import '../../catalogo/producto.dart';
 import '../../comercial/comercial_service.dart';
 import '../../comercial/pedido.dart';
+import '../../operaciones/operaciones_service.dart';
+import '../../operaciones/produccion.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/app_feedback.dart';
 import '../../widgets/field_group.dart';
 import '../asesor_comercial_service.dart';
 import '../asesor_comercial_widgets.dart';
 import '../pedidos/pedido_asesor_detail_screen.dart';
+import '../programacion/programacion_widgets.dart';
 import 'convertir_pedido_sheet.dart';
 import 'cotizacion.dart';
 import 'cotizacion_form_screen.dart';
@@ -34,6 +37,7 @@ class _CotizacionDetailScreenState extends State<CotizacionDetailScreen> {
   bool _procesando = false;
   bool _enviandoWhatsApp = false;
   List<Producto> _productos = const [];
+  List<ProgramacionFila>? _programacion;
   List<ClienteContacto> _contactos = const [];
 
   @override
@@ -42,6 +46,15 @@ class _CotizacionDetailScreenState extends State<CotizacionDetailScreen> {
     _cotizacion = widget.cotizacion;
     _cargarProductos();
     _cargarContactos();
+    _cargarProgramacion();
+  }
+
+  /// Best-effort — the previa card is skipped when the lookup fails.
+  Future<void> _cargarProgramacion() async {
+    try {
+      final filas = await OperacionesService.programacionesDe(cotizacionId: widget.cotizacion.id);
+      if (mounted) setState(() => _programacion = filas);
+    } catch (_) {}
   }
 
   /// Best-effort — resolves `contactoId` to a nombre for display; a failed
@@ -254,6 +267,7 @@ class _CotizacionDetailScreenState extends State<CotizacionDetailScreen> {
               ],
             ),
           ),
+          ProgramacionResumenCard(filas: _programacion),
           if (c.productos.isNotEmpty) ...[
             const SizedBox(height: 16),
             Text('Partidas', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: textColor)),

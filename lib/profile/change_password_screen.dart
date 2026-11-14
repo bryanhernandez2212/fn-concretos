@@ -79,7 +79,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 color: _accentYellow.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.lock_outline, color: _accentYellow, size: 40),
+              child: Icon(Icons.lock_outline, color: AppColors.accentFg(context), size: 40),
             ),
           ),
           const SizedBox(height: 24),

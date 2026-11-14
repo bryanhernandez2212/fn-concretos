@@ -6,10 +6,13 @@ import '../../comercial/comercial_service.dart';
 import '../../comercial/pedido.dart';
 import '../../finanzas/facturacion.dart';
 import '../../finanzas/finanzas_service.dart';
+import '../../operaciones/operaciones_service.dart';
+import '../../operaciones/produccion.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/app_feedback.dart';
 import '../../widgets/field_group.dart';
 import '../cotizaciones/cotizacion.dart';
+import '../programacion/programacion_widgets.dart';
 import 'pedidos_widgets.dart';
 
 final _moneda = NumberFormat('#,##0.00', 'es_MX');
@@ -32,6 +35,7 @@ class _PedidoAsesorDetailScreenState extends State<PedidoAsesorDetailScreen> {
   late Pedido _pedido = widget.pedido;
   double? _montoPagado;
   List<Prefactura>? _prefacturas;
+  List<ProgramacionFila>? _programacion;
   bool _enviandoWhatsApp = false;
   bool _generando = false;
   int? _abriendoPrefacturaId;
@@ -58,6 +62,7 @@ class _PedidoAsesorDetailScreenState extends State<PedidoAsesorDetailScreen> {
         } catch (_) {}
       }(),
       _cargarPrefacturas(),
+      _cargarProgramacion(),
     ]);
   }
 
@@ -65,6 +70,14 @@ class _PedidoAsesorDetailScreenState extends State<PedidoAsesorDetailScreen> {
     try {
       final prefacturas = await FinanzasService.prefacturasDePedido(widget.pedido.id);
       if (mounted) setState(() => _prefacturas = prefacturas);
+    } catch (_) {}
+  }
+
+  /// Best-effort — the card is skipped when the lookup fails.
+  Future<void> _cargarProgramacion() async {
+    try {
+      final filas = await OperacionesService.programacionesDe(pedidoId: widget.pedido.id);
+      if (mounted) setState(() => _programacion = filas);
     } catch (_) {}
   }
 
@@ -243,6 +256,7 @@ class _PedidoAsesorDetailScreenState extends State<PedidoAsesorDetailScreen> {
                 ],
               ),
             ),
+            ProgramacionResumenCard(filas: _programacion),
             if (_prefacturas != null && _prefacturas!.isNotEmpty) ...[
               const SizedBox(height: 16),
               _titulo('Prefacturas de este pedido', textColor),
